@@ -20,6 +20,9 @@ warn() { echo -e "  ${YELLOW}!${NC} $1"; }
 
 cd "$INSTALL_DIR"
 
+# Ensure git trusts this directory (vcs-versioning needs git describe)
+git config --global --add safe.directory "$INSTALL_DIR" 2>/dev/null || true
+
 # Determine who owns the install (run git/pip as this user)
 OWNER=$(stat -c '%U' "$INSTALL_DIR")
 if [ "$EUID" -eq 0 ]; then

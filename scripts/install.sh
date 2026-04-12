@@ -212,6 +212,13 @@ else
     ok "Cloned to $INSTALL_DIR (owner: $SERVICE_USER)"
 fi
 
+# ── Mark repo as safe for all users (vcs-versioning needs git) ──
+# pip editable installs trigger setuptools_scm / vcs-versioning which
+# calls git to determine the package version. If the installing user
+# differs from the repo owner, git refuses with "dubious ownership".
+git config --global --add safe.directory "$INSTALL_DIR"
+$RUN_AS git config --global --add safe.directory "$INSTALL_DIR" 2>/dev/null || true
+
 # ── Create virtualenv + install ─────────────────────
 info "Setting up Python environment..."
 if [ ! -d "$INSTALL_DIR/venv" ]; then
