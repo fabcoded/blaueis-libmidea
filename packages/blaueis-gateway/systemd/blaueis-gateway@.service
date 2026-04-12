@@ -9,9 +9,18 @@ ExecStart=/opt/blaueis/venv/bin/python -m blaueis.gateway.server \
     --global /etc/blaueis/gateway.yaml \
     --instance /etc/blaueis/instances/%i.yaml
 WorkingDirectory=/opt/blaueis
-Restart=on-failure
-RestartSec=5
 SyslogIdentifier=blaueis-%i
+
+# Restart policy: retry on crash, but stop after repeated failures
+# to avoid spamming the AC with discovery handshakes in a crash loop.
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+# → max 5 crashes in 5 minutes, then systemd marks the unit as "failed".
+#   The user sees it in 'systemctl status' and must fix + restart manually.
+#   Inside the gateway, UART retries have their own delays:
+#     permission error: 60s, port missing: 30s, general error: 5s.
 
 [Install]
 WantedBy=blaueis-gateway.target
