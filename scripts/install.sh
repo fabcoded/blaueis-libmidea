@@ -40,6 +40,7 @@ echo ""
 #      dedicated service user (gateway never runs as root)
 
 SUDO=""
+RUN_AS=""  # set later after SERVICE_USER is known — runs git/pip as the service user
 MUST_CREATE_SERVICE_USER=false
 INVOKING_USER=""
 SUDO_KEEPALIVE_PID=""
@@ -159,7 +160,7 @@ if [ "$SERVICE_USER" = "blaueis" ]; then
         $SUDO useradd --system \
             --home-dir "$INSTALL_DIR" \
             --shell /usr/sbin/nologin \
-            --create-home \
+            --no-create-home \
             blaueis
         ok "User blaueis created (nologin shell)"
     fi
@@ -178,18 +179,33 @@ else
     ok "Service user: $SERVICE_USER (current user)"
 fi
 
+# Set RUN_AS for git/pip commands that should run as the service user
+if [ "$SERVICE_USER" != "$(whoami)" ]; then
+    RUN_AS="$SUDO -u $SERVICE_USER"
+else
+    RUN_AS=""
+fi
+
 # ── Clone or update repo ────────────────────────────
 echo ""
 if [ -d "$INSTALL_DIR/.git" ]; then
     info "Existing installation found at $INSTALL_DIR"
     cd "$INSTALL_DIR"
-    $SUDO -u "$SERVICE_USER" git fetch --tags -q 2>/dev/null || git fetch --tags -q
+    $RUN_AS git fetch --tags -q 2>/dev/null || git fetch --tags -q
     ok "Repository updated"
 else
     info "Cloning blaueis-libmidea to $INSTALL_DIR..."
+    # Clean up if the directory exists but isn't a git repo
+    # (e.g., useradd created it as a home dir in a previous failed run)
+    if [ -d "$INSTALL_DIR" ]; then
+        if [ "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]; then
+            warn "$INSTALL_DIR exists and is not empty — removing stale directory"
+        fi
+        $SUDO rm -rf "$INSTALL_DIR"
+    fi
     $SUDO mkdir -p "$INSTALL_DIR"
     $SUDO chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
-    $SUDO -u "$SERVICE_USER" git clone --depth 50 "$REPO_URL" "$INSTALL_DIR" 2>/dev/null \
+    $RUN_AS git clone --depth 50 "$REPO_URL" "$INSTALL_DIR" 2>/dev/null \
         || git clone --depth 50 "$REPO_URL" "$INSTALL_DIR"
     $SUDO chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
     cd "$INSTALL_DIR"
@@ -199,10 +215,10 @@ fi
 # ── Create virtualenv + install ─────────────────────
 info "Setting up Python environment..."
 if [ ! -d "$INSTALL_DIR/venv" ]; then
-    $SUDO -u "$SERVICE_USER" "$PYTHON" -m venv "$INSTALL_DIR/venv" 2>/dev/null \
+    $RUN_AS "$PYTHON" -m venv "$INSTALL_DIR/venv" 2>/dev/null \
         || "$PYTHON" -m venv "$INSTALL_DIR/venv"
 fi
-$SUDO -u "$SERVICE_USER" "$INSTALL_DIR/venv/bin/pip" install -q \
+$RUN_AS "$INSTALL_DIR/venv/bin/pip" install -q \
     -e packages/blaueis-core -e packages/blaueis-gateway 2>/dev/null \
     || "$INSTALL_DIR/venv/bin/pip" install -q -e packages/blaueis-core -e packages/blaueis-gateway
 $SUDO chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
