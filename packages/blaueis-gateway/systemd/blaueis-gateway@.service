@@ -2,6 +2,11 @@
 Description=Blaueis Gateway — %I
 After=network.target
 PartOf=blaueis-gateway.target
+# Stop after repeated failures to avoid spamming the AC with
+# discovery handshakes in a crash loop. Max 5 crashes in 5 minutes,
+# then systemd marks the unit as "failed".
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -12,12 +17,8 @@ ExecStart=/opt/blaueis-gw/venv/bin/python -m blaueis.gateway.server \
 WorkingDirectory=/opt/blaueis-gw
 SyslogIdentifier=blaueis-gw-%i
 
-# Restart policy: retry on crash, but stop after repeated failures
-# to avoid spamming the AC with discovery handshakes in a crash loop.
 Restart=on-failure
 RestartSec=10
-StartLimitIntervalSec=300
-StartLimitBurst=5
 # → max 5 crashes in 5 minutes, then systemd marks the unit as "failed".
 #   The user sees it in 'systemctl status' and must fix + restart manually.
 #   Inside the gateway, UART retries have their own delays:
