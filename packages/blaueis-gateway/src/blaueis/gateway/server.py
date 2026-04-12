@@ -286,12 +286,21 @@ class GatewayServer:
             return
         while True:
             await asyncio.sleep(interval)
+            stats = get_pi_stats()
+            stats["protocol_state"] = self.protocol.state
+            stats["appliance"] = f"0x{self.protocol.appliance:02X}"
+            stats["model"] = self.protocol.model
+            stats["clients"] = len(self._clients)
+            log.info(
+                "state=%s clients=%d cpu=%.0f%% ram=%d/%dMB temp=%s°C",
+                self.protocol.state,
+                len(self._clients),
+                stats.get("cpu_percent", 0),
+                stats.get("ram_used_mb", 0),
+                stats.get("ram_total_mb", 0),
+                stats.get("temp_c", "?"),
+            )
             if self._clients:
-                stats = get_pi_stats()
-                stats["protocol_state"] = self.protocol.state
-                stats["appliance"] = f"0x{self.protocol.appliance:02X}"
-                stats["model"] = self.protocol.model
-                stats["clients"] = len(self._clients)
                 await self._broadcast(stats)
 
     async def _uart_loop(self):
