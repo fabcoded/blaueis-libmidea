@@ -130,6 +130,12 @@ def main():
     except ValueError:
         check("99999 rejected (> 65535)", True)
 
+    try:
+        wizard._validate_port("abc")
+        check("'abc' rejected (non-numeric)", False, "no exception")
+    except (ValueError, TypeError):
+        check("'abc' rejected (non-numeric)", True)
+
     # ── Config writing ───────────────────────────────────
     print("\n6. Config file writing")
 
@@ -160,11 +166,36 @@ def main():
             check("instance config created", path.exists())
             inst_content = path.read_text()
             check("instance has schema_version", "schema_version: 1" in inst_content)
-            check("instance has serial_port", "serial_port: /dev/serial0" in inst_content)
+            check("instance has serial_port", "/dev/serial0" in inst_content)
             check("instance has PSK", "myTestKey12345678" in inst_content)
             check("instance has HA block", "Host: 192.168.1.50" in inst_content)
             check("instance has port in HA block", "Port: 8765" in inst_content)
-            check("instance has device name", "name: Test AC" in inst_content)
+            check("instance has device name", "Test AC" in inst_content)
+
+            # YAML-safety: special characters in user-provided values
+            path2 = wizard.write_instance_config(
+                "special-test",
+                "/dev/ttyUSB0",
+                9600,
+                "8766",
+                "my#key:with{special}chars",
+                'My: "Fancy" AC #1',
+                "10.0.0.1",
+            )
+            import yaml
+
+            with open(path2) as f:
+                parsed = yaml.safe_load(f)
+            check(
+                "YAML-safe: special chars in device name parse correctly",
+                parsed["device"]["name"] == 'My: "Fancy" AC #1',
+                f"got {parsed['device']['name']!r}",
+            )
+            check(
+                "YAML-safe: special chars in PSK parse correctly",
+                parsed["security"]["psk"] == "my#key:with{special}chars",
+                f"got {parsed['security']['psk']!r}",
+            )
         finally:
             wizard.INSTANCES_DIR = orig_instances
             wizard.GLOBAL_CONFIG = orig_global

@@ -180,8 +180,8 @@ def write_instance_config(name, serial_port, baud, ws_port, psk, device_name, ip
 schema_version: 1
 
 device:
-  name: {device_name}
-  serial_port: {serial_port}
+  name: '{device_name.replace("'", "''")}'
+  serial_port: '{serial_port}'
   baud_rate: {baud}
 
 websocket:
@@ -189,7 +189,7 @@ websocket:
   port: {ws_port}
 
 security:
-  psk: {psk}
+  psk: '{psk}'
 
 # ─── Home Assistant Integration ────���─────────────────
 # Install blaueis-ha-midea from HACS, then configure:
