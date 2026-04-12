@@ -291,3 +291,85 @@ def build_cap_query_simple(appliance: int = 0xAC, proto: int = 0, sub: int = 0) 
         proto=proto,
         sub=sub,
     )
+
+
+# ── Gateway handshake frame builders ───────────────────────────────────
+#
+# These build the UART-level handshake frames the gateway sends to the AC
+# during dongle impersonation (DISCOVER → MODEL → ANNOUNCE → RUNNING).
+# They are NOT in the glossary because they're gateway-originated, not
+# data queries. The byte layouts match observed real-dongle traffic.
+
+
+def build_sn_query(appliance: int = 0xFF, proto: int = 0, sub: int = 0) -> bytes:
+    """MSG 0x07 — Serial number / device ID query.
+
+    Sent during DISCOVER with appliance=0xFF (broadcast) to find any AC
+    on the bus. AC responds with its SN in the body (ASCII, zero-padded).
+    """
+    return build_frame(bytes(20), msg_type=0x07, appliance=appliance, proto=proto, sub=sub)
+
+
+def build_model_query(appliance: int = 0xAC, proto: int = 0, sub: int = 0) -> bytes:
+    """MSG 0xA0 — Model number query.
+
+    Sent during MODEL phase. AC responds with model ID in body[2:4] (LE uint16).
+    """
+    return build_frame(bytes(20), msg_type=0xA0, appliance=appliance, proto=proto, sub=sub)
+
+
+def build_network_init(
+    appliance: int = 0xAC,
+    ip: tuple[int, int, int, int] = (192, 168, 1, 100),
+    proto: int = 0,
+    sub: int = 0,
+) -> bytes:
+    """MSG 0x0D — Network init (dongle announces its IP to the AC).
+
+    Sent during ANNOUNCE after SN + model are known. Tells the AC the
+    dongle is online and ready. The IP is embedded in body[3:7].
+    """
+    body = bytearray(20)
+    body[3] = ip[0]
+    body[4] = ip[1]
+    body[5] = ip[2]
+    body[6] = ip[3]
+    return build_frame(bytes(body), msg_type=0x0D, appliance=appliance, proto=proto, sub=sub)
+
+
+def build_network_status_response(
+    ip: tuple[int, int, int, int] = (192, 168, 1, 100),
+    signal: int = 4,
+    connected: bool = True,
+) -> bytes:
+    """Build the body for a MSG 0x63 network status response.
+
+    Returns the body only — caller wraps it with build_frame(body, msg_type=0x63, ...).
+    The AC sends 0x63 queries periodically (~60s) to check connectivity.
+
+    Body layout:
+      [0]    = connection status (0x11 connected, 0x00 disconnected)
+      [2:6]  = IP address bytes
+      [8]    = signal strength (0–4)
+    """
+    body = bytearray(20)
+    body[0] = 0x11 if connected else 0x00
+    body[2] = ip[0]
+    body[3] = ip[1]
+    body[4] = ip[2]
+    body[5] = ip[3]
+    body[8] = signal & 0xFF
+    return bytes(body)
+
+
+def build_version_response(appliance: int = 0xAC, proto: int = 0, sub: int = 0) -> bytes:
+    """MSG 0x13 — Version info response.
+
+    Sent when the AC queries firmware version (0x13 or 0x87).
+    Returns a plausible dongle version string.
+    """
+    # Minimal version body: "V1.0.0" zero-padded
+    version = b"V1.0.0"
+    body = bytearray(20)
+    body[:len(version)] = version
+    return build_frame(bytes(body), msg_type=0x13, appliance=appliance, proto=proto, sub=sub)
