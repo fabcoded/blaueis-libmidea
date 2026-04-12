@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Blaueis Gateway — interactive setup wizard.
 
-Creates or updates an instance config in /etc/blaueis/instances/<name>.yaml.
-Also creates the global config /etc/blaueis/gateway.yaml if it doesn't exist.
+Creates or updates an instance config in /etc/blaueis-gw/instances/<name>.yaml.
+Also creates the global config /etc/blaueis-gw/gateway.yaml if it doesn't exist.
 
 Usage:
     blaueis-configure                           # interactive
@@ -19,7 +19,7 @@ import socket
 import string
 from pathlib import Path
 
-CONFIG_DIR = Path("/etc/blaueis")
+CONFIG_DIR = Path("/etc/blaueis-gw")
 INSTANCES_DIR = CONFIG_DIR / "instances"
 GLOBAL_CONFIG = CONFIG_DIR / "gateway.yaml"
 
@@ -150,7 +150,7 @@ def ask_psk(existing_psk=None):
 
 
 def write_global_config():
-    """Write /etc/blaueis/gateway.yaml if it doesn't exist."""
+    """Write /etc/blaueis-gw/gateway.yaml if it doesn't exist."""
     if GLOBAL_CONFIG.exists():
         return
 
@@ -204,7 +204,7 @@ def check_collisions(name, serial_port, ws_port):
 
 
 def write_instance_config(name, serial_port, baud, ws_port, psk, device_name, ip):
-    """Write /etc/blaueis/instances/<name>.yaml using yaml.safe_dump (safe serialization)."""
+    """Write /etc/blaueis-gw/instances/<name>.yaml using yaml.safe_dump (safe serialization)."""
     import tempfile
 
     import yaml

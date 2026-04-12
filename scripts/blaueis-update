@@ -7,11 +7,11 @@
 #   blaueis-update --rollback   # revert to previous version
 #
 # Must be run with sudo (needs to stop/start systemd services and
-# write to /opt/blaueis which is owned by the blaueis service user).
+# write to /opt/blaueis-gw which is owned by the blaueis service user).
 set -e
 
-INSTALL_DIR="/opt/blaueis"
-CONFIG_DIR="/etc/blaueis"
+INSTALL_DIR="/opt/blaueis-gw"
+CONFIG_DIR="/etc/blaueis-gw"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 ok()   { echo -e "  ${GREEN}✓${NC} $1"; }

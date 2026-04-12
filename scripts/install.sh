@@ -13,8 +13,8 @@
 #
 set -e
 
-INSTALL_DIR="/opt/blaueis"
-CONFIG_DIR="/etc/blaueis"
+INSTALL_DIR="/opt/blaueis-gw"
+CONFIG_DIR="/etc/blaueis-gw"
 REPO_URL="https://github.com/fabcoded/blaueis-libmidea.git"
 MIN_PYTHON="3.11"
 
@@ -31,8 +31,8 @@ echo -e "${BLUE}─── Blaueis Gateway Installer ─────────�
 echo ""
 
 # ── Privilege setup ─────────────────────────────────
-# The installer needs root for: creating system user, /opt/blaueis,
-# /etc/blaueis, systemd units, usermod. Three scenarios:
+# The installer needs root for: creating system user, /opt/blaueis-gw,
+# /etc/blaueis-gw, systemd units, usermod. Three scenarios:
 #
 #   A) Normal user with sudo → uses sudo, asks about service user
 #   B) Normal user without sudo → tells them to run with sudo
@@ -134,11 +134,11 @@ echo ""
 
 if [ -z "$SERVICE_USER" ]; then
     if [ "$MUST_CREATE_SERVICE_USER" = true ]; then
-        SERVICE_USER="blaueis"
-        info "Running as root — creating dedicated 'blaueis' service user (gateway never runs as root)"
+        SERVICE_USER="blaueis-gw"
+        info "Running as root — creating dedicated 'blaueis-gw' service user (gateway never runs as root)"
     else
         echo "  Service user:"
-        echo "    [1] Create 'blaueis' system user (recommended)"
+        echo "    [1] Create 'blaueis-gw' system user (recommended)"
         echo "    [2] Run as current user ($INVOKING_USER)"
         echo ""
         read -r -p "  > " user_choice
@@ -147,31 +147,31 @@ if [ -z "$SERVICE_USER" ]; then
         if [ "$user_choice" = "2" ]; then
             SERVICE_USER="$INVOKING_USER"
         else
-            SERVICE_USER="blaueis"
+            SERVICE_USER="blaueis-gw"
         fi
     fi
 fi
 
-if [ "$SERVICE_USER" = "blaueis" ]; then
-    if id "blaueis" &>/dev/null; then
-        ok "System user 'blaueis' already exists"
+if [ "$SERVICE_USER" = "blaueis-gw" ]; then
+    if id "blaueis-gw" &>/dev/null; then
+        ok "System user 'blaueis-gw' already exists"
     else
-        info "Creating system user 'blaueis'..."
+        info "Creating system user 'blaueis-gw'..."
         $SUDO useradd --system \
             --home-dir "$INSTALL_DIR" \
             --shell /usr/sbin/nologin \
             --no-create-home \
-            blaueis
-        ok "User blaueis created (nologin shell)"
+            blaueis-gw
+        ok "User blaueis-gw created (nologin shell)"
     fi
-    $SUDO usermod -aG dialout blaueis
-    if [ -n "$INVOKING_USER" ] && [ "$INVOKING_USER" != "blaueis" ] && [ "$INVOKING_USER" != "root" ]; then
-        $SUDO usermod -aG blaueis "$INVOKING_USER"
-        ok "Added $INVOKING_USER to blaueis group (for config access)"
+    $SUDO usermod -aG dialout blaueis-gw
+    if [ -n "$INVOKING_USER" ] && [ "$INVOKING_USER" != "blaueis-gw" ] && [ "$INVOKING_USER" != "root" ]; then
+        $SUDO usermod -aG blaueis-gw "$INVOKING_USER"
+        ok "Added $INVOKING_USER to blaueis-gw group (for config access)"
     elif [ -z "$INVOKING_USER" ]; then
-        warn "Add your normal user to the blaueis group: sudo usermod -aG blaueis <username>"
+        warn "Add your normal user to the blaueis-gw group: sudo usermod -aG blaueis-gw <username>"
     fi
-    ok "Service user: blaueis (dedicated system user)"
+    ok "Service user: blaueis-gw (dedicated system user)"
 else
     if ! id -nG "$SERVICE_USER" | grep -qw dialout; then
         $SUDO usermod -aG dialout "$SERVICE_USER"
@@ -225,7 +225,7 @@ $SUDO chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
 ok "Python packages installed"
 
 # ── Add service user to dialout (if not already done above) ─
-if [ "$SERVICE_USER" != "blaueis" ]; then
+if [ "$SERVICE_USER" != "blaueis-gw" ]; then
     if ! id -nG "$SERVICE_USER" | grep -qw dialout; then
         $SUDO usermod -aG dialout "$SERVICE_USER"
         warn "You may need to log out and back in for dialout group change"
@@ -236,8 +236,8 @@ fi
 
 # ── Create config directory ─────────────────────────
 $SUDO mkdir -p "$CONFIG_DIR/instances"
-if [ "$SERVICE_USER" = "blaueis" ]; then
-    $SUDO chown -R "blaueis:blaueis" "$CONFIG_DIR"
+if [ "$SERVICE_USER" = "blaueis-gw" ]; then
+    $SUDO chown -R "blaueis-gw:blaueis-gw" "$CONFIG_DIR"
     $SUDO chmod 750 "$CONFIG_DIR" "$CONFIG_DIR/instances"
     # PSK files should not be world-readable
     $SUDO chmod 640 "$CONFIG_DIR/instances/"*.yaml 2>/dev/null || true
@@ -290,7 +290,7 @@ fi
 
 # Fix config ownership (wizard may have run as root)
 $SUDO chown -R "$SERVICE_USER:$SERVICE_USER" "$CONFIG_DIR"
-if [ "$SERVICE_USER" = "blaueis" ]; then
+if [ "$SERVICE_USER" = "blaueis-gw" ]; then
     $SUDO chmod 750 "$CONFIG_DIR" "$CONFIG_DIR/instances"
     $SUDO chmod 640 "$CONFIG_DIR/instances/"*.yaml 2>/dev/null || true
 fi
@@ -319,9 +319,9 @@ print(d.get('enabled', True))
 done
 
 # ── Install helper scripts ──────────────────────────
-$SUDO ln -sf "$INSTALL_DIR/scripts/blaueis-configure" /usr/local/bin/blaueis-configure
-$SUDO ln -sf "$INSTALL_DIR/scripts/blaueis-update" /usr/local/bin/blaueis-update
-$SUDO chmod +x /usr/local/bin/blaueis-configure /usr/local/bin/blaueis-update
+$SUDO ln -sf "$INSTALL_DIR/scripts/blaueis-configure" /usr/local/bin/blaueis-gw-configure
+$SUDO ln -sf "$INSTALL_DIR/scripts/blaueis-update" /usr/local/bin/blaueis-gw-update
+$SUDO chmod +x /usr/local/bin/blaueis-gw-configure /usr/local/bin/blaueis-gw-update
 
 # ── Done ────────────────────────────────────────────
 echo ""
@@ -329,8 +329,8 @@ echo -e "${GREEN}─── Blaueis Gateway Installed ─────────
 echo ""
 echo "  Commands:"
 echo "    systemctl status blaueis-gateway@<name>    # check status"
-echo "    blaueis-configure                          # add/edit instance"
-echo "    blaueis-update                             # check for updates"
+echo "    blaueis-gw-configure                          # add/edit instance"
+echo "    blaueis-gw-update                             # check for updates"
 echo ""
 echo "  Config: $CONFIG_DIR/"
 echo "  Logs:   journalctl -u 'blaueis-gateway@*' -f"
