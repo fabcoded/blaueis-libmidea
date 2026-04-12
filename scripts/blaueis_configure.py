@@ -162,10 +162,6 @@ logging:
 
 remote_management:
   allow_remote_control: true
-  update_channel: stable
-  update_check_interval: 86400
-  # Updates are NEVER applied automatically. The check reports to HA;
-  # the user triggers the actual update via HA UI or blaueis-update.
 """
     GLOBAL_CONFIG.write_text(content)
 
