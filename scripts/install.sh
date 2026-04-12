@@ -56,12 +56,55 @@ trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null" EXIT
 
 # ── Parse args ──────────────────────────────────────
 EXISTING_CONFIG=""
+SERVICE_USER=""
 while [[ $# -gt 0 ]]; do
     case $1 in
         --config) EXISTING_CONFIG="$2"; shift 2 ;;
+        --user) SERVICE_USER="$2"; shift 2 ;;
         *) warn "Unknown option: $1"; shift ;;
     esac
 done
+
+# ── Service user setup (FIRST — before anything else) ─
+CURRENT_USER="$(whoami)"
+
+if [ -z "$SERVICE_USER" ]; then
+    echo "  Service user:"
+    echo "    [1] Create 'blaueis' system user (recommended)"
+    echo "    [2] Run as current user ($CURRENT_USER)"
+    echo ""
+    read -r -p "  > " user_choice
+    user_choice="${user_choice:-1}"
+    echo ""
+
+    if [ "$user_choice" = "2" ]; then
+        SERVICE_USER="$CURRENT_USER"
+    else
+        SERVICE_USER="blaueis"
+    fi
+fi
+
+if [ "$SERVICE_USER" = "blaueis" ]; then
+    if id "blaueis" &>/dev/null; then
+        ok "System user 'blaueis' already exists"
+    else
+        info "Creating system user 'blaueis'..."
+        sudo useradd --system \
+            --home-dir "$INSTALL_DIR" \
+            --shell /usr/sbin/nologin \
+            --create-home \
+            blaueis
+        ok "User blaueis created (nologin shell)"
+    fi
+    # Serial port access
+    sudo usermod -aG dialout blaueis
+    # Let the installing user manage configs
+    sudo usermod -aG blaueis "$CURRENT_USER"
+    ok "Added $CURRENT_USER to blaueis group (for config access)"
+    ok "Service user: blaueis (dedicated system user)"
+else
+    ok "Service user: $SERVICE_USER (current user)"
+fi
 
 # ── Check prerequisites ─────────────────────────────
 info "Checking prerequisites..."
@@ -116,44 +159,63 @@ echo ""
 if [ -d "$INSTALL_DIR/.git" ]; then
     info "Existing installation found at $INSTALL_DIR"
     cd "$INSTALL_DIR"
-    git fetch --tags -q
+    sudo -u "$SERVICE_USER" git fetch --tags -q 2>/dev/null || git fetch --tags -q
     ok "Repository updated"
 else
     info "Cloning blaueis-libmidea to $INSTALL_DIR..."
     sudo mkdir -p "$INSTALL_DIR"
-    sudo chown "$(whoami):$(whoami)" "$INSTALL_DIR"
-    git clone --depth 50 "$REPO_URL" "$INSTALL_DIR"
+    sudo chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+    sudo -u "$SERVICE_USER" git clone --depth 50 "$REPO_URL" "$INSTALL_DIR" 2>/dev/null \
+        || git clone --depth 50 "$REPO_URL" "$INSTALL_DIR"
+    sudo chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
     cd "$INSTALL_DIR"
-    ok "Cloned to $INSTALL_DIR"
+    ok "Cloned to $INSTALL_DIR (owner: $SERVICE_USER)"
 fi
 
 # ── Create virtualenv + install ─────────────────────
 info "Setting up Python environment..."
 if [ ! -d "$INSTALL_DIR/venv" ]; then
-    "$PYTHON" -m venv "$INSTALL_DIR/venv"
+    sudo -u "$SERVICE_USER" "$PYTHON" -m venv "$INSTALL_DIR/venv" 2>/dev/null \
+        || "$PYTHON" -m venv "$INSTALL_DIR/venv"
 fi
-"$INSTALL_DIR/venv/bin/pip" install -q -e packages/blaueis-core -e packages/blaueis-gateway
+sudo -u "$SERVICE_USER" "$INSTALL_DIR/venv/bin/pip" install -q \
+    -e packages/blaueis-core -e packages/blaueis-gateway 2>/dev/null \
+    || "$INSTALL_DIR/venv/bin/pip" install -q -e packages/blaueis-core -e packages/blaueis-gateway
+sudo chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
 ok "Python packages installed"
 
-# ── Add user to dialout group ───────────────────────
-if ! groups | grep -q dialout; then
-    info "Adding $(whoami) to dialout group for serial port access..."
-    sudo usermod -aG dialout "$(whoami)"
-    warn "You may need to log out and back in for group change to take effect"
-else
-    ok "User $(whoami) is in dialout group"
+# ── Add service user to dialout (if not already done above) ─
+if [ "$SERVICE_USER" != "blaueis" ]; then
+    if ! id -nG "$SERVICE_USER" | grep -qw dialout; then
+        sudo usermod -aG dialout "$SERVICE_USER"
+        warn "You may need to log out and back in for dialout group change"
+    else
+        ok "User $SERVICE_USER is in dialout group"
+    fi
 fi
 
 # ── Create config directory ─────────────────────────
 sudo mkdir -p "$CONFIG_DIR/instances"
-sudo chown -R "$(whoami):$(whoami)" "$CONFIG_DIR"
+if [ "$SERVICE_USER" = "blaueis" ]; then
+    sudo chown -R "blaueis:blaueis" "$CONFIG_DIR"
+    sudo chmod 750 "$CONFIG_DIR" "$CONFIG_DIR/instances"
+    # PSK files should not be world-readable
+    sudo chmod 640 "$CONFIG_DIR/instances/"*.yaml 2>/dev/null || true
+else
+    sudo chown -R "$SERVICE_USER:$SERVICE_USER" "$CONFIG_DIR"
+fi
 
 # ── Install systemd units ──────────────────────────
 info "Installing systemd service..."
-sudo cp "$INSTALL_DIR/packages/blaueis-gateway/systemd/blaueis-gateway@.service" /etc/systemd/system/
+# Write the service file with the correct user
+SERVICE_TEMPLATE="$INSTALL_DIR/packages/blaueis-gateway/systemd/blaueis-gateway@.service"
+# Inject the actual service user into the template
+sudo sed "s/^User=.*/User=$SERVICE_USER/" "$SERVICE_TEMPLATE" \
+    > /tmp/blaueis-gateway@.service
+sudo mv /tmp/blaueis-gateway@.service /etc/systemd/system/blaueis-gateway@.service
 sudo cp "$INSTALL_DIR/packages/blaueis-gateway/systemd/blaueis-gateway.target" /etc/systemd/system/
 sudo systemctl daemon-reload
-ok "Systemd units installed"
+ok "Systemd units installed (User=$SERVICE_USER)"
 
 # ── Run wizard ──────────────────────────────────────
 echo ""
