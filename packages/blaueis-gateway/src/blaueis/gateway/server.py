@@ -59,6 +59,7 @@ def load_config(global_path: str = None, instance_path: str = None, legacy_path:
         "signal_level": 4,
         "log_level": "INFO",
         "device_name": "Midea AC",
+        "allow_remote_update": True,
     }
 
     if legacy_path:
@@ -89,6 +90,8 @@ def load_config(global_path: str = None, instance_path: str = None, legacy_path:
             g = yaml.safe_load(f) or {}
         logging_cfg = g.get("logging", {})
         config["log_level"] = logging_cfg.get("level", "INFO")
+        if "allow_remote_update" in g:
+            config["allow_remote_update"] = bool(g["allow_remote_update"])
 
     if instance_path:
         with open(instance_path, encoding="utf-8") as f:
