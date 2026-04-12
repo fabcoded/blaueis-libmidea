@@ -159,9 +159,6 @@ schema_version: 1
 
 logging:
   level: INFO
-
-remote_management:
-  allow_remote_control: true
 """
     GLOBAL_CONFIG.write_text(content)
 

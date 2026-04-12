@@ -303,35 +303,56 @@ class GatewayServer:
             if self._clients:
                 await self._broadcast(stats)
 
-    async def _debug_heartbeat(self):
-        """Log a debug heartbeat every 60s for journalctl troubleshooting.
+    async def _debug_recap(self):
+        """Every 60s, log a recap of this service's recent journal entries.
 
-        Separate from the stats broadcast (which is client-facing KPI data).
-        This is purely for operators tailing the log.
+        When you open journalctl after the fact, the recap gives you
+        immediate context without scrolling back. Runs separately from
+        the client-facing stats broadcast.
         """
+        import subprocess
         import time as _time
+
+        # Derive the syslog identifier from the instance config path
+        # /etc/blaueis-gw/instances/atelier.yaml → blaueis-gw-atelier
+        instance_name = ""
+        instance_path = self.config.get("_instance_path", "")
+        if instance_path:
+            instance_name = os.path.splitext(os.path.basename(instance_path))[0]
+        syslog_id = f"blaueis-gw-{instance_name}" if instance_name else ""
 
         while True:
             await asyncio.sleep(60)
+
             proto = self.protocol
             silence_age = _time.monotonic() - proto.silence_timer if proto.silence_timer else 0
-            stats = get_pi_stats()
+
+            # One-line status summary
             log.info(
-                "heartbeat state=%s clients=%d tx_queue=%d/%d last_frame=%.0fs ago "
-                "cpu=%.0f%% ram=%d/%dMB disk=%d/%dMB free=%dMB temp=%s°C",
+                "recap state=%s clients=%d tx_queue=%d/%d last_frame=%.0fs ago",
                 proto.state,
                 len(self._clients),
                 proto._tx_queue.qsize(),
                 proto._tx_queue.maxsize,
                 silence_age,
-                stats.get("cpu_percent", 0),
-                stats.get("ram_used_mb", 0),
-                stats.get("ram_total_mb", 0),
-                stats.get("disk_used_mb", 0),
-                stats.get("disk_total_mb", 0),
-                stats.get("disk_free_mb", 0),
-                stats.get("temp_c", "?"),
             )
+
+            # Tail the last 10 journal entries for this service
+            if syslog_id:
+                try:
+                    result = await asyncio.to_thread(
+                        subprocess.run,
+                        [
+                            "journalctl", "-t", syslog_id,
+                            "-n", "10", "--no-pager", "-o", "short-iso",
+                        ],
+                        capture_output=True, text=True, timeout=5,
+                    )
+                    if result.stdout.strip():
+                        for line in result.stdout.strip().splitlines():
+                            log.info("  | %s", line)
+                except Exception:
+                    pass  # journalctl not available or timed out — skip silently
 
     async def _uart_loop(self):
         """Open UART and run the protocol state machine."""
@@ -400,7 +421,7 @@ class GatewayServer:
             await asyncio.gather(
                 self._uart_loop(),
                 self._stats_loop(),
-                self._debug_heartbeat(),
+                self._debug_recap(),
             )
 
 
@@ -428,6 +449,7 @@ def main():
             config = load_config(legacy_path=args.config)
         else:
             config = load_config(global_path=args.global_config, instance_path=args.instance_config)
+            config["_instance_path"] = args.instance_config or ""
     except PermissionError:
         print(
             f"ERROR: Cannot read config file: {config_path}\n"
