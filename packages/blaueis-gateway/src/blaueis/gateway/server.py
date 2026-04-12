@@ -508,7 +508,7 @@ class GatewayServer:
                 await asyncio.sleep(5)
 
     async def run(self):
-        """Start all tasks: WebSocket server + UART + stats."""
+        """Start all async tasks: WebSocket server + UART + stats + recap."""
         import websockets
 
         host = self.config["ws_host"]
