@@ -34,6 +34,30 @@ from blaueis.gateway.uart_protocol import UartProtocol
 log = logging.getLogger("hvac_gateway")
 
 
+INSTALL_DIR = "/opt/blaueis-gw"
+
+
+def _get_version() -> str:
+    """Read the git commit SHA from the install directory."""
+    try:
+        import subprocess
+
+        result = subprocess.run(
+            ["git", "describe", "--tags", "--always", "--dirty"],
+            cwd=INSTALL_DIR,
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except Exception:
+        pass
+    return "unknown"
+
+
+# Resolved once at startup
+GW_VERSION = _get_version()
+
+
 # ── Configuration ─────────────────────────────────────────────────────────
 
 
@@ -240,6 +264,18 @@ class GatewayServer:
         elif msg_type == "ping":
             await client.send({"type": "pong"})
 
+        elif msg_type == "version":
+            await client.send({"type": "version", "version": GW_VERSION})
+
+        elif msg_type == "update":
+            if not self.config.get("allow_remote_update", True):
+                await client.send({"type": "error", "ref": ref, "msg": "remote updates disabled in config"})
+                return
+            log.info("Remote update requested by %s", client.ws.remote_address)
+            await client.send({"type": "ack", "ref": ref, "status": "updating"})
+            result = await self._run_update()
+            await client.send({"type": "update_result", "ref": ref, **result})
+
     async def _ws_handler(self, websocket):
         """Handle a WebSocket connection. Multiple clients supported."""
         import websockets
@@ -293,6 +329,46 @@ class GatewayServer:
             else:
                 log.info("Client disconnected, %d remaining", len(self._clients))
 
+    async def _run_update(self) -> dict:
+        """Pull latest code and reinstall packages. Returns result dict."""
+        import subprocess
+
+        old_version = GW_VERSION
+        steps = []
+        try:
+            # Pull latest
+            r = await asyncio.to_thread(
+                subprocess.run,
+                ["git", "pull", "--ff-only"],
+                cwd=INSTALL_DIR, capture_output=True, text=True, timeout=30,
+            )
+            steps.append(("git_pull", r.returncode == 0, r.stdout.strip() or r.stderr.strip()))
+            if r.returncode != 0:
+                return {"ok": False, "old_version": old_version, "steps": steps}
+
+            # Reinstall packages
+            pip = os.path.join(INSTALL_DIR, "venv", "bin", "pip")
+            r = await asyncio.to_thread(
+                subprocess.run,
+                [pip, "install", "-q", "-e", "packages/blaueis-core", "-e", "packages/blaueis-gateway"],
+                cwd=INSTALL_DIR, capture_output=True, text=True, timeout=60,
+            )
+            steps.append(("pip_install", r.returncode == 0, r.stderr.strip()[:200] if r.returncode != 0 else "ok"))
+
+            new_version = _get_version()
+            log.info("Update complete: %s → %s", old_version, new_version)
+
+            return {
+                "ok": r.returncode == 0,
+                "old_version": old_version,
+                "new_version": new_version,
+                "steps": steps,
+                "restart_required": old_version != new_version,
+            }
+        except Exception as e:
+            log.error("Update failed: %s", e)
+            return {"ok": False, "old_version": old_version, "error": str(e), "steps": steps}
+
     async def _stats_loop(self):
         """Periodically send Pi stats to connected clients."""
         interval = self.config.get("stats_interval", 60)
@@ -305,6 +381,7 @@ class GatewayServer:
             stats["appliance"] = f"0x{self.protocol.appliance:02X}"
             stats["model"] = self.protocol.model
             stats["clients"] = len(self._clients)
+            stats["version"] = GW_VERSION
             if self._clients:
                 await self._broadcast(stats)
 
@@ -419,7 +496,7 @@ class GatewayServer:
         host = self.config["ws_host"]
         port = self.config["ws_port"]
 
-        log.info("Starting gateway on ws://%s:%d", host, port)
+        log.info("Starting gateway %s on ws://%s:%d", GW_VERSION, host, port)
 
         async with websockets.serve(self._ws_handler, host, port):
             log.info("WebSocket server listening")
