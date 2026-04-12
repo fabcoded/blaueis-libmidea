@@ -191,9 +191,9 @@ echo ""
 if [ -d "$INSTALL_DIR/.git" ]; then
     info "Existing installation found at $INSTALL_DIR"
     cd "$INSTALL_DIR"
-    $RUN_AS git fetch --tags -q 2>/dev/null || git fetch --tags -q
-    $RUN_AS git merge --ff-only origin/main -q 2>/dev/null \
-        || git merge --ff-only origin/main -q
+    $RUN_AS git pull --ff-only -q 2>/dev/null \
+        || git pull --ff-only -q 2>/dev/null \
+        || { git fetch origin main --depth 50 -q; git reset --hard origin/main -q; }
     ok "Repository updated"
 else
     info "Cloning blaueis-libmidea to $INSTALL_DIR..."
