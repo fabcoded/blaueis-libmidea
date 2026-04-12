@@ -15,5 +15,12 @@ select = ["E", "F", "B", "SIM", "I"]
 quote-style = "double"
 
 [tool.pytest.ini_options]
-testpaths = ["packages/blaueis-core/tests"]
+testpaths = [
+    "packages/blaueis-core/tests",
+    "packages/blaueis-gateway/tests",
+    "packages/blaueis-client/tests",
+    "packages/blaueis-tools/tests",
+]
 python_files = ["test_*.py", "validate_*.py"]
+asyncio_mode = "auto"
+addopts = "--import-mode=importlib"
