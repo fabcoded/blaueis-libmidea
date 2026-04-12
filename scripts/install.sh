@@ -1,7 +1,16 @@
 #!/bin/bash
 # Blaueis Gateway Installer
-# Usage: curl -sL https://raw.githubusercontent.com/fabcoded/blaueis-libmidea/main/scripts/install.sh | bash
-#    or: bash install.sh [--config /path/to/existing.yaml]
+#
+# Install:
+#   bash -c "$(curl -sL https://raw.githubusercontent.com/fabcoded/blaueis-libmidea/main/scripts/install.sh)"
+#
+# Or download first:
+#   wget -O /tmp/install.sh https://raw.githubusercontent.com/fabcoded/blaueis-libmidea/main/scripts/install.sh
+#   bash /tmp/install.sh
+#
+# With existing config:
+#   bash install.sh --config /path/to/existing.yaml
+#
 set -e
 
 INSTALL_DIR="/opt/blaueis"
@@ -20,6 +29,30 @@ fail()  { echo -e "${RED}[FAIL]${NC} $1"; exit 1; }
 echo ""
 echo -e "${BLUE}─── Blaueis Gateway Installer ───────────────────────${NC}"
 echo ""
+
+# ── Sudo check ─────────────────────────────────────
+# The installer needs sudo for: creating /opt/blaueis, /etc/blaueis,
+# installing systemd units, adding user to dialout group.
+# Cache credentials once upfront so we don't prompt mid-install.
+if [ "$EUID" -eq 0 ]; then
+    fail "Do not run as root. Run as your normal user — the script uses sudo where needed."
+fi
+
+if ! command -v sudo &>/dev/null; then
+    fail "sudo not found. Install it first: apt install sudo"
+fi
+
+info "This installer needs sudo for system setup (directories, systemd, groups)."
+info "You may be prompted for your password once."
+echo ""
+if ! sudo -v; then
+    fail "Could not obtain sudo. Check your permissions."
+fi
+
+# Keep sudo alive during the install (refresh every 50s in background)
+while true; do sudo -n true; sleep 50; kill -0 "$$" || exit; done 2>/dev/null &
+SUDO_KEEPALIVE_PID=$!
+trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null" EXIT
 
 # ── Parse args ──────────────────────────────────────
 EXISTING_CONFIG=""
