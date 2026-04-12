@@ -272,12 +272,30 @@ else
     "$INSTALL_DIR/venv/bin/python" "$INSTALL_DIR/scripts/blaueis-configure"
 fi
 
+# Fix config ownership (wizard may have run as root)
+$SUDO chown -R "$SERVICE_USER:$SERVICE_USER" "$CONFIG_DIR"
+if [ "$SERVICE_USER" = "blaueis" ]; then
+    $SUDO chmod 750 "$CONFIG_DIR" "$CONFIG_DIR/instances"
+    $SUDO chmod 640 "$CONFIG_DIR/instances/"*.yaml 2>/dev/null || true
+fi
+
 # ── Enable and start ────────────────────────────────
 echo ""
-# Find which instances have configs
+# Find which instances have configs — skip disabled ones
 for cfg in "$CONFIG_DIR/instances/"*.yaml; do
     if [ -f "$cfg" ]; then
         name=$(basename "$cfg" .yaml)
+        # Check enabled flag (default: true if not set)
+        enabled=$(python3 -c "
+import yaml, sys
+with open('$cfg') as f:
+    d = yaml.safe_load(f) or {}
+print(d.get('enabled', True))
+" 2>/dev/null || echo "True")
+        if [ "$enabled" = "False" ]; then
+            warn "Instance $name is disabled (enabled: false in config)"
+            continue
+        fi
         $SUDO systemctl enable "blaueis-gateway@${name}" 2>/dev/null
         $SUDO systemctl start "blaueis-gateway@${name}" 2>/dev/null
         ok "Started blaueis-gateway@${name}"

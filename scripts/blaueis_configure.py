@@ -170,37 +170,155 @@ remote_management:
     GLOBAL_CONFIG.write_text(content)
 
 
+def load_all_instances():
+    """Load all instance configs. Returns {name: config_dict}."""
+    result = {}
+    if not INSTANCES_DIR.exists():
+        return result
+    import yaml
+
+    for cfg in sorted(INSTANCES_DIR.glob("*.yaml")):
+        try:
+            with open(cfg) as f:
+                data = yaml.safe_load(f) or {}
+            result[cfg.stem] = data
+        except Exception:
+            pass
+    return result
+
+
+def check_collisions(name, serial_port, ws_port):
+    """Check for serial port and WebSocket port conflicts with other instances.
+    Returns list of error strings. Empty = no conflicts."""
+    errors = []
+    for other_name, other_cfg in load_all_instances().items():
+        if other_name == name:
+            continue  # skip self when editing
+        other_device = other_cfg.get("device", {})
+        other_ws = other_cfg.get("websocket", {})
+        if other_device.get("serial_port") == serial_port:
+            errors.append(f"Serial port {serial_port} already used by instance '{other_name}'")
+        if str(other_ws.get("port")) == str(ws_port):
+            errors.append(f"WebSocket port {ws_port} already used by instance '{other_name}'")
+    return errors
+
+
 def write_instance_config(name, serial_port, baud, ws_port, psk, device_name, ip):
-    """Write /etc/blaueis/instances/<name>.yaml."""
+    """Write /etc/blaueis/instances/<name>.yaml using yaml.safe_dump (safe serialization)."""
+    import tempfile
+
+    import yaml
+
     INSTANCES_DIR.mkdir(parents=True, exist_ok=True)
     path = INSTANCES_DIR / f"{name}.yaml"
 
-    content = f"""# Blaueis Gateway — instance: {name}
-# Service: blaueis-gateway@{name}.service
-schema_version: 1
+    config = {
+        "schema_version": 1,
+        "device": {
+            "name": device_name,
+            "serial_port": serial_port,
+            "baud_rate": baud,
+        },
+        "websocket": {
+            "host": "0.0.0.0",
+            "port": int(ws_port),
+        },
+        "security": {
+            "psk": psk,
+        },
+    }
 
-device:
-  name: '{device_name.replace("'", "''")}'
-  serial_port: '{serial_port}'
-  baud_rate: {baud}
+    header = f"# Blaueis Gateway — instance: {name}\n# Service: blaueis-gateway@{name}.service\n"
+    ha_block = (
+        f"\n# ─── Home Assistant Integration ──────────────────────\n"
+        f"# Install blaueis-ha-midea from HACS, then configure:\n"
+        f"#\n"
+        f"#   Host: {ip}\n"
+        f"#   Port: {ws_port}\n"
+        f"#   Key:  {psk}\n"
+        f"#   Name: {device_name}\n"
+    )
 
-websocket:
-  host: 0.0.0.0
-  port: {ws_port}
+    content = header + yaml.safe_dump(config, default_flow_style=False, sort_keys=False) + ha_block
 
-security:
-  psk: '{psk}'
+    # Atomic write: temp file + rename (survives Ctrl+C)
+    fd, tmp_path = tempfile.mkstemp(dir=str(INSTANCES_DIR), suffix=".yaml.tmp")
+    try:
+        os.write(fd, content.encode("utf-8"))
+        os.close(fd)
+        os.rename(tmp_path, str(path))
+    except Exception:
+        os.close(fd) if not os.get_inheritable(fd) else None
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise
 
-# ─── Home Assistant Integration ────���─────────────────
-# Install blaueis-ha-midea from HACS, then configure:
-#
-#   Host: {ip}
-#   Port: {ws_port}
-#   Key:  {psk}
-#   Name: {device_name}
-"""
-    path.write_text(content)
     return path
+
+
+def remove_instance(name):
+    """Remove an instance: stop service, disable, delete config."""
+    import subprocess
+
+    path = INSTANCES_DIR / f"{name}.yaml"
+    if not path.exists():
+        print(f"  ✗ Instance '{name}' not found")
+        return False
+
+    # Show what we're about to delete
+    print(f"  Instance: {name}")
+    print(f"  Config:   {path}")
+    print()
+    print("  ⚠ The encryption key in this config will be lost.")
+    print("    You will need to reconfigure the HA integration.")
+    print()
+    confirm = input("  Remove this instance? [y/N]: ").strip().lower()
+    if confirm != "y":
+        print("  Cancelled.")
+        return False
+
+    # Stop and disable the systemd service
+    svc = f"blaueis-gateway@{name}.service"
+    subprocess.run(["systemctl", "stop", svc], capture_output=True)
+    subprocess.run(["systemctl", "disable", svc], capture_output=True)
+
+    # Delete the config
+    path.unlink()
+    print(f"  ✓ Removed instance '{name}'")
+    return True
+
+
+def set_instance_enabled(name, enabled):
+    """Set enabled: true/false in an instance config."""
+    import yaml
+
+    path = INSTANCES_DIR / f"{name}.yaml"
+    if not path.exists():
+        print(f"  ✗ Instance '{name}' not found")
+        return False
+
+    with open(path) as f:
+        data = yaml.safe_load(f) or {}
+
+    data["enabled"] = enabled
+
+    import tempfile
+
+    content = yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
+    fd, tmp_path = tempfile.mkstemp(dir=str(INSTANCES_DIR), suffix=".yaml.tmp")
+    try:
+        os.write(fd, content.encode("utf-8"))
+        os.close(fd)
+        os.rename(tmp_path, str(path))
+    except Exception:
+        os.close(fd)
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise
+
+    state = "enabled" if enabled else "disabled"
+    print(f"  ✓ Instance '{name}' {state}")
+    return True
 
 
 def test_uart(serial_port, baud):
@@ -228,15 +346,28 @@ def _validate_port(p):
 
 def main():
     parser = argparse.ArgumentParser(description="Blaueis Gateway Setup Wizard")
-    parser.add_argument("--instance", help="Instance name (skip interactive prompt)")
-    parser.add_argument("--psk", help="Pre-shared key (skip interactive prompt)")
+    parser.add_argument("--instance", help="Instance name")
+    parser.add_argument("--psk", help="Pre-shared key")
+    parser.add_argument("--remove", metavar="NAME", help="Remove an instance")
+    parser.add_argument("--disable", metavar="NAME", help="Disable an instance")
+    parser.add_argument("--enable", metavar="NAME", help="Enable an instance")
     args = parser.parse_args()
+
+    # Handle --remove, --disable, --enable directly
+    if args.remove:
+        return 0 if remove_instance(args.remove) else 1
+    if args.disable:
+        return 0 if set_instance_enabled(args.disable, False) else 1
+    if args.enable:
+        return 0 if set_instance_enabled(args.enable, True) else 1
 
     print()
     print("─── Blaueis Gateway Setup ────────────────────────────")
     print()
 
     # Instance name — show existing instances if any, offer to edit or create new
+    existing_data = {}  # defaults for editing (populated if user picks an existing instance)
+
     if not args.instance:
         existing = sorted(INSTANCES_DIR.glob("*.yaml")) if INSTANCES_DIR.exists() else []
         if existing:
@@ -288,8 +419,6 @@ def main():
                 existing_data = yaml.safe_load(f) or {}
 
     # Load existing values as defaults for editing
-    if "existing_data" not in dir():
-        existing_data = {}
     ex_device = existing_data.get("device", {})
     ex_ws = existing_data.get("websocket", {})
     ex_sec = existing_data.get("security", {})
@@ -329,6 +458,18 @@ def main():
     # WebSocket port
     default_ws = str(ex_ws.get("port", 8765))
     ws_port = ask("WebSocket port", default=default_ws, validator=_validate_port)
+    print()
+
+    # Collision check — block on conflicts
+    collisions = check_collisions(instance_name, serial_port, ws_port)
+    if collisions:
+        print("  ✗ Configuration conflicts detected:")
+        for c in collisions:
+            print(f"    • {c}")
+        print()
+        print("  Cannot create conflicting configuration. Fix the conflicts above")
+        print("  or edit the other instance first.")
+        return 1
     print()
 
     # Detect IP

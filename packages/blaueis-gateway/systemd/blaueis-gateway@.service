@@ -5,6 +5,7 @@ PartOf=blaueis-gateway.target
 
 [Service]
 Type=simple
+User=blaueis
 ExecStart=/opt/blaueis/venv/bin/python -m blaueis.gateway.server \
     --global /etc/blaueis/gateway.yaml \
     --instance /etc/blaueis/instances/%i.yaml
