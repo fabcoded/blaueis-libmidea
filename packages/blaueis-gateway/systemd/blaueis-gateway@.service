@@ -1,0 +1,17 @@
+[Unit]
+Description=Blaueis Gateway — %I
+After=network.target
+PartOf=blaueis-gateway.target
+
+[Service]
+Type=simple
+ExecStart=/opt/blaueis/venv/bin/python -m blaueis.gateway.server \
+    --global /etc/blaueis/gateway.yaml \
+    --instance /etc/blaueis/instances/%i.yaml
+WorkingDirectory=/opt/blaueis
+Restart=on-failure
+RestartSec=5
+SyslogIdentifier=blaueis-%i
+
+[Install]
+WantedBy=blaueis-gateway.target

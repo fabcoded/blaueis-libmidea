@@ -1,0 +1,46 @@
+#!/bin/bash
+# Blaueis Gateway — update checker and applier
+# Checks for new tags on the configured channel, applies if triggered.
+# Usage: blaueis-update [--apply]
+set -e
+
+INSTALL_DIR="/opt/blaueis"
+cd "$INSTALL_DIR"
+
+GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
+
+# Get current version from git
+CURRENT=$(git describe --tags --abbrev=0 HEAD 2>/dev/null || echo "unknown")
+BUILD=$(git describe --tags --dirty 2>/dev/null || echo "unknown")
+echo -e "${BLUE}Current:${NC} $BUILD"
+
+# Fetch latest
+git fetch --tags -q 2>/dev/null
+LATEST=$(git describe --tags --abbrev=0 origin/main 2>/dev/null || echo "unknown")
+echo -e "${BLUE}Latest:${NC}  $LATEST"
+
+if [ "$CURRENT" = "$LATEST" ]; then
+    echo -e "${GREEN}Up to date.${NC}"
+    exit 0
+fi
+
+echo -e "${YELLOW}Update available: $CURRENT → $LATEST${NC}"
+echo ""
+
+if [ "$1" = "--apply" ]; then
+    echo "Applying update..."
+    git checkout "$LATEST" -q
+    venv/bin/pip install -q -e packages/blaueis-core -e packages/blaueis-gateway
+
+    # Restart all gateway instances
+    for svc in $(systemctl list-units --type=service --no-legend 'blaueis-gateway@*' | awk '{print $1}'); do
+        echo "Restarting $svc..."
+        sudo systemctl restart "$svc"
+    done
+
+    NEW_BUILD=$(git describe --tags --dirty 2>/dev/null || echo "unknown")
+    echo -e "${GREEN}Updated to $NEW_BUILD${NC}"
+else
+    echo "Run 'blaueis-update --apply' to install the update."
+    echo "Or trigger the update from Home Assistant."
+fi
