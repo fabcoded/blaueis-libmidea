@@ -142,7 +142,9 @@ async def interactive_loop(client: HvacClient):
 
 
 async def run(args):
-    psk = bytes.fromhex(args.psk) if args.psk else None
+    from blaueis.core.crypto import psk_to_bytes
+
+    psk = psk_to_bytes(args.psk) if args.psk else None
     client = HvacClient(args.host, args.port, psk=psk, no_encrypt=args.no_encrypt)
 
     try:

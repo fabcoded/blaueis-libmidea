@@ -158,6 +158,30 @@ def generate_psk() -> bytes:
     return os.urandom(32)
 
 
+def psk_to_bytes(psk_str: str) -> bytes:
+    """Convert a PSK config value to 32 raw bytes for use with the handshake.
+
+    Accepts two formats:
+      - 64-char hex string (legacy / manual config) → bytes.fromhex()
+      - Alphanumeric passphrase (blaueis-configure output) → SHA-256 hash
+
+    This must match the key derivation in blaueis-configure (psk_to_key),
+    which SHA-256 hashes the passphrase to get the 32-byte AES key.
+    """
+    import hashlib
+
+    psk_str = psk_str.strip()
+    if not psk_str:
+        raise ValueError("PSK is empty — configure encryption or use --no-encrypt")
+    try:
+        raw = bytes.fromhex(psk_str)
+        if len(raw) == 32:
+            return raw
+    except ValueError:
+        pass
+    return hashlib.sha256(psk_str.encode("utf-8")).digest()
+
+
 def load_psk(config_path: str) -> bytes:
     """Load PSK from a config file. Expects a line: psk = <hex>."""
     import configparser

@@ -42,7 +42,7 @@ from blaueis.core.quirks import apply_quirks_files  # noqa: E402
 from blaueis.core.command import build_command_body  # noqa: E402
 from blaueis.core.status import build_status  # noqa: E402
 from blaueis.core.query import read_field  # noqa: E402
-from blaueis.core.crypto import complete_handshake_client, create_hello  # noqa: E402
+from blaueis.core.crypto import complete_handshake_client, create_hello, psk_to_bytes  # noqa: E402
 from blaueis.core.codec import (  # noqa: E402
     build_frame_from_spec,
     build_scan_queue,
@@ -322,7 +322,7 @@ async def _connect(args):
 
     session = None
     if not args.no_encrypt:
-        psk = bytes.fromhex(args.psk)
+        psk = psk_to_bytes(args.psk)
         hello_msg, client_rand = create_hello()
         await ws.send(json.dumps(hello_msg))
         reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=5.0))
@@ -539,7 +539,7 @@ async def run_monitor(args):
 
     session = None
     if not args.no_encrypt:
-        psk = bytes.fromhex(args.psk)
+        psk = psk_to_bytes(args.psk)
         hello_msg, client_rand = create_hello()
         await ws.send(json.dumps(hello_msg))
         reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=5.0))

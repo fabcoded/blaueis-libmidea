@@ -37,7 +37,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
 import websockets  # noqa: E402
-from blaueis.core.crypto import complete_handshake_client, create_hello  # noqa: E402
+from blaueis.core.crypto import complete_handshake_client, create_hello, psk_to_bytes  # noqa: E402
 from blaueis.core.codec import build_frame_from_spec, load_glossary  # noqa: E402
 from blaueis.core.frame import build_frame, parse_frame  # noqa: E402
 
@@ -236,7 +236,7 @@ async def probe(args):
 
     session = None
     if not args.no_encrypt:
-        psk = bytes.fromhex(args.psk)
+        psk = psk_to_bytes(args.psk)
         hello_msg, client_rand = create_hello()
         await ws.send(json.dumps(hello_msg))
         reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=5.0))

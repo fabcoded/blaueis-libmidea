@@ -26,11 +26,13 @@ from blaueis.core.crypto import (
     ReplayError,
     complete_handshake_server,
     create_hello_ok,
+    psk_to_bytes,
 )
 from blaueis.core.frame import FrameError, validate_frame
 from blaueis.gateway.uart_protocol import UartProtocol
 
 log = logging.getLogger("hvac_gateway")
+
 
 # ── Configuration ─────────────────────────────────────────────────────────
 
@@ -248,7 +250,7 @@ class GatewayServer:
         session = None
         try:
             if not self.no_encrypt:
-                psk = bytes.fromhex(self.config["psk"])
+                psk = psk_to_bytes(self.config["psk"])
                 hello_raw = await asyncio.wait_for(websocket.recv(), timeout=10.0)
                 hello = json.loads(hello_raw)
                 hello_ok_msg, server_rand = create_hello_ok()
