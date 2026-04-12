@@ -30,29 +30,44 @@ echo ""
 echo -e "${BLUE}─── Blaueis Gateway Installer ───────────────────────${NC}"
 echo ""
 
-# ── Sudo check ─────────────────────────────────────
-# The installer needs sudo for: creating /opt/blaueis, /etc/blaueis,
-# installing systemd units, adding user to dialout group.
-# Cache credentials once upfront so we don't prompt mid-install.
+# ── Privilege setup ─────────────────────────────────
+# The installer needs root for: creating system user, /opt/blaueis,
+# /etc/blaueis, systemd units, usermod. Three scenarios:
+#
+#   A) Normal user with sudo → uses sudo, asks about service user
+#   B) Normal user without sudo → tells them to run with sudo
+#   C) Running as root (sudo bash install.sh) → works, MUST create
+#      dedicated service user (gateway never runs as root)
+
+SUDO=""
+MUST_CREATE_SERVICE_USER=false
+INVOKING_USER=""
+SUDO_KEEPALIVE_PID=""
+
 if [ "$EUID" -eq 0 ]; then
-    fail "Do not run as root. Run as your normal user — the script uses sudo where needed."
+    # Running as root — scenario C
+    SUDO=""
+    MUST_CREATE_SERVICE_USER=true
+    INVOKING_USER="${SUDO_USER:-}"  # set by sudo, empty if su/direct root
+    if [ -n "$INVOKING_USER" ]; then
+        ok "Running as root (invoked by $INVOKING_USER)"
+    else
+        ok "Running as root"
+    fi
+else
+    # Running as normal user — need sudo
+    INVOKING_USER="$(whoami)"
+    if command -v sudo &>/dev/null && sudo -v 2>/dev/null; then
+        SUDO="sudo"
+        ok "Sudo access confirmed for $INVOKING_USER"
+        # Keep sudo alive during install
+        while true; do sudo -n true; sleep 50; kill -0 "$$" || exit; done 2>/dev/null &
+        SUDO_KEEPALIVE_PID=$!
+        trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null" EXIT
+    else
+        fail "No root access. Run with sudo:\n  sudo bash install.sh\n  sudo bash -c \"\$(curl -sL ...)\""
+    fi
 fi
-
-if ! command -v sudo &>/dev/null; then
-    fail "sudo not found. Install it first: apt install sudo"
-fi
-
-info "This installer needs sudo for system setup (directories, systemd, groups)."
-info "You may be prompted for your password once."
-echo ""
-if ! sudo -v; then
-    fail "Could not obtain sudo. Check your permissions."
-fi
-
-# Keep sudo alive during the install (refresh every 50s in background)
-while true; do sudo -n true; sleep 50; kill -0 "$$" || exit; done 2>/dev/null &
-SUDO_KEEPALIVE_PID=$!
-trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null" EXIT
 
 # ── Parse args ──────────────────────────────────────
 EXISTING_CONFIG=""
@@ -84,14 +99,14 @@ done
 
 if [ -z "$PYTHON" ]; then
     fail "Python >= $MIN_PYTHON not found. Install it first:
-    sudo apt install python3.11 python3.11-venv"
+    $SUDO apt install python3.11 python3.11-venv"
 fi
 ok "Python: $($PYTHON --version)"
 
 # pip/venv
 if ! "$PYTHON" -m venv --help &>/dev/null; then
     fail "Python venv module not available. Install:
-    sudo apt install python3.11-venv"
+    $SUDO apt install python3.11-venv"
 fi
 
 # git
@@ -115,21 +130,24 @@ fi
 
 # ── Service user setup (after prereqs pass) ────────
 echo ""
-CURRENT_USER="$(whoami)"
 
 if [ -z "$SERVICE_USER" ]; then
-    echo "  Service user:"
-    echo "    [1] Create 'blaueis' system user (recommended)"
-    echo "    [2] Run as current user ($CURRENT_USER)"
-    echo ""
-    read -r -p "  > " user_choice
-    user_choice="${user_choice:-1}"
-    echo ""
-
-    if [ "$user_choice" = "2" ]; then
-        SERVICE_USER="$CURRENT_USER"
-    else
+    if [ "$MUST_CREATE_SERVICE_USER" = true ]; then
         SERVICE_USER="blaueis"
+        info "Running as root — creating dedicated 'blaueis' service user (gateway never runs as root)"
+    else
+        echo "  Service user:"
+        echo "    [1] Create 'blaueis' system user (recommended)"
+        echo "    [2] Run as current user ($INVOKING_USER)"
+        echo ""
+        read -r -p "  > " user_choice
+        user_choice="${user_choice:-1}"
+        echo ""
+        if [ "$user_choice" = "2" ]; then
+            SERVICE_USER="$INVOKING_USER"
+        else
+            SERVICE_USER="blaueis"
+        fi
     fi
 fi
 
@@ -138,18 +156,25 @@ if [ "$SERVICE_USER" = "blaueis" ]; then
         ok "System user 'blaueis' already exists"
     else
         info "Creating system user 'blaueis'..."
-        sudo useradd --system \
+        $SUDO useradd --system \
             --home-dir "$INSTALL_DIR" \
             --shell /usr/sbin/nologin \
             --create-home \
             blaueis
         ok "User blaueis created (nologin shell)"
     fi
-    sudo usermod -aG dialout blaueis
-    sudo usermod -aG blaueis "$CURRENT_USER"
-    ok "Added $CURRENT_USER to blaueis group (for config access)"
+    $SUDO usermod -aG dialout blaueis
+    if [ -n "$INVOKING_USER" ] && [ "$INVOKING_USER" != "blaueis" ] && [ "$INVOKING_USER" != "root" ]; then
+        $SUDO usermod -aG blaueis "$INVOKING_USER"
+        ok "Added $INVOKING_USER to blaueis group (for config access)"
+    elif [ -z "$INVOKING_USER" ]; then
+        warn "Add your normal user to the blaueis group: sudo usermod -aG blaueis <username>"
+    fi
     ok "Service user: blaueis (dedicated system user)"
 else
+    if ! id -nG "$SERVICE_USER" | grep -qw dialout; then
+        $SUDO usermod -aG dialout "$SERVICE_USER"
+    fi
     ok "Service user: $SERVICE_USER (current user)"
 fi
 
@@ -158,15 +183,15 @@ echo ""
 if [ -d "$INSTALL_DIR/.git" ]; then
     info "Existing installation found at $INSTALL_DIR"
     cd "$INSTALL_DIR"
-    sudo -u "$SERVICE_USER" git fetch --tags -q 2>/dev/null || git fetch --tags -q
+    $SUDO -u "$SERVICE_USER" git fetch --tags -q 2>/dev/null || git fetch --tags -q
     ok "Repository updated"
 else
     info "Cloning blaueis-libmidea to $INSTALL_DIR..."
-    sudo mkdir -p "$INSTALL_DIR"
-    sudo chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
-    sudo -u "$SERVICE_USER" git clone --depth 50 "$REPO_URL" "$INSTALL_DIR" 2>/dev/null \
+    $SUDO mkdir -p "$INSTALL_DIR"
+    $SUDO chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+    $SUDO -u "$SERVICE_USER" git clone --depth 50 "$REPO_URL" "$INSTALL_DIR" 2>/dev/null \
         || git clone --depth 50 "$REPO_URL" "$INSTALL_DIR"
-    sudo chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+    $SUDO chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
     cd "$INSTALL_DIR"
     ok "Cloned to $INSTALL_DIR (owner: $SERVICE_USER)"
 fi
@@ -174,19 +199,19 @@ fi
 # ── Create virtualenv + install ─────────────────────
 info "Setting up Python environment..."
 if [ ! -d "$INSTALL_DIR/venv" ]; then
-    sudo -u "$SERVICE_USER" "$PYTHON" -m venv "$INSTALL_DIR/venv" 2>/dev/null \
+    $SUDO -u "$SERVICE_USER" "$PYTHON" -m venv "$INSTALL_DIR/venv" 2>/dev/null \
         || "$PYTHON" -m venv "$INSTALL_DIR/venv"
 fi
-sudo -u "$SERVICE_USER" "$INSTALL_DIR/venv/bin/pip" install -q \
+$SUDO -u "$SERVICE_USER" "$INSTALL_DIR/venv/bin/pip" install -q \
     -e packages/blaueis-core -e packages/blaueis-gateway 2>/dev/null \
     || "$INSTALL_DIR/venv/bin/pip" install -q -e packages/blaueis-core -e packages/blaueis-gateway
-sudo chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+$SUDO chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
 ok "Python packages installed"
 
 # ── Add service user to dialout (if not already done above) ─
 if [ "$SERVICE_USER" != "blaueis" ]; then
     if ! id -nG "$SERVICE_USER" | grep -qw dialout; then
-        sudo usermod -aG dialout "$SERVICE_USER"
+        $SUDO usermod -aG dialout "$SERVICE_USER"
         warn "You may need to log out and back in for dialout group change"
     else
         ok "User $SERVICE_USER is in dialout group"
@@ -194,14 +219,14 @@ if [ "$SERVICE_USER" != "blaueis" ]; then
 fi
 
 # ── Create config directory ─────────────────────────
-sudo mkdir -p "$CONFIG_DIR/instances"
+$SUDO mkdir -p "$CONFIG_DIR/instances"
 if [ "$SERVICE_USER" = "blaueis" ]; then
-    sudo chown -R "blaueis:blaueis" "$CONFIG_DIR"
-    sudo chmod 750 "$CONFIG_DIR" "$CONFIG_DIR/instances"
+    $SUDO chown -R "blaueis:blaueis" "$CONFIG_DIR"
+    $SUDO chmod 750 "$CONFIG_DIR" "$CONFIG_DIR/instances"
     # PSK files should not be world-readable
-    sudo chmod 640 "$CONFIG_DIR/instances/"*.yaml 2>/dev/null || true
+    $SUDO chmod 640 "$CONFIG_DIR/instances/"*.yaml 2>/dev/null || true
 else
-    sudo chown -R "$SERVICE_USER:$SERVICE_USER" "$CONFIG_DIR"
+    $SUDO chown -R "$SERVICE_USER:$SERVICE_USER" "$CONFIG_DIR"
 fi
 
 # ── Install systemd units ──────────────────────────
@@ -209,11 +234,10 @@ info "Installing systemd service..."
 # Write the service file with the correct user
 SERVICE_TEMPLATE="$INSTALL_DIR/packages/blaueis-gateway/systemd/blaueis-gateway@.service"
 # Inject the actual service user into the template
-sudo sed "s/^User=.*/User=$SERVICE_USER/" "$SERVICE_TEMPLATE" \
-    > /tmp/blaueis-gateway@.service
-sudo mv /tmp/blaueis-gateway@.service /etc/systemd/system/blaueis-gateway@.service
-sudo cp "$INSTALL_DIR/packages/blaueis-gateway/systemd/blaueis-gateway.target" /etc/systemd/system/
-sudo systemctl daemon-reload
+sed "s/^User=.*/User=$SERVICE_USER/" "$SERVICE_TEMPLATE" > /tmp/blaueis-gateway@.service
+$SUDO mv /tmp/blaueis-gateway@.service /etc/systemd/system/blaueis-gateway@.service
+$SUDO cp "$INSTALL_DIR/packages/blaueis-gateway/systemd/blaueis-gateway.target" /etc/systemd/system/
+$SUDO systemctl daemon-reload
 ok "Systemd units installed (User=$SERVICE_USER)"
 
 # ── UART warning ───────────────────────────────────
@@ -254,16 +278,16 @@ echo ""
 for cfg in "$CONFIG_DIR/instances/"*.yaml; do
     if [ -f "$cfg" ]; then
         name=$(basename "$cfg" .yaml)
-        sudo systemctl enable "blaueis-gateway@${name}" 2>/dev/null
-        sudo systemctl start "blaueis-gateway@${name}" 2>/dev/null
+        $SUDO systemctl enable "blaueis-gateway@${name}" 2>/dev/null
+        $SUDO systemctl start "blaueis-gateway@${name}" 2>/dev/null
         ok "Started blaueis-gateway@${name}"
     fi
 done
 
 # ── Install helper scripts ──────────────────────────
-sudo ln -sf "$INSTALL_DIR/scripts/blaueis-configure" /usr/local/bin/blaueis-configure
-sudo ln -sf "$INSTALL_DIR/scripts/blaueis-update" /usr/local/bin/blaueis-update
-sudo chmod +x /usr/local/bin/blaueis-configure /usr/local/bin/blaueis-update
+$SUDO ln -sf "$INSTALL_DIR/scripts/blaueis-configure" /usr/local/bin/blaueis-configure
+$SUDO ln -sf "$INSTALL_DIR/scripts/blaueis-update" /usr/local/bin/blaueis-update
+$SUDO chmod +x /usr/local/bin/blaueis-configure /usr/local/bin/blaueis-update
 
 # ── Done ────────────────────────────────────────────
 echo ""
