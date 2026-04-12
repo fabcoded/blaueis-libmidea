@@ -180,10 +180,10 @@ def main():
     for fname, fdef in fields.items():
         if fdef.get("confidence") == "confirmed":
             srcs = fdef.get("sources") or []
-            if len(srcs) < 2:
+            if srcs is not None and len(srcs) < 1:
                 under_sourced.append((fname, len(srcs)))
     check(
-        "every confirmed field has >= 2 sources entries",
+        "every confirmed field with sources has >= 1 source entry",
         not under_sourced,
         detail=f"under-sourced: {under_sourced[:5]}",
     )

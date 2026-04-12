@@ -109,7 +109,7 @@ def build_cap_index(fields: dict[str, dict]) -> dict[str, list[str]]:
 # top-level `protocol_generations:` dict. Adding a new frame later is one
 # YAML edit — no Python change. The lookup is intentionally strict:
 # unknown keys resolve to None so the user has to opt new frames in
-# explicitly. mill1000/midea-msmart appendix §4.3 documents the legacy
+# explicitly. appendix §4.3 documents the legacy
 # vs new generation split that this map encodes.
 
 
@@ -343,7 +343,7 @@ def decode_field(
             # base lives in body[11]/body[12] and the 0.1 °C tenths fraction
             # lives in the high/low nibble of body[15]. Cross-validated
             # against the manufacturer cloud plugin's C0 decoder — see
-            # midea-msmart-mill1000.md Finding 17.
+            # community protocol research.
             tn = step.get("tenths_nibble")
             if tn and tn.get("offset", 0) < len(body):
                 raw = body[tn["offset"]]

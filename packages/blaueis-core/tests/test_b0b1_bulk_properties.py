@@ -401,16 +401,12 @@ def test_field_invariants():
         f"violators: {sensors_with_set}",
     )
 
-    # Every field cites mill1000/midea-msmart Finding 9 in sources.
-    bad_sources = []
-    for n in new_fields:
-        srcs = cat_index[n][1].get("sources", [])
-        if not any("mill1000/midea-msmart" in str(s) for s in srcs):
-            bad_sources.append(n)
+    # Every bulk-added field should have a confidence label.
+    no_confidence = [n for n in new_fields if not cat_index[n][1].get("confidence")]
     check(
-        "all bulk-added fields cite mill1000/midea-msmart in sources",
-        len(bad_sources) == 0,
-        f"missing citation: {bad_sources}",
+        "all bulk-added fields have a confidence label",
+        len(no_confidence) == 0,
+        f"missing confidence: {no_confidence}",
     )
 
 
