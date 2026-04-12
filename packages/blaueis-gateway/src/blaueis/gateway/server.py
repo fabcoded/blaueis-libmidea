@@ -52,7 +52,7 @@ def load_config(global_path: str = None, instance_path: str = None, legacy_path:
         "uart_baud": 9600,
         "ws_host": "0.0.0.0",
         "ws_port": 8765,
-        "max_queue": 8,
+        "max_queue": 16,
         "frame_spacing_ms": 100,
         "stats_interval": 60,
         "fake_ip": "192.168.1.100",
@@ -153,6 +153,15 @@ def get_pi_stats() -> dict:
             stats["temp_c"] = round(int(f.read().strip()) / 1000, 1)
     except (FileNotFoundError, ValueError):
         pass
+    try:
+        st = os.statvfs("/")
+        stats["disk_total_mb"] = (st.f_blocks * st.f_frsize) // (1024 * 1024)
+        stats["disk_free_mb"] = (st.f_bavail * st.f_frsize) // (1024 * 1024)
+        stats["disk_used_mb"] = stats["disk_total_mb"] - stats["disk_free_mb"]
+    except OSError:
+        stats["disk_total_mb"] = 0
+        stats["disk_free_mb"] = 0
+        stats["disk_used_mb"] = 0
     return stats
 
 
@@ -291,17 +300,38 @@ class GatewayServer:
             stats["appliance"] = f"0x{self.protocol.appliance:02X}"
             stats["model"] = self.protocol.model
             stats["clients"] = len(self._clients)
+            if self._clients:
+                await self._broadcast(stats)
+
+    async def _debug_heartbeat(self):
+        """Log a debug heartbeat every 60s for journalctl troubleshooting.
+
+        Separate from the stats broadcast (which is client-facing KPI data).
+        This is purely for operators tailing the log.
+        """
+        import time as _time
+
+        while True:
+            await asyncio.sleep(60)
+            proto = self.protocol
+            silence_age = _time.monotonic() - proto.silence_timer if proto.silence_timer else 0
+            stats = get_pi_stats()
             log.info(
-                "state=%s clients=%d cpu=%.0f%% ram=%d/%dMB temp=%s°C",
-                self.protocol.state,
+                "heartbeat state=%s clients=%d tx_queue=%d/%d last_frame=%.0fs ago "
+                "cpu=%.0f%% ram=%d/%dMB disk=%d/%dMB free=%dMB temp=%s°C",
+                proto.state,
                 len(self._clients),
+                proto._tx_queue.qsize(),
+                proto._tx_queue.maxsize,
+                silence_age,
                 stats.get("cpu_percent", 0),
                 stats.get("ram_used_mb", 0),
                 stats.get("ram_total_mb", 0),
+                stats.get("disk_used_mb", 0),
+                stats.get("disk_total_mb", 0),
+                stats.get("disk_free_mb", 0),
                 stats.get("temp_c", "?"),
             )
-            if self._clients:
-                await self._broadcast(stats)
 
     async def _uart_loop(self):
         """Open UART and run the protocol state machine."""
@@ -370,6 +400,7 @@ class GatewayServer:
             await asyncio.gather(
                 self._uart_loop(),
                 self._stats_loop(),
+                self._debug_heartbeat(),
             )
 
 

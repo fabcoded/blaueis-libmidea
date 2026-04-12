@@ -75,7 +75,7 @@ class UartProtocol:
         self.serial_number = ""
         self.silence_timer = 0.0
         self.msg_counter = 0
-        self._tx_queue: asyncio.Queue = asyncio.Queue(maxsize=self.config.get("max_queue", 8))
+        self._tx_queue: asyncio.Queue = asyncio.Queue(maxsize=self.config.get("max_queue", 16))
         self._on_frame = None  # callback for frames to forward to client
         self._running = False
         # TX mirroring: forward frames WE send on UART to the client too
