@@ -236,19 +236,78 @@ def main():
     print("─── Blaueis Gateway Setup ────────────────────────────")
     print()
 
-    # Instance name
-    instance_name = args.instance or ask_instance_name()
+    # Instance name — show existing instances if any, offer to edit or create new
+    if not args.instance:
+        existing = sorted(INSTANCES_DIR.glob("*.yaml")) if INSTANCES_DIR.exists() else []
+        if existing:
+            print("  Existing instances:")
+            for i, cfg in enumerate(existing, 1):
+                name = cfg.stem
+                # Try to read device name from the config
+                try:
+                    import yaml
+
+                    with open(cfg) as f:
+                        data = yaml.safe_load(f) or {}
+                    device = data.get("device", {}).get("name", "")
+                    port = data.get("websocket", {}).get("port", "")
+                    print(f"    [{i}] {name} — {device} (port {port})")
+                except Exception:
+                    print(f"    [{i}] {name}")
+            print("    [n] Create new instance")
+            print()
+
+            choice = input("  Edit existing or create new? [n]: ").strip() or "n"
+            if choice.lower() != "n":
+                try:
+                    idx = int(choice)
+                    if 1 <= idx <= len(existing):
+                        instance_name = existing[idx - 1].stem
+                        print(f"  Editing: {instance_name}")
+                        # Load existing values as defaults
+                        with open(existing[idx - 1]) as f:
+                            existing_data = yaml.safe_load(f) or {}
+                    else:
+                        instance_name = None
+                except (ValueError, IndexError):
+                    instance_name = None
+            else:
+                instance_name = None
+        else:
+            instance_name = None
+
+        if instance_name is None:
+            instance_name = ask_instance_name()
+    else:
+        instance_name = args.instance
+        existing_data = {}
+        if (INSTANCES_DIR / f"{instance_name}.yaml").exists():
+            import yaml
+
+            with open(INSTANCES_DIR / f"{instance_name}.yaml") as f:
+                existing_data = yaml.safe_load(f) or {}
+
+    # Load existing values as defaults for editing
+    if "existing_data" not in dir():
+        existing_data = {}
+    ex_device = existing_data.get("device", {})
+    ex_ws = existing_data.get("websocket", {})
+    ex_sec = existing_data.get("security", {})
     print()
 
     # Device name
-    device_name = ask("Device name (shown in Home Assistant)", default=instance_name.replace("-", " ").title() + " AC")
+    default_name = ex_device.get("name") or (instance_name.replace("-", " ").title() + " AC")
+    device_name = ask("Device name (shown in Home Assistant)", default=default_name)
     print()
 
     # Serial port
     ports = detect_serial_ports()
+    default_port = ex_device.get("serial_port")
+    if default_port and default_port not in ports:
+        ports.append(default_port)
     print("  Serial port:")
     serial_port = ask_serial_port(ports)
-    baud = 9600
+    baud = ex_device.get("baud_rate", 9600)
     print()
 
     # Test UART
@@ -264,11 +323,12 @@ def main():
 
     # PSK
     print("  Encryption key:")
-    psk = ask_psk(existing_psk=args.psk)
+    psk = ask_psk(existing_psk=args.psk or ex_sec.get("psk"))
     print()
 
     # WebSocket port
-    ws_port = ask("WebSocket port", default="8765", validator=_validate_port)
+    default_ws = str(ex_ws.get("port", 8765))
+    ws_port = ask("WebSocket port", default=default_ws, validator=_validate_port)
     print()
 
     # Detect IP
