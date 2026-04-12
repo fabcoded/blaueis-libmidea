@@ -267,6 +267,11 @@ class GatewayServer:
         elif msg_type == "version":
             await client.send({"type": "version", "version": GW_VERSION})
 
+        elif msg_type == "logs":
+            n = msg.get("n", 20)
+            lines = await self._read_journal(n=min(n, 100))
+            await client.send({"type": "logs", "ref": ref, "lines": lines})
+
         elif msg_type == "update":
             if not self.config.get("allow_remote_update", True):
                 await client.send({"type": "error", "ref": ref, "msg": "remote updates disabled in config"})
@@ -403,23 +408,37 @@ class GatewayServer:
             if self._clients:
                 await self._broadcast(stats)
 
-    async def _debug_recap(self):
-        """Every 60s, log a recap of this service's recent journal entries.
-
-        When you open journalctl after the fact, the recap gives you
-        immediate context without scrolling back. Runs separately from
-        the client-facing stats broadcast.
-        """
-        import subprocess
-        import time as _time
-
-        # Derive the syslog identifier from the instance config path
-        # /etc/blaueis-gw/instances/atelier.yaml → blaueis-gw-atelier
-        instance_name = ""
+    @property
+    def _syslog_id(self) -> str:
+        """Derive syslog identifier from instance config path."""
         instance_path = self.config.get("_instance_path", "")
         if instance_path:
-            instance_name = os.path.splitext(os.path.basename(instance_path))[0]
-        syslog_id = f"blaueis-gw-{instance_name}" if instance_name else ""
+            name = os.path.splitext(os.path.basename(instance_path))[0]
+            return f"blaueis-gw-{name}"
+        return ""
+
+    async def _read_journal(self, n: int = 20) -> list[str]:
+        """Read the last n journal entries for this service."""
+        import subprocess
+
+        sid = self._syslog_id
+        if not sid:
+            return []
+        try:
+            result = await asyncio.to_thread(
+                subprocess.run,
+                ["journalctl", "-t", sid, "-n", str(n), "--no-pager", "-o", "short-iso"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.stdout.strip():
+                return result.stdout.strip().splitlines()
+        except Exception:
+            pass
+        return []
+
+    async def _debug_recap(self):
+        """Every 60s, log a recap and broadcast journal lines to clients."""
+        import time as _time
 
         while True:
             await asyncio.sleep(60)
@@ -427,7 +446,6 @@ class GatewayServer:
             proto = self.protocol
             silence_age = _time.monotonic() - proto.silence_timer if proto.silence_timer else 0
 
-            # One-line status summary
             log.info(
                 "recap state=%s clients=%d tx_queue=%d/%d last_frame=%.0fs ago",
                 proto.state,
@@ -437,22 +455,20 @@ class GatewayServer:
                 silence_age,
             )
 
-            # Tail the last 10 journal entries for this service
-            if syslog_id:
-                try:
-                    result = await asyncio.to_thread(
-                        subprocess.run,
-                        [
-                            "journalctl", "-t", syslog_id,
-                            "-n", "10", "--no-pager", "-o", "short-iso",
-                        ],
-                        capture_output=True, text=True, timeout=5,
-                    )
-                    if result.stdout.strip():
-                        for line in result.stdout.strip().splitlines():
-                            log.info("  | %s", line)
-                except Exception:
-                    pass  # journalctl not available or timed out — skip silently
+            lines = await self._read_journal(n=10)
+            for line in lines:
+                log.info("  | %s", line)
+
+            if self._clients and lines:
+                await self._broadcast({
+                    "type": "journal",
+                    "lines": lines,
+                    "state": proto.state,
+                    "clients": len(self._clients),
+                    "tx_queue": proto._tx_queue.qsize(),
+                    "tx_queue_max": proto._tx_queue.maxsize,
+                    "last_frame_age": round(silence_age),
+                })
 
     async def _uart_loop(self):
         """Open UART and run the protocol state machine."""
