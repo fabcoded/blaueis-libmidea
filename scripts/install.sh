@@ -217,6 +217,27 @@ sudo cp "$INSTALL_DIR/packages/blaueis-gateway/systemd/blaueis-gateway.target" /
 sudo systemctl daemon-reload
 ok "Systemd units installed (User=$SERVICE_USER)"
 
+# ── UART warning ───────────────────────────────────
+echo ""
+echo -e "${YELLOW}─── Important: Serial Port Exclusivity ──────────────${NC}"
+echo ""
+echo "  The Blaueis gateway needs exclusive access to the UART serial port."
+echo "  Make sure no other service is using it:"
+echo ""
+echo "    • Pi serial console (getty) — disable with:"
+echo "        sudo raspi-config → Interface Options → Serial Port"
+echo "        → Login shell: No, Hardware: Yes"
+echo ""
+echo "    • Bluetooth on Pi 3/4/5 (shares the PL011 UART) — disable with:"
+echo "        Add 'dtoverlay=disable-bt' to /boot/config.txt"
+echo "        sudo systemctl disable hciuart"
+echo ""
+echo "    • Other UART services (GPS daemons, Zigbee bridges, etc.)"
+echo "        Check: sudo lsof /dev/serial0 /dev/ttyAMA0 2>/dev/null"
+echo ""
+echo "  If unsure, search: 'raspberry pi disable serial console uart'"
+echo ""
+
 # ── Run wizard ──────────────────────────────────────
 echo ""
 if [ -n "$EXISTING_CONFIG" ]; then

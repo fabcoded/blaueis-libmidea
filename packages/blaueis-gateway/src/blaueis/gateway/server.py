@@ -19,6 +19,7 @@ import logging
 import os
 import platform
 import signal
+import sys
 
 from blaueis.core.crypto import (
     HandshakeError,
@@ -265,6 +266,28 @@ class GatewayServer:
                     pass
                 log.info("UART connected")
                 await self.protocol.run(self._uart_reader, self._uart_writer)
+            except PermissionError:
+                log.error(
+                    "UART permission denied on %s. "
+                    "The service user needs to be in the 'dialout' group. Fix with:\n"
+                    "  sudo usermod -aG dialout $(whoami)\n"
+                    "Then restart the service:\n"
+                    "  sudo systemctl restart blaueis-gateway@<instance>",
+                    port,
+                )
+                # Don't retry rapidly on permission errors — it won't fix itself
+                await asyncio.sleep(60)
+            except FileNotFoundError:
+                log.error(
+                    "UART port %s not found. Check:\n"
+                    "  • Is the serial port path correct in /etc/blaueis/instances/<name>.yaml?\n"
+                    "  • Is the USB adapter plugged in?\n"
+                    "  • For GPIO UART: is 'dtoverlay=disable-bt' in /boot/config.txt?\n"
+                    "  • Run: ls -la %s",
+                    port,
+                    port,
+                )
+                await asyncio.sleep(30)
             except Exception as e:
                 log.error("UART error: %s, reconnecting in 5s", e)
                 self._uart_reader = None
@@ -298,7 +321,46 @@ def main():
     parser.add_argument("--verbose", "-v", action="store_true", help="Set log level to VERBOSE (raw UART hex)")
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    # ── Early permission checks (visible in journalctl) ──────
+    config_path = args.config
+    try:
+        config = load_config(config_path)
+    except PermissionError:
+        print(
+            f"ERROR: Cannot read config file: {config_path}\n"
+            f"  The service user does not have read access.\n"
+            f"  Fix: sudo chown blaueis:blaueis {config_path}\n"
+            f"       sudo chmod 640 {config_path}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    except FileNotFoundError:
+        print(
+            f"ERROR: Config file not found: {config_path}\n"
+            f"  Run 'blaueis-configure' to create it, or check the\n"
+            f"  instance name in the systemd service.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Check UART port exists before starting the event loop
+    uart_port = config.get("uart_port", "/dev/serial0")
+    if not os.path.exists(uart_port):
+        print(
+            f"WARNING: Serial port {uart_port} does not exist.\n"
+            f"  The gateway will retry once the port appears.\n"
+            f"  Check: ls -la {uart_port}",
+            file=sys.stderr,
+        )
+    elif not os.access(uart_port, os.R_OK | os.W_OK):
+        print(
+            f"ERROR: No read/write access to {uart_port}.\n"
+            f"  Add the service user to the dialout group:\n"
+            f"    sudo usermod -aG dialout $(whoami)\n"
+            f"  Then restart the service.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     # Custom VERBOSE level (5) — below DEBUG (10)
     # See: https://docs.python.org/3/library/logging.html#logging-levels
