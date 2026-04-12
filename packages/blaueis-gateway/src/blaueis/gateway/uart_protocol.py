@@ -279,14 +279,25 @@ class UartProtocol:
         self.proto = resp["proto"]
         self.sub = resp["sub"]
         body = resp["body"]
-        self.serial_number = body.decode("ascii", errors="replace").rstrip("\x00") if body else ""
+        # The SN body may be ASCII text or raw binary depending on the unit.
+        # Try ASCII first; if it's mostly non-printable, store as hex.
+        if body:
+            text = body.rstrip(b"\x00").decode("ascii", errors="ignore")
+            printable = sum(1 for c in text if c.isprintable())
+            if printable >= len(text) * 0.5 and printable > 0:
+                self.serial_number = text
+            else:
+                self.serial_number = body.rstrip(b"\x00").hex(" ")
+        else:
+            self.serial_number = ""
 
         log.info(
-            "DISCOVER: found appliance=0x%02X proto=%d sub=%d sn=%s",
+            "DISCOVER: found appliance=0x%02X proto=%d sub=%d sn=%s body=%s",
             self.appliance,
             self.proto,
             self.sub,
-            self.serial_number[:32],
+            self.serial_number[:40],
+            body.hex(" ") if body else "(empty)",
         )
         self.state = MODEL
 
