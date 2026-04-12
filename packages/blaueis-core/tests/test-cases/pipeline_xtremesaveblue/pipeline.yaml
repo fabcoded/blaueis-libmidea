@@ -52,7 +52,7 @@ steps:
 
   # Step 3: Second C0 — strong_wind active (compressor ramping)
   # body[8] bit 5 = strong_wind on; body[10] bit 1 = 0 (turbo_mode off).
-  # Per mill1000 Finding 16, these are orthogonal: strong_wind drives the
+  # These are orthogonal (verified via forge mode): strong_wind drives the
   # fan-side boost while turbo_mode drives compressor-side boost. The old
   # OR-folded reading would have called this "turbo on"; the new
   # orthogonal reading correctly identifies it as strong_wind only.

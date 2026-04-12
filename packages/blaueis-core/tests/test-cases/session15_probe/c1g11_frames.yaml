@@ -1,7 +1,7 @@
 # Real 0xC1 Group 11 frames — XtremeSaveBlue Q11, Session 15
 #
 # Vane strip control: UD/LR/top status, cool/heat limits, current angles.
-# Field mapping cross-validated against mill1000/midea-msmart.
+# Field mapping cross-validated against community protocol research.
 
 device: "XtremeSaveBlue Q11"
 session: "Session 15"

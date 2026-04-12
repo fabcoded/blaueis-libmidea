@@ -50,7 +50,7 @@ frames:
 
     -> 24.0 + 0.2 = 24.2; outdoor high nibble (0x82 >> 4 = 8) -> 3.5 + 0.8 = 4.3.
 
-    Mill1000 Finding 02 confirms tenths nibble layout.
+    Community protocol research confirms tenths nibble layout.
 
     '
 - name: turbo active — heat mode, compressor ramping

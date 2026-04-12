@@ -3,7 +3,7 @@
 # Extended telemetry: humidity, fan runtime, EEV, defrost, compressor hours,
 # bus voltages. Tests new fields at offsets 6, 10, 14 (existing fields at
 # 4, 5, 8, 9, 13, 17, 18 are not re-tested here).
-# Field mapping cross-validated against mill1000/midea-msmart.
+# Field mapping cross-validated against community protocol research.
 
 device: "XtremeSaveBlue Q11"
 session: "Session 15"

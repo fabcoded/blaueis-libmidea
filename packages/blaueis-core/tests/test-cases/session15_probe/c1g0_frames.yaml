@@ -1,7 +1,7 @@
 # Real 0xC1 Group 0 frames — XtremeSaveBlue Q11, Session 15
 #
 # Runtime timers: power-on time, total worked time, current session time.
-# Field mapping cross-validated against mill1000/midea-msmart.
+# Field mapping cross-validated against community protocol research.
 # All values zero in this capture — AC may need longer runtime to populate.
 
 device: "XtremeSaveBlue Q11"

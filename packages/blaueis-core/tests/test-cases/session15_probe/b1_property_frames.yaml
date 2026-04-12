@@ -2,7 +2,7 @@
 #
 # B1 property query responses. Each frame contains multiple TLV records.
 # Properties with data_len=0 are not supported by this unit (skipped).
-# Field mapping cross-validated against mill1000/midea-msmart (Finding 9).
+# Field mapping cross-validated against community protocol research .
 
 device: "XtremeSaveBlue Q11"
 session: "Session 15"

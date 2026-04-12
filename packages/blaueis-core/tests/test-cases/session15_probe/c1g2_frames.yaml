@@ -1,7 +1,7 @@
 # Real 0xC1 Group 2 frames — XtremeSaveBlue Q11, Session 15
 #
 # Indoor unit diagnostics: fan speeds, fault/freq-limit/load state flags.
-# Field mapping cross-validated against mill1000/midea-msmart.
+# Field mapping cross-validated against community protocol research.
 
 device: "XtremeSaveBlue Q11"
 session: "Session 15"

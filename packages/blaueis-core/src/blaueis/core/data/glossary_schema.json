@@ -69,7 +69,7 @@
     },
     "protocol_generations": {
       "type": "object",
-      "description": "Protocol-key → generation map. Drives infer_generation() and the source-priority semantics in field_query.read_field(). Each value is 'legacy' (mill1000 §4.3 legacy family — C0, C1*, B1, 0x40), 'new' (B0/B5 family), or null (generation deliberately unknown — heartbeats and frames whose role is not yet decided). Keys absent from this dict resolve to null at lookup time. Edit this dict to add a new frame; no Python change is needed.",
+      "description": "Protocol-key → generation map. Drives infer_generation() and the source-priority semantics in field_query.read_field(). Each value is 'legacy' (legacy family (protocol appendix §4.3) — C0, C1*, B1, 0x40), 'new' (B0/B5 family), or null (generation deliberately unknown — heartbeats and frames whose role is not yet decided). Keys absent from this dict resolve to null at lookup time. Edit this dict to add a new frame; no Python change is needed.",
       "patternProperties": {
         "^(cmd|rsp)_0x[0-9a-f]+(_[a-z0-9]+)*$": {
           "type": ["string", "null"],

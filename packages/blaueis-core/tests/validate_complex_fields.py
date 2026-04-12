@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Validate §9 complex-function skeletons against real C0 frames AND
-the mill1000/midea-msmart reference implementation.
+a reference implementation (when available).
 
 Three independent decoders:
   1. Reference-implementation oracle (loaded via test-loops harness)
@@ -28,7 +28,7 @@ TESTS = Path(__file__).resolve().parent / "test-cases"
 # The reference-implementation oracle lives in the test-loops write-exempt
 # subtree. We add it to sys.path so we can import the clean public API
 # without referencing any upstream file names or function names.
-_ORACLE_DIR = Path(__file__).resolve().parents[5] / "ResearchSources" / "midea-msmart-mill1000" / "test-loops" / "lua"
+_ORACLE_DIR = Path(__file__).resolve().parents[5] / "blaueis-research" / "internal-tests" / "lua"
 
 
 def _load_oracle():

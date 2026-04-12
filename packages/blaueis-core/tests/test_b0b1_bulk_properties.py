@@ -2,7 +2,7 @@
 """Bulk B0/B1 property field tests — gates the Tier 1-4 expansion.
 
 Validates the 36 new B0/B1 property fields wired from
-mill1000/midea-msmart Finding 9 (Property Protocol §3.5):
+community protocol research (Property Protocol §3.5):
 
   Tier 1 — single-byte uint8 / bool reads (21 fields, 21 properties)
   Tier 2 — single-byte temperatures using temp_offset50_half (2 fields)

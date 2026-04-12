@@ -10,7 +10,7 @@ glossary's `encodings:` block.
 Cross-validation strategy
 -------------------------
 
-The mill1000/midea-msmart Lua plugin's C1 decoder is only ~5 lines
+The community C1 decoder implementations are limited
 (power + humidity), so it cannot serve as a reference oracle for any
 of the 16-bit fields this test covers (Group 0 day counters, Group 5
 fan/compressor runtime counters, Group 6 torque angle).
