@@ -159,6 +159,10 @@ schema_version: 1
 
 logging:
   level: INFO
+
+# Allow the HA integration to trigger gateway updates remotely.
+# Set to false to require manual updates via blaueis-gw-update.
+allow_remote_update: true
 """
     GLOBAL_CONFIG.write_text(content)
 
