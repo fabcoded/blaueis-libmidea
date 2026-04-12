@@ -65,48 +65,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ── Service user setup (FIRST — before anything else) ─
-CURRENT_USER="$(whoami)"
-
-if [ -z "$SERVICE_USER" ]; then
-    echo "  Service user:"
-    echo "    [1] Create 'blaueis' system user (recommended)"
-    echo "    [2] Run as current user ($CURRENT_USER)"
-    echo ""
-    read -r -p "  > " user_choice
-    user_choice="${user_choice:-1}"
-    echo ""
-
-    if [ "$user_choice" = "2" ]; then
-        SERVICE_USER="$CURRENT_USER"
-    else
-        SERVICE_USER="blaueis"
-    fi
-fi
-
-if [ "$SERVICE_USER" = "blaueis" ]; then
-    if id "blaueis" &>/dev/null; then
-        ok "System user 'blaueis' already exists"
-    else
-        info "Creating system user 'blaueis'..."
-        sudo useradd --system \
-            --home-dir "$INSTALL_DIR" \
-            --shell /usr/sbin/nologin \
-            --create-home \
-            blaueis
-        ok "User blaueis created (nologin shell)"
-    fi
-    # Serial port access
-    sudo usermod -aG dialout blaueis
-    # Let the installing user manage configs
-    sudo usermod -aG blaueis "$CURRENT_USER"
-    ok "Added $CURRENT_USER to blaueis group (for config access)"
-    ok "Service user: blaueis (dedicated system user)"
-else
-    ok "Service user: $SERVICE_USER (current user)"
-fi
-
-# ── Check prerequisites ─────────────────────────────
+# ── Check prerequisites FIRST (fail fast before creating anything) ─
 info "Checking prerequisites..."
 
 # Python version
@@ -152,6 +111,46 @@ if [ ${#SERIAL_PORTS[@]} -eq 0 ]; then
     warn "No serial ports found. The wizard will ask for the port path."
 else
     ok "Serial ports: ${SERIAL_PORTS[*]}"
+fi
+
+# ── Service user setup (after prereqs pass) ────────
+echo ""
+CURRENT_USER="$(whoami)"
+
+if [ -z "$SERVICE_USER" ]; then
+    echo "  Service user:"
+    echo "    [1] Create 'blaueis' system user (recommended)"
+    echo "    [2] Run as current user ($CURRENT_USER)"
+    echo ""
+    read -r -p "  > " user_choice
+    user_choice="${user_choice:-1}"
+    echo ""
+
+    if [ "$user_choice" = "2" ]; then
+        SERVICE_USER="$CURRENT_USER"
+    else
+        SERVICE_USER="blaueis"
+    fi
+fi
+
+if [ "$SERVICE_USER" = "blaueis" ]; then
+    if id "blaueis" &>/dev/null; then
+        ok "System user 'blaueis' already exists"
+    else
+        info "Creating system user 'blaueis'..."
+        sudo useradd --system \
+            --home-dir "$INSTALL_DIR" \
+            --shell /usr/sbin/nologin \
+            --create-home \
+            blaueis
+        ok "User blaueis created (nologin shell)"
+    fi
+    sudo usermod -aG dialout blaueis
+    sudo usermod -aG blaueis "$CURRENT_USER"
+    ok "Added $CURRENT_USER to blaueis group (for config access)"
+    ok "Service user: blaueis (dedicated system user)"
+else
+    ok "Service user: $SERVICE_USER (current user)"
 fi
 
 # ── Clone or update repo ────────────────────────────
