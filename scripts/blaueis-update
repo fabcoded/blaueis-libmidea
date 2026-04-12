@@ -36,18 +36,27 @@ else
     exit 1
 fi
 
-# ── Get version info ────────────────────────────────
-CURRENT=$(git describe --tags --abbrev=0 HEAD 2>/dev/null || echo "none")
-BUILD=$(git describe --tags --dirty 2>/dev/null || echo "unknown")
-echo -e "${BLUE}Current:${NC} $BUILD"
+# ── Version display helper ─────────────────────────
+# Use tag if available, otherwise short commit hash
+_version() {
+    local ref="${1:-HEAD}"
+    git describe --tags --always "$ref" 2>/dev/null || git rev-parse --short "$ref" 2>/dev/null || echo "unknown"
+}
 
-$RUN_AS git fetch --tags -q 2>/dev/null
-LATEST=$(git describe --tags --abbrev=0 origin/main 2>/dev/null || echo "unknown")
+# ── Get version info ────────────────────────────────
+CURRENT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
+CURRENT=$(_version HEAD)
+echo -e "${BLUE}Current:${NC} $CURRENT"
+
+$RUN_AS git fetch origin main --depth 50 -q 2>/dev/null \
+    || git fetch origin main --depth 50 -q 2>/dev/null || true
+REMOTE_SHA=$(git rev-parse origin/main 2>/dev/null || echo "")
+LATEST=$(_version origin/main)
 echo -e "${BLUE}Latest:${NC}  $LATEST"
 echo ""
 
 # ── Check mode ──────────────────────────────────────
-if [ "$CURRENT" = "$LATEST" ] && [ "$1" != "--rollback" ]; then
+if [ "$CURRENT_SHA" = "$REMOTE_SHA" ] && [ "$1" != "--rollback" ]; then
     echo -e "${GREEN}Up to date.${NC}"
     exit 0
 fi
@@ -61,15 +70,15 @@ if [ "$1" != "--apply" ] && [ "$1" != "--rollback" ]; then
 fi
 
 # ── Rollback ────────────────────────────────────────
+ROLLBACK_REF=""
 if [ "$1" = "--rollback" ]; then
-    PREV=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
-    if [ -z "$PREV" ]; then
+    # Save current HEAD so we can roll back to it
+    ROLLBACK_REF="HEAD~1"
+    if ! git rev-parse "$ROLLBACK_REF" &>/dev/null; then
         fail "No previous version to rollback to"
         exit 1
     fi
-    echo "Rolling back: $CURRENT → $PREV"
-    # Fall through to the same stop → update → start flow
-    LATEST="$PREV"
+    echo "Rolling back: $CURRENT → $(_version $ROLLBACK_REF)"
 fi
 
 # ── Phase 1: Stop all running instances ─────────────
@@ -90,9 +99,16 @@ fi
 # ── Phase 2: Update code (as the file owner) ───────
 echo ""
 echo "Updating code..."
-$RUN_AS git checkout "$LATEST" -q
+if [ -n "$ROLLBACK_REF" ]; then
+    $RUN_AS git reset --hard "$ROLLBACK_REF" -q 2>/dev/null \
+        || git reset --hard "$ROLLBACK_REF" -q
+else
+    $RUN_AS git pull --ff-only -q 2>/dev/null \
+        || git pull --ff-only -q 2>/dev/null \
+        || { git fetch origin main --depth 50 -q; git reset --hard origin/main -q; }
+fi
 $RUN_AS "$INSTALL_DIR/venv/bin/pip" install -q -e packages/blaueis-core -e packages/blaueis-gateway
-NEW_BUILD=$($RUN_AS git describe --tags --dirty 2>/dev/null || echo "unknown")
+NEW_BUILD=$(_version HEAD)
 ok "Code updated to $NEW_BUILD"
 
 # ── Phase 3: Start enabled instances ────────────────
