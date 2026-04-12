@@ -35,26 +35,79 @@ log = logging.getLogger("hvac_gateway")
 # ── Configuration ─────────────────────────────────────────────────────────
 
 
-def load_config(path: str) -> dict:
-    """Load gateway configuration from INI file."""
-    cfg = configparser.ConfigParser()
-    cfg.read(path)
-    section = cfg["gateway"] if cfg.has_section("gateway") else {}
-    return {
-        "psk": section.get("psk", ""),
-        "uart_port": section.get("uart_port", "/dev/serial0"),
-        "uart_baud": int(section.get("uart_baud", "9600")),
-        "ws_host": section.get("ws_host", "0.0.0.0"),
-        "ws_port": int(section.get("ws_port", "8765")),
-        "max_queue": int(section.get("max_queue", "8")),
-        "frame_spacing_ms": int(section.get("frame_spacing_ms", "100")),
-        "stats_interval": int(section.get("stats_interval", "60")),
-        "fake_ip": section.get("fake_ip", "192.168.1.100"),
-        "signal_level": int(section.get("signal_level", "4")),
-        "log_level": section.get("log_level", "INFO"),
-        "mirror_tx_gateway": section.get("mirror_tx_gateway", "false").lower() in ("true", "1", "yes"),
-        "mirror_tx_all": section.get("mirror_tx_all", "false").lower() in ("true", "1", "yes"),
+def load_config(global_path: str = None, instance_path: str = None, legacy_path: str = None) -> dict:
+    """Load gateway configuration from YAML (new) or INI (legacy) files.
+
+    New format: global_path (/etc/blaueis/gateway.yaml) + instance_path
+    (/etc/blaueis/instances/<name>.yaml).
+
+    Legacy format: single INI file (gateway.conf) — for backwards compat
+    during migration.
+    """
+    import yaml
+
+    config = {
+        "psk": "",
+        "uart_port": "/dev/serial0",
+        "uart_baud": 9600,
+        "ws_host": "0.0.0.0",
+        "ws_port": 8765,
+        "max_queue": 8,
+        "frame_spacing_ms": 100,
+        "stats_interval": 60,
+        "fake_ip": "192.168.1.100",
+        "signal_level": 4,
+        "log_level": "INFO",
+        "device_name": "Midea AC",
     }
+
+    if legacy_path:
+        # Old INI format (gateway.conf)
+        cfg = configparser.ConfigParser()
+        cfg.read(legacy_path)
+        section = cfg["gateway"] if cfg.has_section("gateway") else {}
+        config.update(
+            {
+                "psk": section.get("psk", ""),
+                "uart_port": section.get("uart_port", "/dev/serial0"),
+                "uart_baud": int(section.get("uart_baud", "9600")),
+                "ws_host": section.get("ws_host", "0.0.0.0"),
+                "ws_port": int(section.get("ws_port", "8765")),
+                "max_queue": int(section.get("max_queue", "8")),
+                "frame_spacing_ms": int(section.get("frame_spacing_ms", "100")),
+                "stats_interval": int(section.get("stats_interval", "60")),
+                "fake_ip": section.get("fake_ip", "192.168.1.100"),
+                "signal_level": int(section.get("signal_level", "4")),
+                "log_level": section.get("log_level", "INFO"),
+            }
+        )
+        return config
+
+    # New YAML format
+    if global_path and os.path.exists(global_path):
+        with open(global_path, encoding="utf-8") as f:
+            g = yaml.safe_load(f) or {}
+        logging_cfg = g.get("logging", {})
+        config["log_level"] = logging_cfg.get("level", "INFO")
+
+    if instance_path:
+        with open(instance_path, encoding="utf-8") as f:
+            inst = yaml.safe_load(f) or {}
+        device = inst.get("device", {})
+        ws = inst.get("websocket", {})
+        sec = inst.get("security", {})
+        config.update(
+            {
+                "psk": sec.get("psk", ""),
+                "uart_port": device.get("serial_port", "/dev/serial0"),
+                "uart_baud": device.get("baud_rate", 9600),
+                "ws_host": ws.get("host", "0.0.0.0"),
+                "ws_port": ws.get("port", 8765),
+                "device_name": device.get("name", "Midea AC"),
+            }
+        )
+
+    return config
 
 
 # ── Pi stats ──────────────────────────────────────────────────────────────
@@ -315,16 +368,26 @@ class GatewayServer:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="HVAC Shark Midea Gateway")
-    parser.add_argument("--config", required=True, help="Path to gateway.conf")
+    parser = argparse.ArgumentParser(description="Blaueis Midea Gateway")
+    # New YAML config (systemd passes these)
+    parser.add_argument("--global", dest="global_config", help="Path to /etc/blaueis/gateway.yaml")
+    parser.add_argument("--instance", dest="instance_config", help="Path to /etc/blaueis/instances/<name>.yaml")
+    # Legacy INI config (backwards compat with old gateway.conf)
+    parser.add_argument("--config", help="Legacy: path to gateway.conf (INI format)")
     parser.add_argument("--no-encrypt", action="store_true", help="Disable encryption (development)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Set log level to VERBOSE (raw UART hex)")
     args = parser.parse_args()
 
+    if not args.config and not args.instance_config:
+        parser.error("Either --instance (YAML) or --config (legacy INI) is required")
+
     # ── Early permission checks (visible in journalctl) ──────
-    config_path = args.config
+    config_path = args.instance_config or args.config
     try:
-        config = load_config(config_path)
+        if args.config:
+            config = load_config(legacy_path=args.config)
+        else:
+            config = load_config(global_path=args.global_config, instance_path=args.instance_config)
     except PermissionError:
         print(
             f"ERROR: Cannot read config file: {config_path}\n"
