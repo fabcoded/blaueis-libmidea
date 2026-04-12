@@ -164,7 +164,7 @@ if [ "$SERVICE_USER" = "blaueis-gw" ]; then
             blaueis-gw
         ok "User blaueis-gw created (nologin shell)"
     fi
-    $SUDO usermod -aG dialout blaueis-gw
+    $SUDO usermod -aG dialout,systemd-journal blaueis-gw
     if [ -n "$INVOKING_USER" ] && [ "$INVOKING_USER" != "blaueis-gw" ] && [ "$INVOKING_USER" != "root" ]; then
         $SUDO usermod -aG blaueis-gw "$INVOKING_USER"
         ok "Added $INVOKING_USER to blaueis-gw group (for config access)"
