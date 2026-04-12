@@ -1,0 +1,16 @@
+[Unit]
+Description=HVAC Shark Midea Gateway
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 {{SCRIPT_DIR}}/hvac_gateway.py --config {{SCRIPT_DIR}}/gateway.conf
+WorkingDirectory={{SCRIPT_DIR}}
+User={{USER}}
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
