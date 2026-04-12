@@ -1,0 +1,37 @@
+# Real 0xC1 Group 2 frames — XtremeSaveBlue Q11, Session 15
+#
+# Indoor unit diagnostics: fan speeds, fault/freq-limit/load state flags.
+# Field mapping cross-validated against mill1000/midea-msmart.
+
+device: "XtremeSaveBlue Q11"
+session: "Session 15"
+source: "ac_probe.py UART probe via raspi-midea gateway"
+bus: "UART (body[1]=0x21)"
+frame_type: "0xC1 Group 2"
+
+frames:
+  - name: "run1 — heating at 26C, fan at 824 RPM"
+    timestamp: "2026-04-10T18:11:48Z"
+    body_hex: "c1 21 01 42 67 67 00 00 00 00 00 00 40 01 00 00 00 00 00 00 00"
+    ground_truth:
+      indoor_fan_set_speed: 103     # body[4] = 0x67 (raw; consumer x8 = 824 RPM)
+      indoor_fan_actual_speed: 103  # body[5] = 0x67
+      indoor_fault_flags_1: 0       # body[6]
+      indoor_fault_flags_2: 0       # body[7]
+      indoor_fault_flags_3: 0       # body[8]
+      indoor_load_flags_1: 64       # body[12] = 0x40 (bit 6 set)
+      indoor_load_flags_2: 1        # body[13] = 0x01 (bit 0 set)
+    notes: "Fan set=actual at 103 raw (824 RPM). No faults. Load flags: bit 6 + bit 0."
+
+  - name: "run2 — fan speed increased to 1016 RPM"
+    timestamp: "2026-04-10T18:21:56Z"
+    body_hex: "c1 21 01 42 7f 7f 00 00 00 00 00 00 40 01 00 00 00 00 00 00 00"
+    ground_truth:
+      indoor_fan_set_speed: 127     # body[4] = 0x7F (raw; x8 = 1016 RPM)
+      indoor_fan_actual_speed: 127  # body[5] = 0x7F
+      indoor_fault_flags_1: 0
+      indoor_fault_flags_2: 0
+      indoor_fault_flags_3: 0
+      indoor_load_flags_1: 64
+      indoor_load_flags_2: 1
+    notes: "Fan increased 103→127 raw (824→1016 RPM). Fault/load flags unchanged."

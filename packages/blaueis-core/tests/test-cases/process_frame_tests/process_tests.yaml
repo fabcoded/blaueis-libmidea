@@ -1,0 +1,578 @@
+# Process frame unit tests — targeted checks on individual operations
+#
+# Each test starts with a fresh status. Tests B5 upgrades, capability
+# gating, phase transitions, and frame processing in isolation.
+
+tests:
+  # ── B5 capability upgrades ──────────────────────────────────────
+  - name: "B5 upgrades eco_mode from capability to always"
+    action: b5
+    source: "../xtremesaveblue_s1/b5_frames.yaml"
+    check_field: eco_mode
+    assert:
+      feature_available: "always"
+
+  - name: "B5 sets fan_speed stepless constraints"
+    action: b5
+    source: "../xtremesaveblue_s1/b5_frames.yaml"
+    check_field: fan_speed
+    assert:
+      feature_available: "always"
+      active_constraints.valid_range: [0, 102]
+      active_constraints.step: 1
+      active_constraints.correction: "clamp"
+
+  - name: "B5 sets target_temperature per-mode ranges"
+    action: b5
+    source: "../xtremesaveblue_s1/b5_frames.yaml"
+    check_field: target_temperature
+    assert:
+      feature_available: "always"
+      active_constraints.by_mode.cool.valid_range: [16.0, 30.0]
+      active_constraints.by_mode.heat.valid_range: [16.0, 30.0]
+
+  # ── Capability gating ──────────────────────────────────────────
+  - name: "buzzer becomes never (cap 0x2C not in B5)"
+    action: b5
+    source: "../xtremesaveblue_s1/b5_frames.yaml"
+    check_field: buzzer
+    assert:
+      feature_available: "never"
+      active_constraints: null
+
+  - name: "total_power_kwh becomes never (cap 0x16=0 -> none)"
+    action: b5
+    source: "../xtremesaveblue_s1/b5_frames.yaml"
+    check_field: total_power_kwh
+    assert:
+      feature_available: "never"
+
+  # ── Phase transitions ──────────────────────────────────────────
+  - name: "B5 sets phase to post_b5"
+    action: b5
+    source: "../xtremesaveblue_s1/b5_frames.yaml"
+    assert_meta:
+      phase: "post_b5"
+      b5_received: true
+
+  - name: "C0 without prior B5 stays boot phase"
+    action: frame_no_b5
+    source: "../xtremesaveblue_s11_frames/c0_frames.yaml"
+    index: 0
+    assert_meta:
+      phase: "boot"
+      b5_received: false
+
+  # ── Value decoding ─────────────────────────────────────────────
+  - name: "C0 decodes indoor_temperature correctly"
+    action: b5_then_frame
+    b5_source: "../xtremesaveblue_s1/b5_frames.yaml"
+    source: "../xtremesaveblue_s11_frames/c0_frames.yaml"
+    index: 0
+    check_field: indoor_temperature
+    assert:
+      # 24.0 integer (body[11]=0x62) + 0.2 tenths (body[15] low nibble = 2)
+      value: 24.2
+      source: "rsp_0xc0"
+
+  - name: "C0 decodes operating_mode correctly"
+    action: b5_then_frame
+    b5_source: "../xtremesaveblue_s1/b5_frames.yaml"
+    source: "../xtremesaveblue_s11_frames/c0_frames.yaml"
+    index: 0
+    check_field: operating_mode
+    assert:
+      value: 4
+
+  # ── Synthetic: cool-only device ────────────────────────────────
+  - name: "Cool-only device restricts operating_mode valid_set"
+    action: b5
+    source: "../synthetic_cool_only/b5_frames.yaml"
+    check_field: operating_mode
+    assert:
+      active_constraints.valid_set: [1, 2, 3, 5]
+      active_constraints.correction: "reject"
+
+  # ── Session 15 probe: C1 Group 6 (diagnostics) ────────────────
+  - name: "G6 run1: lifetime_max_current=52"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 0
+    check_field: lifetime_max_current
+    assert:
+      value: 52
+
+  - name: "G6 run1: lifetime_max_t4_raw=177"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 0
+    check_field: lifetime_max_t4_raw
+    assert:
+      value: 177
+
+  - name: "G6 run1: lifetime_min_t4_raw=30"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 0
+    check_field: lifetime_min_t4_raw
+    assert:
+      value: 30
+
+  - name: "G6 run1: total_error_count=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 0
+    check_field: total_error_count
+    assert:
+      value: 0
+
+  - name: "G6 run1: compressor_flux=16 (raw; x8=128)"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 0
+    check_field: compressor_flux
+    assert:
+      value: 16
+
+  - name: "G6 run1: fan_flux=22 (raw; x8=176)"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 0
+    check_field: fan_flux
+    assert:
+      value: 22
+
+  - name: "G6 run1: d_axis_current=255 (raw; x64=16320)"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 0
+    check_field: d_axis_current
+    assert:
+      value: 255
+
+  - name: "G6 run1: q_axis_current=3 (raw; x64=192)"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 0
+    check_field: q_axis_current
+    assert:
+      value: 3
+
+  - name: "G6 run1: compressor_peak_current=2"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 0
+    check_field: compressor_peak_current
+    assert:
+      value: 2
+
+  - name: "G6 run1: pfc_peak_current=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 0
+    check_field: pfc_peak_current
+    assert:
+      value: 0
+
+  - name: "G6 run1: fan_peak_current=2"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 0
+    check_field: fan_peak_current
+    assert:
+      value: 2
+
+  - name: "G6 run1: torque_compensation_angle=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 0
+    check_field: torque_compensation_angle
+    assert:
+      value: 0
+
+  - name: "G6 run1: torque_compensation_value=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 0
+    check_field: torque_compensation_value
+    assert:
+      value: 0
+
+  - name: "G6 run1: ad_calibration_voltage=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 0
+    check_field: ad_calibration_voltage
+    assert:
+      value: 0
+
+  # G6 run2 delta checks (fields that changed between runs)
+  - name: "G6 run2: fan_flux changed to 23 (raw; x8=184)"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 1
+    check_field: fan_flux
+    assert:
+      value: 23
+
+  - name: "G6 run2: fan_peak_current dropped to 1"
+    action: frame_no_b5
+    source: "../session15_probe/c1g6_frames.yaml"
+    index: 1
+    check_field: fan_peak_current
+    assert:
+      value: 1
+
+  # ── Session 15 probe: C1 Group 11 (vane control) ──────────────
+  - name: "G11 run1: vane_ud_status=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g11_frames.yaml"
+    index: 0
+    check_field: vane_ud_status
+    assert:
+      value: 0
+
+  - name: "G11 run1: vane_lr_status=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g11_frames.yaml"
+    index: 0
+    check_field: vane_lr_status
+    assert:
+      value: 0
+
+  - name: "G11 run1: vane_top_status=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g11_frames.yaml"
+    index: 0
+    check_field: vane_top_status
+    assert:
+      value: 0
+
+  - name: "G11 run1: vane_ud_cool_upper=100"
+    action: frame_no_b5
+    source: "../session15_probe/c1g11_frames.yaml"
+    index: 0
+    check_field: vane_ud_cool_upper
+    assert:
+      value: 100
+
+  - name: "G11 run1: vane_ud_cool_lower=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g11_frames.yaml"
+    index: 0
+    check_field: vane_ud_cool_lower
+    assert:
+      value: 0
+
+  - name: "G11 run1: vane_ud_heat_upper=100"
+    action: frame_no_b5
+    source: "../session15_probe/c1g11_frames.yaml"
+    index: 0
+    check_field: vane_ud_heat_upper
+    assert:
+      value: 100
+
+  - name: "G11 run1: vane_ud_heat_lower=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g11_frames.yaml"
+    index: 0
+    check_field: vane_ud_heat_lower
+    assert:
+      value: 0
+
+  - name: "G11 run1: vane_ud_angle=48"
+    action: frame_no_b5
+    source: "../session15_probe/c1g11_frames.yaml"
+    index: 0
+    check_field: vane_ud_angle
+    assert:
+      value: 48
+
+  - name: "G11 run1: vane_lr_upper=100"
+    action: frame_no_b5
+    source: "../session15_probe/c1g11_frames.yaml"
+    index: 0
+    check_field: vane_lr_upper
+    assert:
+      value: 100
+
+  - name: "G11 run1: vane_lr_lower=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g11_frames.yaml"
+    index: 0
+    check_field: vane_lr_lower
+    assert:
+      value: 0
+
+  - name: "G11 run1: vane_lr_angle=240"
+    action: frame_no_b5
+    source: "../session15_probe/c1g11_frames.yaml"
+    index: 0
+    check_field: vane_lr_angle
+    assert:
+      value: 240
+
+  # G11 delta: UD angle changed
+  - name: "G11 run3: vane_ud_angle changed to 0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g11_frames.yaml"
+    index: 1
+    check_field: vane_ud_angle
+    assert:
+      value: 0
+
+  # ── Session 15 probe: C1 Group 2 (indoor diagnostics) ─────────
+  - name: "G2 run1: indoor_fan_set_speed=103"
+    action: frame_no_b5
+    source: "../session15_probe/c1g2_frames.yaml"
+    index: 0
+    check_field: indoor_fan_set_speed
+    assert:
+      value: 103
+
+  - name: "G2 run1: indoor_fan_actual_speed=103"
+    action: frame_no_b5
+    source: "../session15_probe/c1g2_frames.yaml"
+    index: 0
+    check_field: indoor_fan_actual_speed
+    assert:
+      value: 103
+
+  - name: "G2 run1: indoor_fault_flags_1=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g2_frames.yaml"
+    index: 0
+    check_field: indoor_fault_flags_1
+    assert:
+      value: 0
+
+  - name: "G2 run1: indoor_fault_flags_2=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g2_frames.yaml"
+    index: 0
+    check_field: indoor_fault_flags_2
+    assert:
+      value: 0
+
+  - name: "G2 run1: indoor_fault_flags_3=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g2_frames.yaml"
+    index: 0
+    check_field: indoor_fault_flags_3
+    assert:
+      value: 0
+
+  - name: "G2 run1: indoor_load_flags_1=64"
+    action: frame_no_b5
+    source: "../session15_probe/c1g2_frames.yaml"
+    index: 0
+    check_field: indoor_load_flags_1
+    assert:
+      value: 64
+
+  - name: "G2 run1: indoor_load_flags_2=1"
+    action: frame_no_b5
+    source: "../session15_probe/c1g2_frames.yaml"
+    index: 0
+    check_field: indoor_load_flags_2
+    assert:
+      value: 1
+
+  # G2 delta: fan speed increased
+  - name: "G2 run2: indoor_fan_set_speed changed to 127"
+    action: frame_no_b5
+    source: "../session15_probe/c1g2_frames.yaml"
+    index: 1
+    check_field: indoor_fan_set_speed
+    assert:
+      value: 127
+
+  - name: "G2 run2: indoor_fan_actual_speed changed to 127"
+    action: frame_no_b5
+    source: "../session15_probe/c1g2_frames.yaml"
+    index: 1
+    check_field: indoor_fan_actual_speed
+    assert:
+      value: 127
+
+  # ── Session 15 probe: C1 Group 0 (runtime timers) ─────────────
+  - name: "G0: power_on_hours=0 (all-zero frame)"
+    action: frame_no_b5
+    source: "../session15_probe/c1g0_frames.yaml"
+    index: 0
+    check_field: power_on_hours
+    assert:
+      value: 0
+
+  - name: "G0: power_on_minutes=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g0_frames.yaml"
+    index: 0
+    check_field: power_on_minutes
+    assert:
+      value: 0
+
+  - name: "G0: power_on_seconds=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g0_frames.yaml"
+    index: 0
+    check_field: power_on_seconds
+    assert:
+      value: 0
+
+  - name: "G0: total_worked_hours=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g0_frames.yaml"
+    index: 0
+    check_field: total_worked_hours
+    assert:
+      value: 0
+
+  - name: "G0: total_worked_minutes=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g0_frames.yaml"
+    index: 0
+    check_field: total_worked_minutes
+    assert:
+      value: 0
+
+  - name: "G0: total_worked_seconds=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g0_frames.yaml"
+    index: 0
+    check_field: total_worked_seconds
+    assert:
+      value: 0
+
+  - name: "G0: current_session_hours=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g0_frames.yaml"
+    index: 0
+    check_field: current_session_hours
+    assert:
+      value: 0
+
+  - name: "G0: current_session_minutes=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g0_frames.yaml"
+    index: 0
+    check_field: current_session_minutes
+    assert:
+      value: 0
+
+  - name: "G0: current_session_seconds=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g0_frames.yaml"
+    index: 0
+    check_field: current_session_seconds
+    assert:
+      value: 0
+
+  # 16-bit BE day counters via uint16_be encoding
+  - name: "G0: power_on_days=0 (BE16 from body[4..5]=00 00)"
+    action: frame_no_b5
+    source: "../session15_probe/c1g0_frames.yaml"
+    index: 0
+    check_field: power_on_days
+    assert:
+      value: 0
+
+  - name: "G0: total_worked_days=0 (BE16 from body[9..10]=00 00)"
+    action: frame_no_b5
+    source: "../session15_probe/c1g0_frames.yaml"
+    index: 0
+    check_field: total_worked_days
+    assert:
+      value: 0
+
+  - name: "G0: current_session_days=0 (BE16 from body[14..15]=00 00)"
+    action: frame_no_b5
+    source: "../session15_probe/c1g0_frames.yaml"
+    index: 0
+    check_field: current_session_days
+    assert:
+      value: 0
+
+  # ── Session 15 probe: C1 Group 5 multi-byte fields (LE16) ─────
+  - name: "G5: indoor_fan_runtime=7146 (LE16 from body[6..7]=EA 1B)"
+    action: frame_no_b5
+    source: "../session15_probe/c1g5_frames.yaml"
+    index: 0
+    check_field: indoor_fan_runtime
+    assert:
+      value: 7146
+
+  - name: "G5: defrost_step=0"
+    action: frame_no_b5
+    source: "../session15_probe/c1g5_frames.yaml"
+    index: 0
+    check_field: defrost_step
+    assert:
+      value: 0
+
+  - name: "G5: compressor_cumul_hours=1915 (LE16 from body[14..15]=7B 07)"
+    action: frame_no_b5
+    source: "../session15_probe/c1g5_frames.yaml"
+    index: 0
+    check_field: compressor_cumul_hours
+    assert:
+      value: 1915
+
+  # Non-regression: existing G5 field still decodes correctly
+  - name: "G5 existing: compensated_setpoint=85"
+    action: frame_no_b5
+    source: "../session15_probe/c1g5_frames.yaml"
+    index: 0
+    check_field: compensated_setpoint
+    assert:
+      value: 85
+
+  # ── Session 15 probe: B1 property responses ────────────────────
+  # All B1 property fields are capability-gated → need B5 caps first.
+  # Using xtremesaveblue_s1 B5 which has caps 0x42, 0x09, 0x0A, 0x48.
+  # buzzer cap 0x2C is NOT in S1 B5 → stays 'never', tested separately.
+
+  - name: "B1 batch1: breezeless=1 (prop 0x42, cap-gated)"
+    action: b5_then_frame
+    b5_source: "../xtremesaveblue_s1/b5_frames.yaml"
+    source: "../session15_probe/b1_property_frames.yaml"
+    index: 0
+    check_field: breezeless
+    assert:
+      value: 1
+
+  - name: "B1 batch1: self_clean=false (prop 0x39, cap-gated)"
+    action: b5_then_frame
+    b5_source: "../xtremesaveblue_s1/b5_frames.yaml"
+    source: "../session15_probe/b1_property_frames.yaml"
+    index: 0
+    check_field: self_clean
+    assert:
+      value: false
+
+  - name: "B1 batch2: rate_select=100 (prop 0x48, cap-gated)"
+    action: b5_then_frame
+    b5_source: "../xtremesaveblue_s1/b5_frames.yaml"
+    source: "../session15_probe/b1_property_frames.yaml"
+    index: 1
+    check_field: rate_select
+    assert:
+      value: 100
+
+  - name: "B1 batch2: wind_swing_ud_angle=50 (prop 0x09, cap-gated)"
+    action: b5_then_frame
+    b5_source: "../xtremesaveblue_s1/b5_frames.yaml"
+    source: "../session15_probe/b1_property_frames.yaml"
+    index: 1
+    check_field: wind_swing_ud_angle
+    assert:
+      value: 50
+
+  - name: "B1 batch2: wind_swing_lr_angle=50 (prop 0x0A, cap-gated)"
+    action: b5_then_frame
+    b5_source: "../xtremesaveblue_s1/b5_frames.yaml"
+    source: "../session15_probe/b1_property_frames.yaml"
+    index: 1
+    check_field: wind_swing_lr_angle
+    assert:
+      value: 50

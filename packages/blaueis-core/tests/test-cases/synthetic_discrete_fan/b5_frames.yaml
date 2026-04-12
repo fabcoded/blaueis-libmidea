@@ -1,0 +1,25 @@
+# Synthetic B5 frames — heating-only unit, 2-speed fan, no swing
+#
+# Tests:
+#   - cap 0x14=2 (heat-only: auto, heat, fan)
+#   - cap 0x10=3 (discrete fan: Low, High only)
+#   - cap 0x1A=3 (turbo heat-only)
+#   - cap 0x15=2 (no swing at all)
+#   - cap 0x12=2 (special eco)
+#   - cap 0x25=20-30°C heat, 1°C steps
+
+device: "Synthetic Heating-Only 2-Speed"
+session: "synthetic"
+source: "hand-crafted for constraint testing"
+
+frames:
+  - name: "B5 Synthetic Query 1"
+    msg_type: 0x03
+    body_hex: >-
+      B5 06
+      14 02 01 02
+      10 02 01 03
+      1A 02 01 03
+      15 02 01 02
+      12 02 01 02
+      25 02 06 28 3C 28 3C 28 3C

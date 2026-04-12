@@ -1,0 +1,45 @@
+# Real 0xC1 Group 11 frames — XtremeSaveBlue Q11, Session 15
+#
+# Vane strip control: UD/LR/top status, cool/heat limits, current angles.
+# Field mapping cross-validated against mill1000/midea-msmart.
+
+device: "XtremeSaveBlue Q11"
+session: "Session 15"
+source: "ac_probe.py UART probe via raspi-midea gateway"
+bus: "UART (body[1]=0x21)"
+frame_type: "0xC1 Group 11"
+
+frames:
+  - name: "run1 — heating at 26C, vanes active"
+    timestamp: "2026-04-10T18:11:50Z"
+    body_hex: "c1 21 01 4b 00 64 00 64 00 30 64 00 f0 00 00 00 00 00 00 00 00"
+    ground_truth:
+      vane_ud_status: 0          # body[4] bits[1:0]
+      vane_lr_status: 0          # body[4] bits[3:2]
+      vane_top_status: 0         # body[4] bits[5:4]
+      vane_ud_cool_upper: 100    # body[5]
+      vane_ud_cool_lower: 0      # body[6]
+      vane_ud_heat_upper: 100    # body[7]
+      vane_ud_heat_lower: 0      # body[8]
+      vane_ud_angle: 48          # body[9]
+      vane_lr_upper: 100         # body[10]
+      vane_lr_lower: 0           # body[11]
+      vane_lr_angle: 240         # body[12]
+    notes: "UD limits 0-100 range (full travel). UD angle=48 (mid-low). LR angle=240 (far right?)."
+
+  - name: "run3 — compressor slowed, UD angle changed"
+    timestamp: "2026-04-10T19:07:59Z"
+    body_hex: "c1 21 01 4b 00 64 00 64 00 00 64 00 f0 00 00 00 00 00 00 00 00"
+    ground_truth:
+      vane_ud_status: 0
+      vane_lr_status: 0
+      vane_top_status: 0
+      vane_ud_cool_upper: 100
+      vane_ud_cool_lower: 0
+      vane_ud_heat_upper: 100
+      vane_ud_heat_lower: 0
+      vane_ud_angle: 0           # was 48, now 0 — vane repositioned
+      vane_lr_upper: 100
+      vane_lr_lower: 0
+      vane_lr_angle: 240
+    notes: "UD angle changed 48→0 as room approached setpoint. All other values stable."

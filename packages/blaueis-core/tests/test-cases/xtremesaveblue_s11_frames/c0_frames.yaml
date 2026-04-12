@@ -1,0 +1,241 @@
+device: XtremeSaveBlue Q11
+session: Session 11
+source: HVAC-shark-dumps/Midea-XtremeSaveBlue-logicanalyzer/Session 11/session.pcap
+bus: R/T (bus_type=3)
+frame_type: 0xC0 Status Response
+frames:
+- name: baseline — heat mode, idle
+  timestamp: 1.8
+  body_hex: C0 01 89 66 7F 7F 00 00 00 00 00 62 39 0D 00 82 00 00 00 00 00 00 01 00 00 00 00 00 00 4D 00
+  ground_truth:
+    alarm_sleep: false
+    catch_cold: false
+    clean_fan_time: false
+    cosy_sleep: 0
+    dry_clean: false
+    dust_full: false
+    eco_mode: false
+    energy_save: false
+    error_code: 0
+    fan_speed: 102
+    follow_me: false
+    frost_protection: false
+    humidity_setpoint: 0
+    in_error: false
+    indoor_temperature: 24.2
+    local_body_sense: false
+    low_frequency_fan: false
+    natural_wind: false
+    night_light: false
+    operating_mode: 4
+    outdoor_temperature: 4.3
+    pmv_index: 0
+    power: true
+    power_save: false
+    ptc_heater: 0
+    resume: false
+    run_status: true
+    screen_display: 0
+    silky_cool: false
+    sleep_mode: false
+    strong_wind: false
+    swing_horizontal: false
+    swing_vertical: false
+    target_temperature: 25.0
+    temperature_unit: false
+    turbo_mode: false
+  notes: 'Service menu at t=2.2s confirms T1=24C, T4=3C (display rounds).
+
+    Wire telemetry has tenths in body[15]: indoor low nibble (0x82 & 0x0F = 2)
+
+    -> 24.0 + 0.2 = 24.2; outdoor high nibble (0x82 >> 4 = 8) -> 3.5 + 0.8 = 4.3.
+
+    Mill1000 Finding 02 confirms tenths nibble layout.
+
+    '
+- name: turbo active — heat mode, compressor ramping
+  timestamp: 117.2
+  body_hex: C0 01 8B 66 7F 7F 00 00 20 00 00 62 39 0F 00 84 00 00 00 00 00 00 01 00 00 00 00 00 00 27 00
+  ground_truth:
+    alarm_sleep: false
+    catch_cold: false
+    clean_fan_time: false
+    cosy_sleep: 0
+    dry_clean: false
+    dust_full: false
+    eco_mode: false
+    energy_save: false
+    error_code: 0
+    fan_speed: 102
+    follow_me: false
+    frost_protection: false
+    humidity_setpoint: 0
+    in_error: false
+    indoor_temperature: 24.4
+    local_body_sense: false
+    low_frequency_fan: false
+    natural_wind: false
+    night_light: false
+    operating_mode: 4
+    outdoor_temperature: 4.3
+    pmv_index: 0
+    power: true
+    power_save: false
+    ptc_heater: 0
+    resume: false
+    run_status: true
+    screen_display: 0
+    silky_cool: false
+    sleep_mode: false
+    strong_wind: true
+    swing_horizontal: false
+    swing_vertical: false
+    target_temperature: 27.0
+    temperature_unit: false
+    turbo_mode: false
+  notes: 'Turbo enabled at t=103s. FT=90Hz target, FR=39Hz ramping. body[2]=0x8B
+
+    means mode=4, temp=11+16=27. body[15]=0x84 -> indoor tenths=4 (24.4),
+
+    outdoor tenths=8 (4.3).
+
+    '
+- name: frost protection phase — heat mode
+  timestamp: 463.3
+  body_hex: C0 01 88 66 7F 7F 00 00 00 00 00 66 39 0C 00 74 00 00 00 00 00 00 01 00 00 00 00 00 00 59 00
+  ground_truth:
+    alarm_sleep: false
+    catch_cold: false
+    clean_fan_time: false
+    cosy_sleep: 0
+    dry_clean: false
+    dust_full: false
+    eco_mode: false
+    energy_save: false
+    error_code: 0
+    fan_speed: 102
+    follow_me: false
+    frost_protection: false
+    humidity_setpoint: 0
+    in_error: false
+    indoor_temperature: 26.4
+    local_body_sense: false
+    low_frequency_fan: false
+    natural_wind: false
+    night_light: false
+    operating_mode: 4
+    outdoor_temperature: 4.2
+    pmv_index: 0
+    power: true
+    power_save: false
+    ptc_heater: 0
+    resume: false
+    run_status: true
+    screen_display: 0
+    silky_cool: false
+    sleep_mode: false
+    strong_wind: false
+    swing_horizontal: 0
+    swing_vertical: 0
+    target_temperature: 24.0
+    temperature_unit: false
+    turbo_mode: false
+  notes: 'Frost protection enabled at t=464s via app. body[21]=0x00 on R/T bus —
+
+    frost prot bit may only appear on UART 0x40 SET frames, not in R/T C0.
+
+    body[15]=0x74 -> indoor tenths=4 (26.4), outdoor tenths=7 (4.2).
+
+    '
+- name: frost protection off — heat mode
+  timestamp: 538.9
+  body_hex: C0 01 88 66 7F 7F 00 00 00 00 00 68 39 0C 00 82 00 00 00 00 00 00 01 00 00 00 00 00 00 49 00
+  ground_truth:
+    alarm_sleep: false
+    catch_cold: false
+    clean_fan_time: false
+    cosy_sleep: 0
+    dry_clean: false
+    dust_full: false
+    eco_mode: false
+    energy_save: false
+    error_code: 0
+    fan_speed: 102
+    follow_me: false
+    frost_protection: false
+    humidity_setpoint: 0
+    in_error: false
+    indoor_temperature: 27.2
+    local_body_sense: false
+    low_frequency_fan: false
+    natural_wind: false
+    night_light: false
+    operating_mode: 4
+    outdoor_temperature: 4.3
+    pmv_index: 0
+    power: true
+    power_save: false
+    ptc_heater: 0
+    resume: false
+    run_status: true
+    screen_display: 0
+    silky_cool: false
+    sleep_mode: false
+    strong_wind: false
+    swing_horizontal: 0
+    swing_vertical: 0
+    target_temperature: 24.0
+    temperature_unit: false
+    turbo_mode: false
+  notes: 'body[11]=0x68 -> indoor int 27, body[15]=0x82 low nibble 2 -> 27.2.
+
+    body[12]=0x39 -> outdoor int 3.5, body[15] high nibble 8 -> 4.3.
+
+    '
+- name: power off — standby
+  timestamp: 654.3
+  body_hex: C0 00 88 66 7F 7F 00 00 00 00 00 6A 39 0C 00 92 00 00 00 00 00 00 01 00 00 00 00 00 00 38 00
+  ground_truth:
+    alarm_sleep: false
+    catch_cold: false
+    clean_fan_time: false
+    cosy_sleep: 0
+    dry_clean: false
+    dust_full: false
+    eco_mode: false
+    energy_save: false
+    error_code: 0
+    fan_speed: 102
+    follow_me: false
+    frost_protection: false
+    humidity_setpoint: 0
+    in_error: false
+    indoor_temperature: 28.2
+    local_body_sense: false
+    low_frequency_fan: false
+    natural_wind: false
+    night_light: false
+    operating_mode: 4
+    outdoor_temperature: 4.4
+    pmv_index: 0
+    power: false
+    power_save: false
+    ptc_heater: 0
+    resume: false
+    run_status: false
+    screen_display: 0
+    silky_cool: false
+    sleep_mode: false
+    strong_wind: false
+    swing_horizontal: 0
+    swing_vertical: 0
+    target_temperature: 24.0
+    temperature_unit: false
+    turbo_mode: false
+  notes: 'Power off at t=651s via app. Sensors still functional in standby.
+
+    body[11]=0x6A -> indoor int 28, body[15]=0x92 low nibble 2 -> 28.2.
+
+    body[12]=0x39 -> outdoor int 3.5, high nibble 9 -> 4.4.
+
+    '

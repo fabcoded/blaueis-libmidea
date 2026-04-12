@@ -1,0 +1,170 @@
+# Command builder tests — round-trip encode→decode + captured frame validation
+#
+# Each test provides a device state + desired changes, encodes a 0x40 body,
+# then decodes it back and checks expected values. Uses the xtremesaveblue_s1
+# B5 capabilities for constraint resolution.
+
+b5_source: "../xtremesaveblue_s1/b5_frames.yaml"
+
+tests:
+  # ── Round-trip: encode current state, decode back ──────────────
+  - name: "round-trip: heat mode baseline from S11"
+    state:
+      power: true
+      operating_mode: 4
+      target_temperature: 25.0
+      fan_speed: 102
+      follow_me: false
+      turbo_mode: false
+      eco_mode: false
+      swing_vertical: false
+      swing_horizontal: false
+      alarm_sleep: false
+      catch_cold: false
+      night_light: false
+      sleep_mode: false
+      energy_save: false
+      power_save: false
+      low_frequency_fan: false
+      dry_clean: false
+      exchange_air: false
+      cleanup: false
+      child_sleep: false
+      cosy_sleep: 0
+      resume: false
+      buzzer: false
+      frost_protection: false
+      humidity_setpoint: 0
+      ptc_heater: 0
+      temperature_unit: false
+    changes: {}
+    expect_decode:
+      power: true
+      operating_mode: 4
+      target_temperature: 25
+      fan_speed: 102
+      eco_mode: false
+      turbo_mode: false
+      follow_me: false
+    expect_body_byte:
+      0: 0x40
+      7: 0x30
+
+  # ── Change temperature ─────────────────────────────────────────
+  - name: "change temperature to 22 in heat mode"
+    state:
+      power: true
+      operating_mode: 4
+      target_temperature: 25.0
+      fan_speed: 102
+    changes:
+      target_temperature: 22.0
+    expect_decode:
+      target_temperature: 22
+      operating_mode: 4
+
+  - name: "change temperature to 16 (minimum)"
+    state:
+      power: true
+      operating_mode: 2
+      target_temperature: 25.0
+      fan_speed: 102
+    changes:
+      target_temperature: 16.0
+    expect_decode:
+      target_temperature: 16
+
+  - name: "change temperature to 30 (maximum)"
+    state:
+      power: true
+      operating_mode: 2
+      target_temperature: 25.0
+      fan_speed: 102
+    changes:
+      target_temperature: 30.0
+    expect_decode:
+      target_temperature: 30
+
+  # ── Change mode ────────────────────────────────────────────────
+  - name: "switch to cool mode"
+    state:
+      power: true
+      operating_mode: 4
+      target_temperature: 25.0
+      fan_speed: 102
+    changes:
+      operating_mode: 2
+    expect_decode:
+      operating_mode: 2
+      target_temperature: 25
+
+  # ── Follow Me (matches captured frame from analysis) ───────────
+  - name: "enable follow_me — matches Session 7 captured frame"
+    state:
+      power: true
+      operating_mode: 2
+      target_temperature: 25.0
+      fan_speed: 102
+      follow_me: false
+    changes:
+      follow_me: true
+    expect_decode:
+      follow_me: true
+    expect_body_byte:
+      8: 0x80
+
+  - name: "disable follow_me — matches Session 7 captured frame"
+    state:
+      power: true
+      operating_mode: 2
+      target_temperature: 25.0
+      fan_speed: 102
+      follow_me: true
+    changes:
+      follow_me: false
+    expect_decode:
+      follow_me: false
+    expect_body_byte:
+      8: 0x00
+
+  # ── Turbo mode ─────────────────────────────────────────────────
+  - name: "enable turbo mode"
+    state:
+      power: true
+      operating_mode: 4
+      target_temperature: 27.0
+      fan_speed: 102
+      turbo_mode: false
+    changes:
+      turbo_mode: true
+    expect_decode:
+      turbo_mode: true
+
+  # ── Power off ──────────────────────────────────────────────────
+  - name: "power off preserves other state"
+    state:
+      power: true
+      operating_mode: 4
+      target_temperature: 25.0
+      fan_speed: 102
+    changes:
+      power: false
+    expect_decode:
+      power: false
+      operating_mode: 4
+      target_temperature: 25
+      fan_speed: 102
+
+  # ── Protocol reserved bits ─────────────────────────────────────
+  - name: "protocol_bit1 always set in body[1]"
+    state:
+      power: false
+    changes: {}
+    expect_body_byte:
+      1: 0x02
+
+  - name: "swing_reserved always 0x30 in body[7]"
+    state: {}
+    changes: {}
+    expect_body_byte:
+      7: 0x30

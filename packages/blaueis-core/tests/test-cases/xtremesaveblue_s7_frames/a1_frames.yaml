@@ -1,0 +1,46 @@
+# Real 0xA1 Energy Heartbeat frames — XtremeSaveBlue Q11, Session 7
+#
+# UART bus (bus_type=1), msg_type=0x04. Pushed by AC ~every 30s.
+# BCD-encoded power counters + temperature sensors.
+
+device: "XtremeSaveBlue Q11"
+session: "Session 7"
+source: "HVAC-shark-dumps/Midea-XtremeSaveBlue-logicanalyzer/Session 7/session.pcap"
+bus: "UART (bus_type=1)"
+frame_type: "0xA1 Heartbeat"
+
+# Capability records for encoding: capability resolution.
+# Q11 reports cap 0x16=0 ("not supported") — the app does not show power UI.
+# However, power data IS present and uses LINEAR encoding (confirmed against
+# external power meter reading ~689 kWh). Override cap to 4 (linear) for test.
+# NOTE: The previous "confirmed BCD" interpretation (113 kWh) was WRONG.
+capabilities:
+  - cap_id: "0x16"
+    cap_type: 2
+    data: [4]
+    data_hex: "04"
+
+frames:
+  - name: "early — compressor idle, heat mode"
+    timestamp: 7.0
+    body_hex: "A1 00 01 0D 03 00 00 00 00 00 00 00 00 62 3A 00 00 00 10 00 00 00 00 00 00 00 00 00 00 00 00 00"
+    ground_truth:
+      total_power_kwh: 688.67
+      total_run_power_kwh: 0.0
+    notes: "body[1..4]=00 01 0D 03 -> linear: 0x00010D03 = 68867 / 100 = 688.67 kWh. Confirmed against external power meter."
+
+  - name: "mid-session — cool mode active"
+    timestamp: 402.2
+    body_hex: "A1 00 01 0D 05 00 00 00 00 00 00 00 00 62 3A 00 00 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00"
+    ground_truth:
+      total_power_kwh: 688.69
+      total_run_power_kwh: 0.0
+    notes: "Slight increase from t=7s (0.02 kWh in ~400s)."
+
+  - name: "end of session — after extended operation"
+    timestamp: 763.3
+    body_hex: "A1 00 01 0D 06 00 00 00 00 00 00 00 00 5B 3B 00 00 00 99 00 00 00 00 00 00 00 00 00 00 00 00 00"
+    ground_truth:
+      total_power_kwh: 688.70
+      total_run_power_kwh: 0.0
+    notes: "End of session. Total energy 688.70 kWh (linear)."

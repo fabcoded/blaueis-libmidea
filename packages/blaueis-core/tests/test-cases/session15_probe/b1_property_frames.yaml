@@ -1,0 +1,34 @@
+# Real 0xB1 property response frames — XtremeSaveBlue Q11, Session 15
+#
+# B1 property query responses. Each frame contains multiple TLV records.
+# Properties with data_len=0 are not supported by this unit (skipped).
+# Field mapping cross-validated against mill1000/midea-msmart (Finding 9).
+
+device: "XtremeSaveBlue Q11"
+session: "Session 15"
+source: "ac_probe.py UART probe via raspi-midea gateway"
+bus: "UART"
+frame_type: "0xB1 Property Response"
+
+frames:
+  - name: "batch 1 — tone, prevent_straight_wind (+ unsupported properties)"
+    timestamp: "2026-04-10T19:08:05Z"
+    body_hex: "b1 08 15 00 00 00 3f 00 00 00 41 00 00 00 1a 00 00 01 01 18 00 00 00 32 00 00 00 39 00 00 01 00 42 00 00 01 01 00"
+    ground_truth:
+      # Properties with data:
+      buzzer: true               # prop 0x1A,0x00 data=[0x01] → bool true (on)
+      self_clean: false          # prop 0x39,0x00 data=[0x00] → bool false (off)
+      breezeless: 1              # prop 0x42,0x00 data=[0x01] → mode 1
+      # Properties with data_len=0 (not supported on this unit):
+      # 0x15 indoor_humidity, 0x3F error_code, 0x41 mode_query,
+      # 0x18 no_wind_sense, 0x32 wind_straight
+    notes: "8 properties queried; 3 responded with data (tone, self_clean=0, prevent_straight_wind)."
+
+  - name: "batch 2 — rate_select, ud_angle, lr_angle (+ unsupported)"
+    timestamp: "2026-04-10T19:08:08Z"
+    body_hex: "b1 08 48 00 00 01 64 09 00 00 01 32 0a 00 00 01 32 0b 00 00 00 28 00 00 00 25 00 00 00 91 00 00 00 ab 00 00 00 00"
+    ground_truth:
+      rate_select: 100           # prop 0x48,0x00 data=[0x64] → 100
+      wind_swing_ud_angle: 50    # prop 0x09,0x00 data=[0x32] → 50 (non-regression)
+      wind_swing_lr_angle: 50    # prop 0x0A,0x00 data=[0x32] → 50 (non-regression)
+    notes: "8 properties queried; 3 responded with data. 0x0B pm25, 0x28 operating_time, 0x25 temp_ranges, 0x91 has_icheck, 0xAB indoor_unit_code all data_len=0."

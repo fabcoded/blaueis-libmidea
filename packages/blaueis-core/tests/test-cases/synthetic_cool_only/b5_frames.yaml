@@ -1,0 +1,27 @@
+# Synthetic B5 frames — cooling-only unit with discrete fan
+#
+# Tests capability variants NOT covered by XtremeSaveBlue Q11:
+#   - cap 0x14=0 (cool-only, no heat mode)
+#   - cap 0x10=5 (discrete fan: Low/Mid/High/Auto)
+#   - cap 0x1A=2 (turbo not available)
+#   - cap 0x13=0 (frost protection not available)
+#   - cap 0x2C=1 (buzzer supported)
+#   - cap 0x12=0 (eco not available)
+#   - cap 0x25=18-28°C cool, 0.5°C steps
+
+device: "Synthetic Cool-Only Unit"
+session: "synthetic"
+source: "hand-crafted for constraint testing"
+
+frames:
+  - name: "B5 Synthetic Query 1"
+    msg_type: 0x03
+    body_hex: >-
+      B5 07
+      14 02 01 00
+      10 02 01 05
+      1A 02 01 02
+      13 02 01 00
+      2C 02 01 01
+      12 02 01 00
+      25 02 07 24 38 24 38 24 38 01

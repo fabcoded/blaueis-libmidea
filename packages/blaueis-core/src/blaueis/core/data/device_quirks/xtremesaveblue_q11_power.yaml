@@ -1,0 +1,43 @@
+# Device quirks: XtremeSaveBlue Q11 — power monitoring fix
+#
+# Apply with:
+#   ac_monitor.py --host ... --quirks protocols/midea/spec/device_quirks/xtremesaveblue_q11_power.yaml
+#   build_command.py status.json --quirks protocols/midea/spec/device_quirks/xtremesaveblue_q11_power.yaml --set ...
+
+name: "XtremeSaveBlue Q11 — power monitoring"
+description: |
+  The Q11 firmware reports cap 0x16=0 ("no power calc") which causes
+  process_b5 to gate the 4 power fields to feature_available=never.
+  But Session 15 probe data confirms the AC actually returns valid
+  C1 Group 4 power frames with real linear-encoded data (~721 kWh
+  total monotonically increasing across 4 captures, ~660 W real-time
+  draw with the compressor running).
+
+  Cross-validation across 4 probe runs (56 minutes apart):
+    Run 1: body[4..7] = 00 01 19 BE → linear = 721.26 kWh
+    Run 2:                00 01 19 BF → 721.27 kWh
+    Run 3:                00 01 19 CC → 721.40 kWh
+    Run 4:                00 01 19 DD → 721.57 kWh
+  Monotonic increase confirms linear encoding is correct (BCD would
+  give 120.43 / 120.65 / etc. — nonsensical for cumulative energy).
+
+  This quirks file:
+    1. Forces feature_available=readable on the 4 power fields so
+       process_data_frame stops skipping them.
+    2. Synthesizes cap 0x16=4 (power_cal_non_bcd) so
+       resolve_capability_encoding() selects power_linear_4 for
+       cumulative kWh fields and power_linear_3 for real-time power.
+
+  No glossary edits required. The cap value is the manufacturer's
+  marketing tier, not a hardware capability.
+
+feature_available:
+  total_power_kwh: readable
+  total_run_power_kwh: readable
+  current_run_power_kwh: readable
+  realtime_power_kw: readable
+
+synthesize_capabilities:
+  - cap_id: "0x16"
+    data: [4]   # raw=4 → power_cal_non_bcd → linear encoding
+    force: true # override the device's reported cap 0x16=0

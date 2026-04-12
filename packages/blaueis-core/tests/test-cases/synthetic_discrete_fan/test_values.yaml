@@ -1,0 +1,129 @@
+# Test cases — synthetic heating-only, 2-speed fan, no swing
+#
+# Covers:
+#   - 2-speed discrete fan (cap 0x10=3): only {40, 80}
+#   - Heating-only modes (cap 0x14=2): {1, 4, 5} only
+#   - Heat-only turbo (cap 0x1A=3)
+#   - No swing (cap 0x15=2)
+#   - Special eco (cap 0x12=2)
+#   - Temp range 20-30°C, no 0.5°C steps (byte[6] absent, 6 bytes only)
+
+tests:
+  # ── fan_speed: cap 0x10=3 → only {40, 80} ────────────────────
+  - field: fan_speed
+    value: 40
+    note: "Low — valid"
+    expected:
+      valid: true
+
+  - field: fan_speed
+    value: 80
+    note: "High — valid"
+    expected:
+      valid: true
+
+  - field: fan_speed
+    value: 60
+    note: "Medium not in {40, 80} → snap to nearest"
+    expected:
+      valid: false
+      corrected: 40
+      reason: snap_nearest
+
+  - field: fan_speed
+    value: 102
+    note: "Auto not in {40, 80} → snap to 80"
+    expected:
+      valid: false
+      corrected: 80
+      reason: snap_nearest
+
+  # ── operating_mode: cap 0x14=2 → heating-only {1, 4, 5} ──────
+  - field: operating_mode
+    value: 4
+    note: "heat — valid"
+    expected:
+      valid: true
+
+  - field: operating_mode
+    value: 5
+    note: "fan — valid"
+    expected:
+      valid: true
+
+  - field: operating_mode
+    value: 2
+    note: "cool — NOT available on heating-only"
+    expected:
+      valid: false
+      corrected: null
+      reason: reject
+
+  - field: operating_mode
+    value: 3
+    note: "dry — NOT available on heating-only"
+    expected:
+      valid: false
+      corrected: null
+      reason: reject
+
+  # ── target_temperature: cap 0x25 = 20-30°C, 1°C steps ────────
+  - field: target_temperature
+    mode: heat
+    value: 25.0
+    expected:
+      valid: true
+
+  - field: target_temperature
+    mode: heat
+    value: 18.0
+    note: "below heat min 20°C → clamp"
+    expected:
+      valid: false
+      corrected: 20.0
+      reason: clamp
+
+  - field: target_temperature
+    mode: heat
+    value: 25.5
+    note: "no half-degree steps (6 bytes, no decimals flag) → clamp to 25"
+    expected:
+      valid: false
+      corrected: 25.0
+      reason: clamp
+
+  # ── swing: cap 0x15=2 (neither) — setting swing should be rejected ──
+  - field: swing_vertical
+    value: 1
+    note: "vertical swing ON — REJECTED, cap 0x15=2 means no swing at all"
+    expected:
+      valid: false
+      corrected: null
+      reason: ignore
+
+  - field: swing_horizontal
+    value: 1
+    note: "horizontal swing ON — REJECTED, cap 0x15=2 means no swing at all"
+    expected:
+      valid: false
+      corrected: null
+      reason: ignore
+
+  # ── boolean capability checks ─────────────────────────────────
+  - field: swing_vertical
+    cap_check:
+      cap_id: "0x15"
+      expected_supported: true
+    note: "cap 0x15=2 present (neither swing) — record exists but value means no swing"
+
+  - field: eco_mode
+    cap_check:
+      cap_id: "0x12"
+      expected_supported: true
+    note: "cap 0x12=2 present → special eco variant"
+
+  - field: turbo_mode
+    cap_check:
+      cap_id: "0x1A"
+      expected_supported: true
+    note: "cap 0x1A=3 present → turbo heat-only"

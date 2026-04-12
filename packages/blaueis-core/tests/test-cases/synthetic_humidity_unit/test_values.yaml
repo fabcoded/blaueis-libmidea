@@ -1,0 +1,105 @@
+# Test cases — synthetic full-featured humidity unit
+#
+# Covers capabilities absent from other test devices:
+#   - Humidity control (cap 0x1F=2, auto+manual): valid_range [30,100]
+#   - Full fan (cap 0x10=6): {20, 40, 60, 80, 102}
+#   - Temperature ranges differ per mode (cool: 16-28, auto: 17-27, heat: 16-30)
+#   - 0.5°C steps enabled (byte[6]=1)
+#   - Inverted caps: 0x22=1 means NOT changeable, 0x33=0 means supported
+
+tests:
+  # ── humidity_setpoint: cap 0x1F=2 → auto+manual [30, 100] ────
+  - field: humidity_setpoint
+    value: 50
+    expected:
+      valid: true
+
+  - field: humidity_setpoint
+    value: 100
+    note: "max boundary"
+    expected:
+      valid: true
+
+  - field: humidity_setpoint
+    value: 20
+    note: "below manual min 30 → clamp"
+    expected:
+      valid: false
+      corrected: 30
+      reason: clamp
+
+  - field: humidity_setpoint
+    value: 110
+    note: "above max 100 → clamp"
+    expected:
+      valid: false
+      corrected: 100
+      reason: clamp
+
+  # ── fan_speed: cap 0x10=6 → full {20, 40, 60, 80, 102} ──────
+  - field: fan_speed
+    value: 20
+    note: "Mute/Silent — available in full fan set"
+    expected:
+      valid: true
+
+  - field: fan_speed
+    value: 100
+    note: "Turbo (100) not in cap 0x10=6 set → snap to 102 (Auto)"
+    expected:
+      valid: false
+      corrected: 102
+      reason: snap_nearest
+
+  # ── target_temperature: asymmetric per-mode ranges ────────────
+  #    cool: 16-28°C, auto: 17-27°C, heat: 16-30°C, 0.5°C steps
+  - field: target_temperature
+    mode: cool
+    value: 27.5
+    note: "within cool range, half-degree valid (byte[6]=1)"
+    expected:
+      valid: true
+
+  - field: target_temperature
+    mode: cool
+    value: 29.0
+    note: "above cool max 28°C → clamp"
+    expected:
+      valid: false
+      corrected: 28.0
+      reason: clamp
+
+  - field: target_temperature
+    mode: auto
+    value: 16.0
+    note: "below auto min 17°C → clamp"
+    expected:
+      valid: false
+      corrected: 17.0
+      reason: clamp
+
+  - field: target_temperature
+    mode: heat
+    value: 30.0
+    note: "exactly at heat max — valid"
+    expected:
+      valid: true
+
+  # ── boolean capability checks ─────────────────────────────────
+  - field: humidity_setpoint
+    cap_check:
+      cap_id: "0x1F"
+      expected_supported: true
+    note: "cap 0x1F=2 → auto+manual humidity"
+
+  - field: total_power_kwh
+    cap_check:
+      cap_id: "0x16"
+      expected_supported: true
+    note: "cap 0x16=2 (power calc BCD) — UI shows power display"
+
+  - field: buzzer
+    cap_check:
+      cap_id: "0x2C"
+      expected_supported: false
+    note: "cap 0x2C not in this device's B5 frames"

@@ -1,0 +1,817 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "serial_glossary_schema.json",
+  "title": "Midea HVAC Serial Protocol Field Glossary Schema",
+  "description": "Validates the structure of serial_glossary.yaml — the machine-readable field glossary for the Midea HVAC serial protocol (UART/R/T).",
+  "type": "object",
+  "required": ["meta", "fields"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["version", "protocol_focus", "primary_bus", "last_updated", "schema"],
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semantic version of the glossary format."
+        },
+        "protocol_focus": {
+          "type": "string",
+          "description": "Primary protocol layer this glossary covers."
+        },
+        "primary_bus": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Buses with full field entries (uart, rt)."
+        },
+        "reference_buses": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Buses referenced in notes only (xye, mainboard, ir)."
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date",
+          "description": "ISO 8601 date of last content update."
+        },
+        "schema": {
+          "type": "string",
+          "description": "Filename of this JSON Schema."
+        }
+      }
+    },
+    "encodings": {
+      "type": "object",
+      "description": "Reusable encoding templates referenced by field protocol entries.",
+      "patternProperties": {
+        "^[a-z][a-z0-9_]*$": { "$ref": "#/$defs/encoding" }
+      },
+      "additionalProperties": false
+    },
+    "fields": {
+      "type": "object",
+      "description": "Two top-level categories: control (settable) and sensor (read-only).",
+      "properties": {
+        "control": { "$ref": "#/$defs/category_group" },
+        "sensor":  { "$ref": "#/$defs/category_group" }
+      },
+      "additionalProperties": false
+    },
+    "frames": {
+      "type": "object",
+      "description": "Machine-readable query-frame specs. Each entry is a canonical frame ID that the planner uses to build and dedup queries. Sibling of 'fields' and 'encodings' — the single source of truth for what bytes hit the wire. See TODO_glossary.md §6.",
+      "patternProperties": {
+        "^[a-z][a-z0-9_]*$": { "$ref": "#/$defs/frame_spec" }
+      },
+      "additionalProperties": false
+    },
+    "protocol_generations": {
+      "type": "object",
+      "description": "Protocol-key → generation map. Drives infer_generation() and the source-priority semantics in field_query.read_field(). Each value is 'legacy' (mill1000 §4.3 legacy family — C0, C1*, B1, 0x40), 'new' (B0/B5 family), or null (generation deliberately unknown — heartbeats and frames whose role is not yet decided). Keys absent from this dict resolve to null at lookup time. Edit this dict to add a new frame; no Python change is needed.",
+      "patternProperties": {
+        "^(cmd|rsp)_0x[0-9a-f]+(_[a-z0-9]+)*$": {
+          "type": ["string", "null"],
+          "enum": ["legacy", "new", null]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "encoding": {
+      "type": "object",
+      "required": ["formula", "unit"],
+      "additionalProperties": false,
+      "properties": {
+        "formula": {
+          "type": "string",
+          "description": "Human-readable decoding formula, e.g. '(raw - 50) / 2.0'."
+        },
+        "unit": {
+          "type": "string",
+          "description": "Physical unit of the decoded value, e.g. '°C', 'kWh'."
+        },
+        "scale": {
+          "type": "number",
+          "description": "Resolution per raw unit, e.g. 0.5 means each raw step = 0.5 °C."
+        },
+        "offset": {
+          "type": "number",
+          "description": "Raw value corresponding to 0 in decoded units."
+        },
+        "range": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "[min, max] of decoded value in physical units."
+        },
+        "note": {
+          "type": "string"
+        },
+        "byte_count": {
+          "type": "integer",
+          "description": "Number of consecutive bytes this encoding reads from the body (default 1). The decoder reads body[offset..offset+byte_count]."
+        },
+        "byte_order": {
+          "type": "string",
+          "enum": ["le", "be"],
+          "description": "Byte order for generic multi-byte encodings (uint16_le, uint16_be, uint24_le, uint24_be). Dispatched in apply_encoding instead of name pattern matching."
+        }
+      }
+    },
+    "frame_spec": {
+      "type": "object",
+      "description": "Canonical query-frame specification. Referenced from the top-level 'frames' dict. The codec reads these entries via build_frame_from_spec() to produce wire bytes; the planner reads 'triggers' to match fields to frames. See TODO_glossary.md §6.",
+      "required": ["body"],
+      "additionalProperties": false,
+      "properties": {
+        "purpose": {
+          "type": "string",
+          "description": "One-line human explanation of what this frame does."
+        },
+        "msg_type": {
+          "type": "integer",
+          "description": "Application-layer message type byte (UART frame byte[9]). Default 0x03 (MEAS/query)."
+        },
+        "body": { "$ref": "#/$defs/frame_body" },
+        "triggers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of rsp_* frame keys this query causes the AC to emit. The planner uses this to match fields (which reference rsp_* keys in their protocols blocks) to the right query frame."
+        },
+        "bus": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["uart", "rt"] },
+          "description": "Buses this frame is valid on. Omit for frames valid on both. The planner skips frames whose bus list doesn't include the current runtime bus. Some queries are bus-specific: C1 group queries with body[1]=0x81 only work on R/T (extension board); body[1]=0x21 variants only work on UART (WiFi dongle). See TODO_glossary.md §8."
+        },
+        "section": {
+          "type": "string",
+          "description": "Cross-reference to serial_protocol.md section."
+        },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Evidence trail — capture sessions, community projects, code references."
+        },
+        "confidence": { "$ref": "#/$defs/confidence_label" },
+        "note": { "type": "string" }
+      }
+    },
+    "frame_body": {
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "Literal body bytes, zero-padded to the declared length.",
+          "required": ["length", "bytes"],
+          "additionalProperties": false,
+          "properties": {
+            "length": { "type": "integer", "minimum": 1, "description": "Final body length in bytes, after zero-padding." },
+            "bytes":  { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 255 }, "description": "Literal byte values starting at body[0]. Shorter than 'length' → padded with 0x00." }
+          }
+        },
+        {
+          "type": "object",
+          "description": "Sparse byte placement — only the listed positions are set, the rest are zero.",
+          "required": ["length", "bytes_at"],
+          "additionalProperties": false,
+          "properties": {
+            "length":   { "type": "integer", "minimum": 1 },
+            "bytes_at": { "type": "object", "description": "Map of byte index (as string key) to value. Unspecified positions are zero-filled." }
+          }
+        },
+        {
+          "type": "object",
+          "description": "Body assembled at call time by walking per-field 'decode' arrays whose protocol key matches 'assembled_from'. Used for set frames (cmd_0x40, cmd_0xb0) where the body content depends on the specific fields being written.",
+          "required": ["assembled_from"],
+          "additionalProperties": false,
+          "properties": {
+            "length":         { "type": "integer", "minimum": 1, "description": "Optional — fixed body length if known (cmd_0x40 = 26). Omit for variable-length command bodies (cmd_0xb0)." },
+            "assembled_from": { "type": "string", "description": "The protocol key (e.g. 'cmd_0x40') whose per-field decode arrays describe where to pack each field's bits." }
+          }
+        }
+      ]
+    },
+    "confidence_label": {
+      "type": "string",
+      "enum": ["confirmed", "consistent", "hypothesis", "disputed", "unknown"],
+      "description": "Per AGENTS.md: confirmed > consistent > hypothesis > disputed > unknown."
+    },
+    "direction": {
+      "type": "string",
+      "enum": ["command", "query", "response", "both", "capability"],
+      "description": "Data flow direction: command (host→AC, modifies state), query (host→AC, triggers response without modifying state), response (AC→host), both, or capability (queried once)."
+    },
+    "data_type": {
+      "type": "string",
+      "enum": ["bool", "uint8", "uint16", "int8", "float", "enum", "bitmask", "bcd"],
+      "description": "Wire-level data type of the field."
+    },
+    "device_context": {
+      "type": "string",
+      "enum": ["indoor_unit", "outdoor_unit", "controller", "extension_board"],
+      "description": "Which physical device this field primarily relates to."
+    },
+    "protocol_location": {
+      "type": "object",
+      "required": ["frame", "direction"],
+      "additionalProperties": false,
+      "properties": {
+        "frame": {
+          "type": "string",
+          "description": "Frame identifier, e.g. '0x40 Set', '0xC0 Response'."
+        },
+        "byte": {
+          "type": "string",
+          "description": "Human-readable byte/bit position for documentation. Machine parsing uses 'decode' instead."
+        },
+        "decode": {
+          "type": "array",
+          "description": "Machine-parseable decode chain (priority order). First step whose condition is met wins. See decode_step for structure.",
+          "items": { "$ref": "#/$defs/decode_step" }
+        },
+        "encoding": {
+          "type": "string",
+          "description": "Key into the top-level encodings dict. Prefer decode[].encoding for new entries."
+        },
+        "direction": { "$ref": "#/$defs/direction" },
+        "section": {
+          "type": "string",
+          "description": "Cross-reference to serial_protocol.md section, e.g. '§3.2'."
+        }
+      }
+    },
+    "decode_step": {
+      "type": "object",
+      "description": "A single decode step. Either offset+bits (extract from body) or logic+sources (combine multiple extractions).",
+      "properties": {
+        "property_id": {
+          "type": "string",
+          "pattern": "^0x[0-9A-Fa-f]{2},0x[0-9A-Fa-f]{2}$",
+          "description": "B0/B1 TLV property ID as 'lo,hi' hex pair (e.g. '0x4B,0x00'). When present, the decoder first locates the TLV record with this property ID, then applies offset/bits relative to the record's data bytes (not the frame body). Used for property-protocol fields (cmd_0xb0 / rsp_0xb1). Mutually exclusive with logic/sources."
+        },
+        "offset": {
+          "type": "integer",
+          "description": "Byte index. For fixed-body frames (C0, C1): body[N]. For property-addressed frames (B0/B1, when property_id is set): data byte N within the matched TLV record's payload."
+        },
+        "bits": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "[high_bit, low_bit] inclusive. [0,0]=bit 0 only, [7,0]=full byte, [7,5]=upper 3 bits."
+        },
+        "encoding": {
+          "type": "string",
+          "description": "Key into top-level encodings dict. Applied after bit extraction. Multi-byte encodings (BCD etc.) define byte_count in the encoding definition."
+        },
+        "add": {
+          "type": "number",
+          "description": "Constant added to the extracted value before encoding."
+        },
+        "condition": {
+          "type": "string",
+          "description": "Simple condition on extracted value: '!= 0', '> 0'. Step skipped if not met."
+        },
+        "half_bit": {
+          "type": "object",
+          "description": "Extra 0.5 flag from another bit position. Adds 0.5 if the specified bit is set.",
+          "properties": {
+            "offset": { "type": "integer" },
+            "bit": { "type": "integer" }
+          }
+        },
+        "logic": {
+          "type": "string",
+          "enum": ["or", "and"],
+          "description": "Combine sources with boolean logic. Mutually exclusive with offset/bits."
+        },
+        "sources": {
+          "type": "array",
+          "description": "Array of {offset, bits} when logic is set.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "offset": { "type": "integer" },
+              "bits": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 }
+            }
+          }
+        }
+      }
+    },
+    "field": {
+      "type": "object",
+      "required": ["description", "data_type", "confidence", "feature_available"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "One-line human-readable description of what this field represents."
+        },
+        "default_priority": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Per-field default priority list consumed by field_query.read_field() when no explicit priority is passed. Each entry is a scope token: 'protocol_new', 'protocol_legacy', 'protocol_unknown', 'protocol_all', or a literal frame protocol_key (e.g. 'rsp_0xc0'). Walked left-to-right; the first scope with a populated slot wins. Defaults to ['protocol_all'] when omitted."
+        },
+        "field_class": {
+          "type": "string",
+          "enum": ["sensor", "trigger", "stateful_bool", "stateful_enum", "stateful_numeric", "complex_function", "unknown"],
+          "description": "Semantic classification of the field. 'sensor': decode-only, no encode path. 'trigger': encode-only, fire-and-forget action with no read-back. 'stateful_bool': bidirectional boolean toggle. 'stateful_enum': bidirectional discrete-set selector. 'stateful_numeric': bidirectional continuous-numeric setpoint (e.g. humidity_setpoint in [0,100] %) — neither bool nor discrete enum, but a single scalar with a valid_range and step. 'complex_function': multi-key composite, may have state-machine semantics, may share wire bytes with siblings. 'unknown': inference could not assign a class; needs manual review. Optional — when omitted, downstream tools may fall back to inference from data_type and protocols. See serial_glossary_guide.md Part 2 — field_class."
+        },
+        "composite": {
+          "$ref": "#/$defs/composite",
+          "description": "For fields whose user-visible value spans multiple internal sub-fields (e.g. a setpoint composed of hour + step + minute sub-bytes). The members are internal-only; they exist for the codec's encode/decode walk and are not separately exported. See serial_glossary_guide.md Part 3 — composite."
+        },
+        "derived_from": {
+          "$ref": "#/$defs/derived_from",
+          "description": "Receive-side multi-input formula that synthesises the user-visible value from already-decoded sibling members or other glossary fields. The 'inputs' list is the dependency declaration the codec uses to topologically sort pass-2 fields. See serial_glossary_guide.md Part 1 — Foundational principle and Part 3 — derived_from."
+        },
+        "decompose_to": {
+          "$ref": "#/$defs/decompose_to",
+          "description": "Encode-side formula list — the inverse of derived_from. Each entry expands the user-visible value into one named sub-field via a single-output formula. See serial_glossary_guide.md Part 3 — decompose_to."
+        },
+        "state_machine": {
+          "$ref": "#/$defs/state_machine",
+          "description": "For complex_function fields where transitions have side effects (e.g. setting one value forces sibling fields to fixed values). Declares the state space and the transitions between states; the codec consumes this generically. See serial_glossary_guide.md Part 3 — state_machine."
+        },
+        "triggers": {
+          "$ref": "#/$defs/triggers",
+          "description": "For trigger-class fields (fire-and-forget actions). Lists which sibling fields the trigger resets. The codec uses this to predict device-side state transitions after a trigger is sent. See serial_glossary_guide.md Part 3 — triggers."
+        },
+        "shares_byte_with": {
+          "$ref": "#/$defs/shares_byte_with",
+          "description": "Map of wire-byte position (e.g. 'bodyBytes[8]') to a list of sibling internal-key names that share the same byte. The encoder must reconstruct the byte from all listed siblings before writing, otherwise sibling values get clobbered. Discovered automatically by the field-extractor's shared-bytes pass. See serial_glossary_guide.md Part 3 — shares_byte_with."
+        },
+        "mutual_exclusion": {
+          "$ref": "#/$defs/mutual_exclusion",
+          "description": "Cross-field validity constraints: 'when this field is on, force these other fields to these values' (and inverse for when_off). Sourced from the gating analyzer's forced-state cascades. See serial_glossary_guide.md Part 3 — mutual_exclusion."
+        },
+        "_migration": {
+          "$ref": "#/$defs/migration_block",
+          "description": "Audit-trail block written by the migration script. Records the inferred class, the inference reason, and (when populated) the previous feature_available value before any default-deny demotion. Free-form additionalProperties allowed so the migration script can extend without schema bumps."
+        },
+        "data_type": { "$ref": "#/$defs/data_type" },
+        "device_context": { "$ref": "#/$defs/device_context" },
+        "unit": {
+          "type": "string",
+          "description": "Physical unit if applicable, e.g. '°C', '%', 'kWh'."
+        },
+        "range": {
+          "type": "array",
+          "description": "[min, max] of the decoded value in physical units."
+        },
+        "values": {
+          "type": "object",
+          "description": "For enum/bitmask types: map of symbolic name → {raw, description}.",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "raw": {},
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "alt_names": {
+          "type": "object",
+          "description": "Map of source project → field name used in that source.",
+          "additionalProperties": { "type": "string" }
+        },
+        "protocols": {
+          "type": "object",
+          "description": "Map of context key (e.g. serial_set, serial_response) → protocol location.",
+          "patternProperties": {
+            "^[a-z][a-z0-9_]*$": { "$ref": "#/$defs/protocol_location" }
+          },
+          "additionalProperties": false
+        },
+        "xye_note": {
+          "type": "string",
+          "description": "How this field maps on the XYE bus (different encoding/byte position)."
+        },
+        "mainboard_note": {
+          "type": "string",
+          "description": "How this field maps on the display↔mainboard bus."
+        },
+        "ir_note": {
+          "type": "string",
+          "description": "How this field maps in IR remote frames."
+        },
+        "disambiguation": {
+          "type": "string",
+          "description": "Explains naming conflicts or encoding asymmetries for this field."
+        },
+        "note": {
+          "type": "string",
+          "description": "Additional context not covered by other properties."
+        },
+        "confidence": { "$ref": "#/$defs/confidence_label" },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Evidence sources: capture sessions, community projects, findings."
+        },
+        "feature_available": {
+          "type": "string",
+          "enum": ["always", "readable", "capability", "never"],
+          "description": "Access level. 'always': read+write, no cap needed. 'readable': decode-only until cap upgrades to writable. 'capability': unavailable until B5 cap confirms. 'never': disabled (service/disputed)."
+        },
+        "power_independent": {
+          "type": "boolean",
+          "description": "Whether this control can be written when the unit is powered off. Default false (requires power on). Only meaningful for control fields."
+        },
+        "default_value": {
+          "description": "Protocol-reserved fixed value the encoder must write regardless of user input. Used for reserved/bit-pattern fields whose wire bits are fixed by the protocol spec (e.g. protocol_bit1 always 1, swing_reserved always 3). Reading from the glossary keeps the encoder generic: no field-name branches in Python. Only meaningful for settable fields; ignored on read-only/sensor entries.",
+          "type": ["number", "string", "boolean", "null"]
+        },
+        "read_value": {
+          "description": "Last value read/decoded from a frame. Null when not yet received. Populated by parsers at runtime, not by hand.",
+          "type": ["number", "string", "boolean", "null"]
+        },
+        "cap_id": {
+          "type": "string",
+          "description": "B5 capability TLV record ID (hex), e.g. '0x10'."
+        },
+        "cap_id_16": {
+          "type": "string",
+          "description": "16-bit capability ID including type prefix (dudanov format), e.g. '0x0210'."
+        },
+        "capability": {
+          "type": "object",
+          "description": "B5 capability describing valid values for this field. Frame-centric: lists which frames report it. Values carry constraints inline (the value IS the constraint). For data-carried caps, 'decode' describes per-byte extraction.",
+          "properties": {
+            "cap_id": { "type": "string", "description": "B5 TLV record ID (hex)." },
+            "cap_id_16": { "type": "string", "description": "16-bit ID with type prefix (dudanov format)." },
+            "cap_type": { "type": "string", "enum": ["simple", "extended"], "description": "TLV type: simple (0x00, boolean) or extended (0x02, value map)." },
+            "description": { "type": "string" },
+            "frames": {
+              "type": "object",
+              "description": "Frames that report this capability, keyed by frame identifier. Same frame-first pattern as field protocols.",
+              "patternProperties": {
+                "^[a-z][a-z0-9_]*$": { "$ref": "#/$defs/protocol_location" }
+              },
+              "additionalProperties": false
+            },
+            "default": { "$ref": "#/$defs/cap_default" },
+            "values": {
+              "type": "object",
+              "description": "For enum-mapped caps: map of value → {description, valid_range|valid_set, step, correction}. Each value carries the constraint it imposes.",
+              "additionalProperties": { "$ref": "#/$defs/cap_value" }
+            },
+            "decode": {
+              "type": "object",
+              "description": "For data-carried caps: per-byte extraction rules. Each key names a decoded field (e.g. cool_min, cool_max).",
+              "additionalProperties": { "$ref": "#/$defs/cap_decode_field" }
+            },
+            "alt_names": { "type": "object", "additionalProperties": { "type": "string" } },
+            "note": { "type": "string" },
+            "confidence": { "$ref": "#/$defs/confidence_label" },
+            "sources": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "constraints": {
+          "type": "object",
+          "description": "Global validation rules that always apply regardless of capabilities (encoding limits, state requirements). Capability-specific constraints live inline in capability.values.",
+          "additionalProperties": false,
+          "properties": {
+            "global": {
+              "type": "array",
+              "description": "Rules that always apply (encoding limits, state preconditions).",
+              "items": { "$ref": "#/$defs/constraint_rule" }
+            }
+          }
+        }
+      }
+    },
+    "cap_default": {
+      "type": "object",
+      "description": "Pre-B5 constraints applied at boot for readable fields. Replaced by per-cap-value constraints once B5 arrives. Until the device's capability scan provides field-specific constraint data, readable fields must fall back to the most permissive constraint set the protocol allows — otherwise valid frames decoded before the first B5 reply would be rejected.",
+      "additionalProperties": false,
+      "properties": {
+        "description": { "type": "string" },
+        "valid_set": { "type": "array" },
+        "valid_range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+        "step": { "type": "number" },
+        "correction": { "$ref": "#/$defs/correction_strategy" },
+        "by_mode": {
+          "type": "object",
+          "description": "Per-mode default constraints, same shape as the runtime active_constraints.by_mode dict.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "valid_range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+              "valid_set": { "type": "array" },
+              "step": { "type": "number" },
+              "correction": { "$ref": "#/$defs/correction_strategy" }
+            }
+          }
+        },
+        "note": { "type": "string" }
+      }
+    },
+    "cap_value": {
+      "type": "object",
+      "description": "A single capability value with the constraint it imposes on the parent field.",
+      "required": ["feature_available"],
+      "properties": {
+        "raw": { "description": "Raw byte value." },
+        "description": { "type": "string" },
+        "feature_available": { "type": "string", "enum": ["always", "readable", "capability", "never"], "description": "Overrides the field-level feature_available when this cap value is active." },
+        "encoding": { "type": "string", "description": "Key into top-level encodings dict. Overrides the protocol entry's encoding when this cap value is active. Used when capability switches the decode format (e.g. BCD vs linear)." },
+        "valid_range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+        "valid_set": { "type": "array" },
+        "step": { "type": "number" },
+        "correction": { "$ref": "#/$defs/correction_strategy" },
+        "note": { "type": "string" }
+      }
+    },
+    "cap_decode_field": {
+      "type": "object",
+      "description": "Byte-level decode rule for a data-carried capability.",
+      "properties": {
+        "offset": { "type": "integer", "description": "Byte offset within the capability data payload." },
+        "formula": { "type": "string", "description": "Decode formula, e.g. 'raw * 0.5'." },
+        "unit": { "type": "string" },
+        "mode": { "type": "string", "description": "Operating mode this decoded value applies to." },
+        "role": { "type": "string", "enum": ["min", "max", "step", "flag"], "description": "What this decoded value represents in the constraint." },
+        "note": { "type": "string" }
+      }
+    },
+    "correction_strategy": {
+      "type": "string",
+      "enum": ["clamp", "snap_nearest", "reject", "ignore"],
+      "description": "How to correct an out-of-range value. clamp: limit to min/max. snap_nearest: round to closest valid value. reject: refuse the command. ignore: silently drop the field."
+    },
+    "constraint_rule": {
+      "type": "object",
+      "description": "A single validation rule. In 'global': always applies. In 'by_capability': applies when the device reports the keyed cap value.",
+      "properties": {
+        "valid_range": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "[min, max] inclusive range of valid decoded values."
+        },
+        "valid_set": {
+          "type": "array",
+          "description": "Exhaustive list of valid values. Use instead of valid_range for discrete/enum fields."
+        },
+        "step": {
+          "type": "number",
+          "description": "Resolution step within the valid range, e.g. 0.5 for half-degree steps."
+        },
+        "requires": {
+          "type": "string",
+          "description": "State precondition, e.g. 'power == on'. If not met, the correction applies."
+        },
+        "mode": {
+          "type": "string",
+          "description": "Operating mode this rule applies to (cool, heat, auto, dry, fan). Omit for mode-independent rules."
+        },
+        "correction": { "$ref": "#/$defs/correction_strategy" },
+        "note": { "type": "string" }
+      }
+    },
+    "composite_member_wire": {
+      "type": "object",
+      "description": "Wire-byte location of a composite-member sub-field.",
+      "additionalProperties": false,
+      "properties": {
+        "byte_position": {
+          "type": "string",
+          "description": "Wire byte position string, e.g. 'bodyBytes[5]' or 'messageBytes[cursor + 3]'."
+        },
+        "bit_range": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0, "maximum": 7 },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "[high_bit, low_bit] inclusive within the byte. Omit for full-byte members."
+        },
+        "bit_range_TODO": {
+          "type": "boolean",
+          "description": "True when the bit_range was inferred to exist but not yet hand-annotated. Skeleton marker; resolved during follow-up review."
+        }
+      }
+    },
+    "composite_member": {
+      "type": "object",
+      "description": "One internal sub-field that contributes to a composite field's user-visible value.",
+      "additionalProperties": false,
+      "properties": {
+        "data_type": { "$ref": "#/$defs/data_type" },
+        "range": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "[min, max] of the sub-field in its raw integer units."
+        },
+        "wire": {
+          "oneOf": [
+            { "$ref": "#/$defs/composite_member_wire" },
+            {
+              "type": "array",
+              "items": { "$ref": "#/$defs/composite_member_wire" },
+              "description": "List form when the sub-field appears at multiple wire positions (e.g. cmd vs response frames)."
+            }
+          ]
+        }
+      }
+    },
+    "composite": {
+      "type": "object",
+      "required": ["members"],
+      "additionalProperties": false,
+      "properties": {
+        "members": {
+          "type": "object",
+          "description": "Map of sub-field name to its composite_member declaration.",
+          "additionalProperties": { "$ref": "#/$defs/composite_member" }
+        }
+      }
+    },
+    "derived_from": {
+      "type": "object",
+      "required": ["formula", "inputs"],
+      "additionalProperties": true,
+      "properties": {
+        "formula": {
+          "type": "string",
+          "description": "Sandboxed expression that synthesises the user-visible value from the listed inputs."
+        },
+        "inputs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Names of fields or composite-member sub-fields the formula reads. Used by the codec's pass-2 topological sort."
+        }
+      }
+    },
+    "decompose_to": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["target", "formula"],
+        "additionalProperties": true,
+        "properties": {
+          "target": {
+            "type": "string",
+            "description": "Name of the sub-field this formula populates."
+          },
+          "formula": {
+            "type": "string",
+            "description": "Sandboxed expression that produces the sub-field's value from the user-visible 'value' input."
+          }
+        }
+      }
+    },
+    "state_machine_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "signature": {
+          "type": "object",
+          "description": "Map of internal-key name to the value that defines this state."
+        },
+        "observable": {
+          "type": "boolean",
+          "description": "Whether the decoder may produce this state from the wire. Default true."
+        },
+        "emittable": {
+          "type": "boolean",
+          "description": "Whether the encoder may produce this state on writes. Default true. Setting false marks 'undefined' or 'inconsistent' states the decoder can observe but the encoder must never emit."
+        },
+        "description": { "type": "string" }
+      }
+    },
+    "state_machine_transition": {
+      "type": "object",
+      "required": ["from", "to"],
+      "additionalProperties": true,
+      "properties": {
+        "from": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Source state name, or list of source state names if the same transition applies to several."
+        },
+        "to": {
+          "type": "string",
+          "description": "Destination state name."
+        },
+        "encoder_writes": {
+          "type": "object",
+          "description": "Map of internal-key name to the value the encoder must write when applying this transition."
+        },
+        "side_effects": {
+          "type": "array",
+          "items": { "type": "object" },
+          "description": "Annotations describing destructive writes or other side effects the user should be warned about."
+        }
+      }
+    },
+    "state_machine": {
+      "type": "object",
+      "required": ["states"],
+      "additionalProperties": true,
+      "properties": {
+        "states": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/state_machine_state" }
+        },
+        "transitions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/state_machine_transition" }
+        }
+      }
+    },
+    "triggers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "resets": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of sibling fields that the trigger resets when fired."
+        },
+        "note": { "type": "string" }
+      }
+    },
+    "shares_byte_with": {
+      "type": "object",
+      "description": "Map of wire byte position string to the list of sibling internal-key names that share that byte.",
+      "patternProperties": {
+        "^(bodyBytes|messageBytes)\\[.*\\]$": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "note": { "type": "string" }
+      }
+    },
+    "mutual_exclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "when_on": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "forces": {
+              "type": "object",
+              "description": "Map of sibling field name to forced value."
+            },
+            "reason": { "type": "string" }
+          }
+        },
+        "when_off": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "forces": { "type": "object" },
+            "reason": { "type": "string" }
+          }
+        }
+      }
+    },
+    "migration_block": {
+      "type": "object",
+      "description": "Audit-trail block written by the migration script. Free-form so the script can extend without schema bumps.",
+      "additionalProperties": true,
+      "properties": {
+        "_previous_feature_available": { "type": "string" },
+        "_inferred_class": { "type": "string" },
+        "_inferred_reason": { "type": "string" },
+        "_needs_review": { "type": "boolean" },
+        "_source": { "type": "string" }
+      }
+    },
+    "category_group": {
+      "type": "object",
+      "description": "A subcategory grouping containing field definitions.",
+      "patternProperties": {
+        "^[a-z][a-z0-9_]*$": {
+          "oneOf": [
+            { "$ref": "#/$defs/field" },
+            {
+              "type": "object",
+              "description": "Nested subcategory containing fields.",
+              "patternProperties": {
+                "^[a-z][a-z0-9_]*$": { "$ref": "#/$defs/field" }
+              },
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

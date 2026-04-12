@@ -1,0 +1,38 @@
+# Real 0xC1 Group 5 frames — XtremeSaveBlue Q11, Session 8
+#
+# Extended params: humidity, compensated setpoint, fan/EEV targets,
+# compressor runtime, bus voltages. UART bus (rare — only 5 frames in S8).
+# All fields: Hypothesis confidence.
+
+device: "XtremeSaveBlue Q11"
+session: "Session 8"
+source: "HVAC-shark-dumps/Midea-XtremeSaveBlue-logicanalyzer/Session 8/session.pcap"
+bus: "UART (bus_type=1)"
+frame_type: "0xC1 Group 5"
+
+frames:
+  - name: "heat mode active — compressor running"
+    timestamp: 42.0
+    body_hex: "C1 21 01 45 00 5D 31 1B 61 2E 00 00 00 06 37 07 00 B7 88 00"
+    ground_truth:
+      humidity_actual: 0
+      compensated_setpoint: 93
+      outdoor_fan_target_speed: 97
+      eev_target_angle: 46
+      compressor_runtime_current: 6
+      max_bus_voltage: 183
+      min_bus_voltage: 136
+    notes: "Compressor running. Fan target=776 RPM, EEV=368 steps. Runtime=384s. Bus 196-243V."
+
+  - name: "heat mode active — later in session"
+    timestamp: 216.9
+    body_hex: "C1 21 01 45 00 59 32 1B 61 2E 00 00 00 09 37 07 00 B7 88 00"
+    ground_truth:
+      humidity_actual: 0
+      compensated_setpoint: 89
+      outdoor_fan_target_speed: 97
+      eev_target_angle: 46
+      compressor_runtime_current: 9
+      max_bus_voltage: 183
+      min_bus_voltage: 136
+    notes: "Same operating point. Tsc dropped 93->89 (load change). Runtime=576s."

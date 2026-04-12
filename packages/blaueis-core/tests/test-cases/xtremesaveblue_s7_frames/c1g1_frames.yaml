@@ -1,0 +1,59 @@
+# Real 0xC1 Group 1 frames — XtremeSaveBlue Q11, Session 7
+#
+# Sensor telemetry: compressor freq, temperatures (T1-T4, Tp), currents, voltage.
+# Extracted via tshark, R/T bus. Ground truth from service menu + plausibility.
+
+device: "XtremeSaveBlue Q11"
+session: "Session 7"
+source: "HVAC-shark-dumps/Midea-XtremeSaveBlue-logicanalyzer/Session 7/session.pcap"
+bus: "R/T (bus_type=3)"
+frame_type: "0xC1 Group 1"
+
+frames:
+  - name: "heat mode idle — compressor off"
+    timestamp: 16.8
+    body_hex: "C1 21 01 41 00 00 00 01 E5 03 4E 78 34 3A 38 00 00 00 00 00 00 00 00 00 00"
+    ground_truth:
+      compressor_frequency: 0
+      compressor_target_frequency: 0
+      t1_indoor_coil: 24.0
+      t2_indoor_temp: 45.0
+      t3_outdoor_coil_temp: 1.0
+      t4_outdoor_ambient_temp: 4.0
+      discharge_pipe_temp: 56
+      compressor_current: 0
+      outdoor_total_current: 1
+      outdoor_supply_voltage: 229
+    notes: "Compressor off. T2=45C (residual heat in exchanger). T3=1C (outdoor coil cold). Voltage=229V (standby)."
+
+  - name: "cool mode active — compressor running 56Hz"
+    timestamp: 327.4
+    body_hex: "C1 21 01 41 38 47 00 02 DD 00 4E 37 3A 39 2E 00 00 00 00 00 00 00 00 00 84"
+    ground_truth:
+      compressor_frequency: 56
+      compressor_target_frequency: 71
+      t1_indoor_coil: 24.0
+      t2_indoor_temp: 12.5
+      t3_outdoor_coil_temp: 4.0
+      t4_outdoor_ambient_temp: 3.5
+      discharge_pipe_temp: 46
+      compressor_current: 0
+      outdoor_total_current: 2
+      outdoor_supply_voltage: 221
+    notes: "Compressor at 56Hz chasing FT=71Hz. T2 dropped to 12.5C (evaporator cooling). Voltage=221V (under load)."
+
+  - name: "end of session — compressor off"
+    timestamp: 651.5
+    body_hex: "C1 21 01 41 00 00 00 01 E4 03 4E 46 3E 3C 22 00 00 00 00 00 00 00 00 00 F0"
+    ground_truth:
+      compressor_frequency: 0
+      compressor_target_frequency: 0
+      t1_indoor_coil: 24.0
+      t2_indoor_temp: 20.0
+      t3_outdoor_coil_temp: 6.0
+      t4_outdoor_ambient_temp: 5.0
+      discharge_pipe_temp: 34
+      compressor_current: 0
+      outdoor_total_current: 1
+      outdoor_supply_voltage: 228
+    notes: "Session end. T2 recovered to 20C (exchanger warming). Tp cooling to 34C. Voltage 228V (standby)."

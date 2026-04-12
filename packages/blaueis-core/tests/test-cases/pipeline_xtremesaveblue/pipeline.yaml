@@ -1,0 +1,87 @@
+# Pipeline integration test — XtremeSaveBlue Q11
+#
+# Tests the full flow: build_status → B5 caps → C0 response → C0 turbo →
+# C1 Group 1 sensor telemetry. Verifies phase transitions, capability
+# upgrades, decoded values, and cross-frame state preservation.
+
+device: "XtremeSaveBlue Q11"
+
+steps:
+  # Step 1: Process B5 capabilities
+  - action: b5
+    source: "../xtremesaveblue_s1/b5_frames.yaml"
+    assert:
+      meta.phase: "post_b5"
+      meta.b5_received: true
+      # Capabilities upgraded from 'capability' to 'always'
+      fields.fan_speed.feature_available: "always"
+      fields.fan_speed.active_constraints.valid_range: [0, 102]
+      fields.fan_speed.active_constraints.step: 1
+      fields.eco_mode.feature_available: "always"
+      fields.swing_vertical.feature_available: "always"
+      fields.operating_mode.feature_available: "always"
+      # Caps NOT in B5 -> 'never' (device doesn't support)
+      fields.buzzer.feature_available: "never"
+      fields.total_power_kwh.feature_available: "never"
+      # Per-mode temperature constraints from cap 0x25
+      fields.target_temperature.active_constraints.by_mode.cool.valid_range: [16.0, 30.0]
+      fields.target_temperature.active_constraints.by_mode.heat.valid_range: [16.0, 30.0]
+      # No values yet
+      fields.power.value: null
+      fields.indoor_temperature.value: null
+
+  # Step 2: First C0 response — heat mode baseline
+  - action: frame
+    source: "../xtremesaveblue_s11_frames/c0_frames.yaml"
+    index: 0
+    assert:
+      meta.phase: "steady_state"
+      fields.power.value: true
+      fields.operating_mode.value: 4
+      fields.target_temperature.value: 25
+      fields.fan_speed.value: 102
+      fields.indoor_temperature.value: 24.2
+      fields.outdoor_temperature.value: 4.3
+      fields.eco_mode.value: false
+      fields.turbo_mode.value: false
+      fields.frost_protection.value: false
+      fields.error_code.value: 0
+      fields.in_error.value: false
+      # Sensors not in C0 stay null
+      fields.compressor_frequency.value: null
+
+  # Step 3: Second C0 — strong_wind active (compressor ramping)
+  # body[8] bit 5 = strong_wind on; body[10] bit 1 = 0 (turbo_mode off).
+  # Per mill1000 Finding 16, these are orthogonal: strong_wind drives the
+  # fan-side boost while turbo_mode drives compressor-side boost. The old
+  # OR-folded reading would have called this "turbo on"; the new
+  # orthogonal reading correctly identifies it as strong_wind only.
+  - action: frame
+    source: "../xtremesaveblue_s11_frames/c0_frames.yaml"
+    index: 1
+    assert:
+      fields.strong_wind.value: true
+      fields.turbo_mode.value: false
+      fields.target_temperature.value: 27
+      # Other fields preserved from previous C0
+      fields.power.value: true
+      fields.operating_mode.value: 4
+
+  # Step 4: C1 Group 1 — sensor telemetry (different frame type)
+  - action: frame
+    source: "../xtremesaveblue_s7_frames/c1g1_frames.yaml"
+    index: 1
+    assert:
+      fields.compressor_frequency.value: 56
+      fields.compressor_frequency.source: "rsp_0xc1_group1"
+      fields.t1_indoor_coil.value: 24.0
+      fields.t3_outdoor_coil_temp.value: 4.0
+      fields.discharge_pipe_temp.value: 46.0
+      fields.outdoor_supply_voltage.value: 221
+      # C0 values preserved across C1 update (C1 G1 does not touch
+      # strong_wind / turbo_mode — they only appear in rsp_0xc0).
+      fields.strong_wind.value: true
+      fields.strong_wind.source: "rsp_0xc0"
+      fields.turbo_mode.value: false
+      fields.turbo_mode.source: "rsp_0xc0"
+      fields.target_temperature.source: "rsp_0xc0"

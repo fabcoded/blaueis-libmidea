@@ -1,0 +1,39 @@
+# B5 Capability TLV frames — XtremeSaveBlue Q11, Session 1
+#
+# Real captures from HVAC-shark-dumps/Midea-XtremeSaveBlue-logicanalyzer/Session 1
+# New protocol (msg_type=0x03, TLV format)
+# Body bytes only (after UART header AA xx AC 00 00 00 00 00 02 03)
+
+device: "XtremeSaveBlue Q11"
+session: "Session 1"
+source: "HVAC-shark-dumps/Midea-XtremeSaveBlue-logicanalyzer/Session 1"
+
+frames:
+  - name: "B5 Query 1 Response"
+    msg_type: 0x03
+    timestamp: 30.430536375
+    body_hex: >-
+      B5 08
+      12 02 01 01
+      14 02 01 01
+      15 02 01 01
+      16 02 01 00
+      1A 02 01 01
+      10 02 01 01
+      25 02 07 20 3C 20 3C 20 3C 00
+      24 02 01 01
+
+  - name: "B5 Query 2 Response"
+    msg_type: 0x03
+    timestamp: 31.00047275
+    body_hex: >-
+      B5 09
+      1E 02 01 01
+      13 02 01 01
+      22 02 01 00
+      19 02 01 00
+      39 00 01 01
+      42 00 01 01
+      09 00 01 01
+      0A 00 01 01
+      48 00 01 01

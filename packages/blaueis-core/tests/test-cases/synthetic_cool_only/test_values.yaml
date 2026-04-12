@@ -1,0 +1,122 @@
+# Test cases — synthetic cooling-only unit
+#
+# Validates constraints from caps NOT present on XtremeSaveBlue:
+#   - Discrete fan (cap 0x10=5): snap_nearest instead of clamp
+#   - Cool-only modes (cap 0x14=0): heat mode rejected
+#   - No turbo (cap 0x1A=2): turbo rejected
+#   - No frost protection (cap 0x13=0): frost protection ignored
+#   - Buzzer available (cap 0x2C=1)
+#   - Narrower temp range 18-28°C with 0.5°C steps (cap 0x25 byte[6]=1)
+#   - No eco (cap 0x12=0)
+
+tests:
+  # ── fan_speed: cap 0x10=5 → discrete {40,60,80,102} ──────────
+  - field: fan_speed
+    value: 60
+    expected:
+      valid: true
+
+  - field: fan_speed
+    value: 50
+    note: "50 not in discrete set → snap to nearest (40 or 60)"
+    expected:
+      valid: false
+      corrected: 40
+      reason: snap_nearest
+
+  - field: fan_speed
+    value: 20
+    note: "silent/mute not in cap 0x10=5 set → snap to 40 (Low)"
+    expected:
+      valid: false
+      corrected: 40
+      reason: snap_nearest
+
+  - field: fan_speed
+    value: 90
+    note: "90 not in set → snap to 80 (High)"
+    expected:
+      valid: false
+      corrected: 80
+      reason: snap_nearest
+
+  # ── operating_mode: cap 0x14=0 → cool-only {1,2,3,5} ────────
+  - field: operating_mode
+    value: 2
+    note: "cool — valid for cool-only"
+    expected:
+      valid: true
+
+  - field: operating_mode
+    value: 4
+    note: "heat — NOT available on cool-only unit"
+    expected:
+      valid: false
+      corrected: null
+      reason: reject
+
+  - field: operating_mode
+    value: 1
+    note: "auto — available on cool-only"
+    expected:
+      valid: true
+
+  # ── target_temperature: cap 0x25 = 18-28°C, 0.5°C steps ─────
+  - field: target_temperature
+    mode: cool
+    value: 22.5
+    note: "0.5°C steps enabled (byte[6]=1) → half-degrees valid"
+    expected:
+      valid: true
+
+  - field: target_temperature
+    mode: cool
+    value: 15.0
+    note: "below cool min 18°C → clamp"
+    expected:
+      valid: false
+      corrected: 18.0
+      reason: clamp
+
+  - field: target_temperature
+    mode: cool
+    value: 30.0
+    note: "above cool max 28°C → clamp"
+    expected:
+      valid: false
+      corrected: 28.0
+      reason: clamp
+
+  - field: target_temperature
+    mode: cool
+    value: 22.3
+    note: "0.3 not on 0.5 step grid → clamp to 22.0"
+    expected:
+      valid: false
+      corrected: 22.0
+      reason: clamp
+
+  # ── boolean capability checks ─────────────────────────────────
+  - field: eco_mode
+    cap_check:
+      cap_id: "0x12"
+      expected_supported: true
+    note: "cap 0x12=0 is present in frame but value=0 → eco not available. Cap presence check still passes (record exists)."
+
+  - field: turbo_mode
+    cap_check:
+      cap_id: "0x1A"
+      expected_supported: true
+    note: "cap 0x1A=2 present → turbo neither. Record exists."
+
+  - field: frost_protection
+    cap_check:
+      cap_id: "0x13"
+      expected_supported: true
+    note: "cap 0x13=0 present → frost prot not available. Record exists."
+
+  - field: buzzer
+    cap_check:
+      cap_id: "0x2C"
+      expected_supported: true
+    note: "cap 0x2C=1 present → buzzer supported (unlike XtremeSaveBlue)"

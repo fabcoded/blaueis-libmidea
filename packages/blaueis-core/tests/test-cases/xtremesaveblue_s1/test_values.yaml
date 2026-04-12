@@ -1,0 +1,187 @@
+# Validation test cases — XtremeSaveBlue Q11
+#
+# Each test validates a field value against the device state (populated
+# glossary with decoded capabilities). Tests are a mix of valid values
+# (expect PASS) and invalid values (expect FAIL with correction).
+
+tests:
+  # ── fan_speed: cap 0x10 = 1 → stepless [0, 102] ──────────────
+  - field: fan_speed
+    value: 50
+    expected:
+      valid: true
+
+  - field: fan_speed
+    value: 0
+    expected:
+      valid: true
+
+  - field: fan_speed
+    value: 102
+    expected:
+      valid: true
+
+  - field: fan_speed
+    value: 200
+    expected:
+      valid: false
+      corrected: 102
+      reason: clamp
+
+  - field: fan_speed
+    value: -1
+    expected:
+      valid: false
+      corrected: 0
+      reason: clamp
+
+  # ── operating_mode: cap 0x14 = 1 → heat_pump [1,2,3,4,5] ────
+  - field: operating_mode
+    value: 4
+    note: "heat — valid for heat pump"
+    expected:
+      valid: true
+
+  - field: operating_mode
+    value: 2
+    note: "cool — valid for heat pump"
+    expected:
+      valid: true
+
+  - field: operating_mode
+    value: 6
+    note: "smart_dry — not in heat_pump valid_set"
+    expected:
+      valid: false
+      corrected: null
+      reason: reject
+
+  - field: operating_mode
+    value: 0
+    note: "0 is not a valid mode raw value"
+    expected:
+      valid: false
+      corrected: null
+      reason: reject
+
+  # ── target_temperature: cap 0x25 → 16-30°C per mode ──────────
+  - field: target_temperature
+    mode: cool
+    value: 22.0
+    expected:
+      valid: true
+
+  - field: target_temperature
+    mode: cool
+    value: 16.0
+    note: "exactly at min boundary"
+    expected:
+      valid: true
+
+  - field: target_temperature
+    mode: cool
+    value: 10.0
+    note: "below cool min → clamp to 16.0"
+    expected:
+      valid: false
+      corrected: 16.0
+      reason: clamp
+
+  - field: target_temperature
+    mode: heat
+    value: 35.0
+    note: "above heat max → clamp to 30.0"
+    expected:
+      valid: false
+      corrected: 30.0
+      reason: clamp
+
+  - field: target_temperature
+    mode: cool
+    value: 22.5
+    note: "cap 0x25 byte[6]=0 → 1°C steps only, half-degree not valid"
+    expected:
+      valid: false
+      corrected: 22.0
+      reason: clamp
+
+  - field: target_temperature
+    mode: cool
+    value: 22.0
+    power: "off"
+    note: "global constraint: requires power == on"
+    expected:
+      valid: false
+      corrected: null
+      reason: reject
+
+  # ── boolean capability checks ─────────────────────────────────
+  - field: eco_mode
+    cap_check:
+      cap_id: "0x12"
+      expected_supported: true
+
+  - field: turbo_mode
+    cap_check:
+      cap_id: "0x1A"
+      expected_supported: true
+
+  - field: swing_vertical
+    cap_check:
+      cap_id: "0x15"
+      expected_supported: true
+
+  # ── swing: cap 0x15=1 (both axes) — positive/negative validation ─
+  - field: swing_vertical
+    value: 1
+    note: "vertical swing ON — valid, cap 0x15=1 (both axes)"
+    expected:
+      valid: true
+
+  - field: swing_horizontal
+    value: 1
+    note: "horizontal swing ON — valid, cap 0x15=1 (both axes)"
+    expected:
+      valid: true
+
+  - field: frost_protection
+    cap_check:
+      cap_id: "0x13"
+      expected_supported: true
+    note: "Confirmed Session 11 — toggled via app, body[21] bit 7"
+
+  - field: anion_ionizer
+    cap_check:
+      cap_id: "0x1E"
+      expected_supported: true
+    note: "cap 0x1E=1 reported but no app/remote button visible — UI-layer gating suspected"
+
+  - field: swing_horizontal
+    cap_check:
+      cap_id: "0x15"
+      expected_supported: true
+    note: "cap 0x15=1 (both axes) — shared with swing_vertical"
+
+  - field: wind_swing_ud_angle
+    cap_check:
+      cap_id: "0x09"
+      expected_supported: true
+    note: "cap 0x09=1 — UD vane angle control available (B0/B1 property 0x09,0x00)"
+
+  - field: wind_swing_lr_angle
+    cap_check:
+      cap_id: "0x0A"
+      expected_supported: true
+    note: "cap 0x0A=1 — LR vane angle control available (B0/B1 property 0x0A,0x00)"
+
+  - field: rate_select
+    cap_check:
+      cap_id: "0x48"
+      expected_supported: true
+    note: "cap 0x48=1 — 2-stage gear mode (B0/B1 property 0x48,0x00)"
+
+  - field: buzzer
+    cap_check:
+      cap_id: "0x2C"
+      expected_supported: false
+    note: "cap 0x2C not present in Session 1 → unknown/unsupported"

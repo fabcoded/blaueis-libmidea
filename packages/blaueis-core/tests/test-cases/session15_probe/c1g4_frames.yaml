@@ -1,0 +1,23 @@
+# Real C1 Group 4 (power) frames from Session 15 probe.
+# AC was actively heating to 26°C; compressor running across all 4 runs.
+# Used by test_apply_device_quirks for the killer integration test:
+# the Q11 quirks file should unlock these fields and decode them with
+# linear encoding (cap 0x16=4 synthesised).
+
+device: "XtremeSaveBlue Q11"
+session: "Session 15"
+source: "ac_probe.py UART probe via raspi-midea gateway"
+bus: "UART"
+frame_type: "0xC1 Group 4"
+
+frames:
+  - name: "run4 — compressor low load (~14 Hz)"
+    timestamp: "2026-04-10T19:07:51Z"
+    body_hex: "c1 21 01 44 00 01 19 dd 00 00 00 00 00 00 00 00 00 07 76 00 00"
+    # No ground_truth — these fields are capability-gated to 'never' on this
+    # unit (cap 0x16=0). The killer integration test in
+    # test_apply_device_quirks.py loads the bundled Q11 quirks file and
+    # asserts the expected values:
+    #   total_power_kwh    = 721.57 kWh   (body[4..7] = 0x000119DD / 100)
+    #   realtime_power_kw  = 0.191 kW     (body[16..18] = 0x000776 / 10000)
+    notes: "Real linear-encoded power data despite cap 0x16=0 reporting 'no power calc'. Decode requires Q11 quirks (synthesizes cap 0x16=4 to select power_linear_4)."

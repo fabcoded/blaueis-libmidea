@@ -1,0 +1,47 @@
+# Real 0xC1 Group 3 frames — XtremeSaveBlue Q11, Session 7
+#
+# Outdoor unit diagnostics: fan speed, EEV position, DC bus voltage.
+# Extracted via tshark, R/T bus.
+
+device: "XtremeSaveBlue Q11"
+session: "Session 7"
+source: "HVAC-shark-dumps/Midea-XtremeSaveBlue-logicanalyzer/Session 7/session.pcap"
+bus: "R/T (bus_type=3)"
+frame_type: "0xC1 Group 3"
+
+frames:
+  - name: "heat mode — compressor running, fan active"
+    timestamp: 1.5
+    body_hex: "C1 21 01 03 00 00 00 00 00 08 61 1A 72 B1 B3 00 3D 00 00 00 00 00 00 00"
+    ground_truth:
+      outdoor_fan_speed: 97
+      eev_position: 26
+      outdoor_dc_bus_voltage: 177
+      outdoor_return_air_temp: 114
+      ipm_module_temp: 179
+      outdoor_target_compressor_freq: 61
+    notes: "Fan=97 (776 RPM). EEV=26 (208 steps). DC bus=177V. Target freq=61Hz."
+
+  - name: "cool mode transition — fan off, EEV open"
+    timestamp: 346.1
+    body_hex: "C1 21 01 03 00 00 00 00 00 00 00 35 72 A1 B3 00 3F 00 00 00 00 00 00 00"
+    ground_truth:
+      outdoor_fan_speed: 0
+      eev_position: 53
+      outdoor_dc_bus_voltage: 161
+      outdoor_return_air_temp: 114
+      ipm_module_temp: 179
+      outdoor_target_compressor_freq: 63
+    notes: "Fan stopped. EEV wide open=53 (424 steps). DC bus dropped to 161V. Target 63Hz."
+
+  - name: "end of session — compressor off"
+    timestamp: 719.6
+    body_hex: "C1 21 01 03 00 00 00 00 00 08 00 1B 72 AC B3 00 00 00 00 00 00 00 00 00"
+    ground_truth:
+      outdoor_fan_speed: 0
+      eev_position: 27
+      outdoor_dc_bus_voltage: 172
+      outdoor_return_air_temp: 114
+      ipm_module_temp: 179
+      outdoor_target_compressor_freq: 0
+    notes: "All off. EEV=27 (216 steps, resting position). DC bus=172V (standby). Target=0Hz."

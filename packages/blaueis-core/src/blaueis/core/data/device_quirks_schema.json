@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hvac-shark.local/device_quirks_schema.json",
+  "title": "Midea device quirks",
+  "description": "Per-device fixes for cap-derived state that the protocol can't express on its own. Quirks describe a device's actual behaviour (Linux kernel-style 'quirks') and are applied after process_b5 + finalize_capabilities. Two operations: feature_available overrides and synthesized B5 capability records.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Short human-readable name shown in apply summaries."
+    },
+    "description": {
+      "type": "string",
+      "description": "Longer free-form explanation of why this quirk exists and what it fixes."
+    },
+    "feature_available": {
+      "type": "object",
+      "description": "Direct overrides for status['fields'][name]['feature_available']. Applied after finalize_capabilities so they override cap-derived decisions.",
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["always", "readable", "capability", "never"]
+      }
+    },
+    "synthesize_capabilities": {
+      "type": "array",
+      "description": "Synthetic B5 TLV records to inject into status.capabilities_raw. The existing resolve_capability_encoding() picks them up automatically. Useful for forcing an encoding selection when the device under-reports its capability tier.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cap_id", "data"],
+        "properties": {
+          "cap_id": {
+            "type": "string",
+            "pattern": "^0x[0-9A-Fa-f]{2}$",
+            "description": "Capability ID as hex string, e.g. '0x16'."
+          },
+          "cap_type": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255,
+            "default": 2,
+            "description": "TLV cap_type byte. Default 0x02 (extended cap)."
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "minItems": 1,
+            "description": "Raw data bytes for the capability."
+          },
+          "force": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, replace any existing real cap with this cap_id. Default false: real device data wins, synthesis is skipped."
+          }
+        }
+      }
+    }
+  }
+}

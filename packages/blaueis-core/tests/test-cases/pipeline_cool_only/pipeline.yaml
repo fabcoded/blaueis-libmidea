@@ -1,0 +1,23 @@
+# Pipeline integration test — Synthetic cool-only device
+#
+# Tests a device with limited capabilities: cool-only mode (no heat),
+# discrete fan speeds, no humidity. Verifies that restricted caps
+# produce correct constraints.
+
+device: "Synthetic Cool-Only Unit"
+
+steps:
+  - action: b5
+    source: "../synthetic_cool_only/b5_frames.yaml"
+    assert:
+      meta.phase: "post_b5"
+      meta.b5_received: true
+      # Cool-only: mode 4 (heat) not in valid_set
+      fields.operating_mode.active_constraints.valid_set: [1, 2, 3, 5]
+      fields.operating_mode.active_constraints.correction: "reject"
+      # Fan speed: discrete levels
+      fields.fan_speed.feature_available: "always"
+      # Eco mode disabled (cap 0x12=0 → none)
+      fields.eco_mode.feature_available: "never"
+      # No values populated yet
+      fields.power.value: null

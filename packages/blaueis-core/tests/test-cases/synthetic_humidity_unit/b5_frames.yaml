@@ -1,0 +1,41 @@
+# Synthetic B5 frames — full-featured unit with humidity, silky cool, wind features
+#
+# Tests capabilities absent from XtremeSaveBlue AND synthetic_cool_only/discrete_fan:
+#   - cap 0x1F=2 (humidity: auto+manual)
+#   - cap 0x18 simple=1 (silky cool supported)
+#   - cap 0x30 simple=1 (smart eye)
+#   - cap 0x32 simple=1 (wind on me)
+#   - cap 0x33 simple=0 (wind off me — inverted: 0=supported!)
+#   - cap 0x43 simple=0 (breeze control — inverted: 0=supported!)
+#   - cap 0x17=3 (nest need change)
+#   - cap 0x24=1 (screen display)
+#   - cap 0x22=1 (unit NOT changeable — inverted: 1=NO)
+#   - cap 0x14=1 (heat pump — standard)
+#   - cap 0x10=6 (full fan: Mute/Low/Mid/High/Auto)
+
+device: "Synthetic Humidity Full-Feature"
+session: "synthetic"
+source: "hand-crafted for constraint testing"
+
+frames:
+  - name: "B5 Synthetic Query 1"
+    msg_type: 0x03
+    body_hex: >-
+      B5 08
+      14 02 01 01
+      10 02 01 06
+      1F 02 01 02
+      17 02 01 03
+      24 02 01 01
+      22 02 01 01
+      16 02 01 02
+      25 02 07 20 38 22 36 20 3C 01
+
+  - name: "B5 Synthetic Query 2 (simple caps)"
+    msg_type: 0x03
+    body_hex: >-
+      B5 04
+      18 00 01 01
+      30 00 01 01
+      32 00 01 01
+      33 00 01 00

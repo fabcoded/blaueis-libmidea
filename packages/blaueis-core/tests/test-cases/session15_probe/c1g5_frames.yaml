@@ -1,0 +1,26 @@
+# Real 0xC1 Group 5 frames — XtremeSaveBlue Q11, Session 15
+#
+# Extended telemetry: humidity, fan runtime, EEV, defrost, compressor hours,
+# bus voltages. Tests new fields at offsets 6, 10, 14 (existing fields at
+# 4, 5, 8, 9, 13, 17, 18 are not re-tested here).
+# Field mapping cross-validated against mill1000/midea-msmart.
+
+device: "XtremeSaveBlue Q11"
+session: "Session 15"
+source: "ac_probe.py UART probe via raspi-midea gateway"
+bus: "UART (body[1]=0x21)"
+frame_type: "0xC1 Group 5"
+
+frames:
+  - name: "run2 — compressor at ~35Hz"
+    timestamp: "2026-04-10T18:21:56Z"
+    body_hex: "c1 21 01 45 00 55 ea 1b 4b 24 00 00 00 0b 7b 07 00 b7 88 00 00"
+    ground_truth:
+      # Multi-byte LE16 fields (now decoded via uint16_le encoding):
+      indoor_fan_runtime: 7146       # body[6..7] = 0xEA 0x1B → 0x1BEA = 7146 min (~119 h)
+      defrost_step: 0                # body[10] = 0x00 (no defrost)
+      compressor_cumul_hours: 1915   # body[14..15] = 0x7B 0x07 → 0x077B = 1915 h
+      # Existing fields for non-regression:
+      humidity_actual: 0             # body[4] = 0x00
+      compensated_setpoint: 85       # body[5] = 0x55
+    notes: "indoor_fan_runtime and compressor_cumul_hours decoded via uint16_le encoding (full 16-bit value, not low byte only)."

@@ -1,0 +1,31 @@
+# Real 0xC1 Group 0 frames — XtremeSaveBlue Q11, Session 15
+#
+# Runtime timers: power-on time, total worked time, current session time.
+# Field mapping cross-validated against mill1000/midea-msmart.
+# All values zero in this capture — AC may need longer runtime to populate.
+
+device: "XtremeSaveBlue Q11"
+session: "Session 15"
+source: "ac_probe.py UART probe via raspi-midea gateway"
+bus: "UART (body[1]=0x21)"
+frame_type: "0xC1 Group 0"
+
+frames:
+  - name: "all zeros — timers not populated on this unit"
+    timestamp: "2026-04-10T18:11:47Z"
+    body_hex: "c1 21 01 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+    ground_truth:
+      # 16-bit day counters: BE16 (high<<8 | low) per uint16_be encoding
+      power_on_days: 0         # body[4..5] BE16
+      power_on_hours: 0        # body[6]
+      power_on_minutes: 0      # body[7]
+      power_on_seconds: 0      # body[8]
+      total_worked_days: 0     # body[9..10] BE16
+      total_worked_hours: 0    # body[11]
+      total_worked_minutes: 0  # body[12]
+      total_worked_seconds: 0  # body[13]
+      current_session_days: 0  # body[14..15] BE16
+      current_session_hours: 0 # body[16]
+      current_session_minutes: 0  # body[17]
+      current_session_seconds: 0  # body[18]
+    notes: "All zeros. Unit may not populate group 0 timers, or needs longer cumulative runtime."

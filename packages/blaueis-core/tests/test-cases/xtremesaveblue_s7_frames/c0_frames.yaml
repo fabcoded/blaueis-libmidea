@@ -1,0 +1,293 @@
+device: XtremeSaveBlue Q11
+session: Session 7
+source: HVAC-shark-dumps/Midea-XtremeSaveBlue-logicanalyzer/Session 7/session.pcap
+bus: R/T (bus_type=3)
+frame_type: 0xC0 Status Response
+frames:
+- name: heat 16C — minimum setpoint
+  timestamp: 13.7
+  body_hex: C0 01 80 66 7F 7F 00 00 80 00 00 62 3A 04 00 10 00 00 00 00 00 00 01 00 00 00 00 00 00 50 00
+  ground_truth:
+    alarm_sleep: false
+    catch_cold: false
+    clean_fan_time: false
+    cosy_sleep: 0
+    dry_clean: false
+    dust_full: false
+    eco_mode: false
+    energy_save: false
+    error_code: 0
+    fan_speed: 102
+    follow_me: true
+    frost_protection: false
+    humidity_setpoint: 0
+    in_error: false
+    indoor_temperature: 24.0
+    local_body_sense: false
+    low_frequency_fan: false
+    natural_wind: false
+    night_light: false
+    operating_mode: 4
+    outdoor_temperature: 4.1
+    pmv_index: 0
+    power: true
+    power_save: false
+    ptc_heater: 0
+    resume: false
+    run_status: true
+    screen_display: 0
+    silky_cool: false
+    sleep_mode: false
+    strong_wind: false
+    swing_horizontal: 0
+    swing_vertical: 0
+    target_temperature: 16.0
+    temperature_unit: false
+    turbo_mode: false
+  notes: Phase 1 step 7a. Confirmed minimum setpoint = 16C.
+- name: heat 30C — maximum setpoint
+  timestamp: 44.0
+  body_hex: C0 01 8E 66 7F 7F 00 00 80 00 00 62 3A 12 00 10 00 00 00 00 00 00 01 00 00 00 00 00 00 34 00
+  ground_truth:
+    alarm_sleep: false
+    catch_cold: false
+    clean_fan_time: false
+    cosy_sleep: 0
+    dry_clean: false
+    dust_full: false
+    eco_mode: false
+    energy_save: false
+    error_code: 0
+    fan_speed: 102
+    follow_me: true
+    frost_protection: false
+    humidity_setpoint: 0
+    in_error: false
+    indoor_temperature: 24.0
+    local_body_sense: false
+    low_frequency_fan: false
+    natural_wind: false
+    night_light: false
+    operating_mode: 4
+    outdoor_temperature: 4.1
+    pmv_index: 0
+    power: true
+    power_save: false
+    ptc_heater: 0
+    resume: false
+    run_status: true
+    screen_display: 0
+    silky_cool: false
+    sleep_mode: false
+    strong_wind: false
+    swing_horizontal: 0
+    swing_vertical: 0
+    target_temperature: 30.0
+    temperature_unit: false
+    turbo_mode: false
+  notes: Phase 2 step 20. Confirmed maximum setpoint = 30C.
+- name: cool 16C — cool mode minimum
+  timestamp: 283.2
+  body_hex: C0 01 40 66 7F 7F 00 00 80 00 00 62 39 04 00 70 00 00 00 00 00 00 01 00 00 00 00 00 00 31 00
+  ground_truth:
+    alarm_sleep: false
+    catch_cold: false
+    clean_fan_time: false
+    cosy_sleep: 0
+    dry_clean: false
+    dust_full: false
+    eco_mode: false
+    energy_save: false
+    error_code: 0
+    fan_speed: 102
+    follow_me: true
+    frost_protection: false
+    humidity_setpoint: 0
+    in_error: false
+    indoor_temperature: 24.0
+    local_body_sense: false
+    low_frequency_fan: false
+    natural_wind: false
+    night_light: false
+    operating_mode: 2
+    outdoor_temperature: 4.2
+    pmv_index: 0
+    power: true
+    power_save: false
+    ptc_heater: 0
+    resume: false
+    run_status: true
+    screen_display: 0
+    silky_cool: false
+    sleep_mode: false
+    strong_wind: false
+    swing_horizontal: 0
+    swing_vertical: 0
+    target_temperature: 16.0
+    temperature_unit: false
+    turbo_mode: false
+  notes: Phase 4 step 34a. Cool minimum = 16C, fan got loud.
+- name: cool 30C — cool mode maximum
+  timestamp: 398.2
+  body_hex: C0 01 47 66 7F 7F 00 00 80 00 00 62 3A 0B 00 20 00 00 00 00 00 00 01 00 00 00 00 00 00 72 00
+  ground_truth:
+    alarm_sleep: false
+    catch_cold: false
+    clean_fan_time: false
+    cosy_sleep: 0
+    dry_clean: false
+    dust_full: false
+    eco_mode: false
+    energy_save: false
+    error_code: 0
+    fan_speed: 102
+    follow_me: true
+    frost_protection: false
+    humidity_setpoint: 0
+    in_error: false
+    indoor_temperature: 24.0
+    local_body_sense: false
+    low_frequency_fan: false
+    natural_wind: false
+    night_light: false
+    operating_mode: 2
+    outdoor_temperature: 4.2
+    pmv_index: 0
+    power: true
+    power_save: false
+    ptc_heater: 0
+    resume: false
+    run_status: true
+    screen_display: 0
+    silky_cool: false
+    sleep_mode: false
+    strong_wind: false
+    swing_horizontal: 0
+    swing_vertical: 0
+    target_temperature: 23.0
+    temperature_unit: false
+    turbo_mode: false
+  notes: Phase 5 near step 47. body[2]=0x47 -> mode=2(cool), temp_bits=7 -> 7+16=23C.
+- name: dry mode 25C
+  timestamp: 469.7
+  body_hex: C0 01 69 65 7F 7F 00 00 00 00 00 5D 3B 0D 00 97 00 00 00 00 00 00 01 00 00 00 00 00 00 5C 00
+  ground_truth:
+    alarm_sleep: false
+    catch_cold: false
+    clean_fan_time: false
+    cosy_sleep: 0
+    dry_clean: false
+    dust_full: false
+    eco_mode: false
+    energy_save: false
+    error_code: 0
+    fan_speed: 101
+    follow_me: false
+    frost_protection: false
+    humidity_setpoint: 0
+    in_error: false
+    indoor_temperature: 22.2
+    local_body_sense: false
+    low_frequency_fan: false
+    natural_wind: false
+    night_light: false
+    operating_mode: 3
+    outdoor_temperature: 5.4
+    pmv_index: 0
+    power: true
+    power_save: false
+    ptc_heater: 0
+    resume: false
+    run_status: true
+    screen_display: 0
+    silky_cool: false
+    sleep_mode: false
+    strong_wind: false
+    swing_horizontal: 0
+    swing_vertical: 0
+    target_temperature: 25.0
+    temperature_unit: false
+    turbo_mode: false
+  notes: Phase 6 step 53. Dry mode. Fan=101 (fixed/system-controlled in dry mode).
+- name: fan-only mode 25C
+  timestamp: 519.7
+  body_hex: C0 01 A9 66 7F 7F 00 00 00 00 00 5C 3C 0D 00 14 00 00 00 00 00 00 01 00 00 00 00 00 00 9E 00
+  ground_truth:
+    alarm_sleep: false
+    catch_cold: false
+    clean_fan_time: false
+    cosy_sleep: 0
+    dry_clean: false
+    dust_full: false
+    eco_mode: false
+    energy_save: false
+    error_code: 0
+    fan_speed: 102
+    follow_me: false
+    frost_protection: false
+    humidity_setpoint: 0
+    in_error: false
+    indoor_temperature: 21.4
+    local_body_sense: false
+    low_frequency_fan: false
+    natural_wind: false
+    night_light: false
+    operating_mode: 5
+    outdoor_temperature: 5.1
+    pmv_index: 0
+    power: true
+    power_save: false
+    ptc_heater: 0
+    resume: false
+    run_status: true
+    screen_display: 0
+    silky_cool: false
+    sleep_mode: false
+    strong_wind: false
+    swing_horizontal: 0
+    swing_vertical: 0
+    target_temperature: 25.0
+    temperature_unit: false
+    turbo_mode: false
+  notes: Phase 6. Fan-only mode.
+- name: fan-only high speed
+  timestamp: 563.0
+  body_hex: C0 01 A9 50 7F 7F 00 00 00 00 00 5C 3C 0D 00 22 00 00 00 00 00 00 01 00 00 00 00 00 00 A6 00
+  ground_truth:
+    alarm_sleep: false
+    catch_cold: false
+    clean_fan_time: false
+    cosy_sleep: 0
+    dry_clean: false
+    dust_full: false
+    eco_mode: false
+    energy_save: false
+    error_code: 0
+    fan_speed: 80
+    follow_me: false
+    frost_protection: false
+    humidity_setpoint: 0
+    in_error: false
+    indoor_temperature: 21.2
+    local_body_sense: false
+    low_frequency_fan: false
+    natural_wind: false
+    night_light: false
+    operating_mode: 5
+    outdoor_temperature: 5.2
+    pmv_index: 0
+    power: true
+    power_save: false
+    ptc_heater: 0
+    resume: false
+    run_status: true
+    screen_display: 0
+    silky_cool: false
+    sleep_mode: false
+    strong_wind: false
+    swing_horizontal: 0
+    swing_vertical: 0
+    target_temperature: 25.0
+    temperature_unit: false
+    turbo_mode: false
+  notes: Phase 6 fan sweep. Fan=80 (High). body[3]=0x50 -> bits[6:0]=80.
