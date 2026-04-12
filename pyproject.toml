@@ -1,0 +1,19 @@
+[project]
+name = "blaueis-libmidea"
+version = "0.1.0"
+description = "Blaueis workspace — Midea HVAC serial protocol library"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "SIM", "I"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["packages/blaueis-core/tests"]
+python_files = ["test_*.py", "validate_*.py"]
