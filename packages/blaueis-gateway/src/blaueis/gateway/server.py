@@ -335,6 +335,13 @@ class GatewayServer:
 
         old_version = GW_VERSION
         steps = []
+
+        # Derive systemd unit name from instance config path
+        # /etc/blaueis-gw/instances/atelier.yaml → blaueis-gateway@atelier
+        instance_path = self.config.get("_instance_path", "")
+        instance_name = os.path.splitext(os.path.basename(instance_path))[0] if instance_path else ""
+        unit_name = f"blaueis-gateway@{instance_name}" if instance_name else ""
+
         try:
             # Pull latest
             r = await asyncio.to_thread(
@@ -358,12 +365,23 @@ class GatewayServer:
             new_version = _get_version()
             log.info("Update complete: %s → %s", old_version, new_version)
 
+            if r.returncode == 0 and old_version != new_version:
+                # Exit after a short delay so the update_result message
+                # reaches the client. systemd Restart=on-failure will
+                # restart us with the new code.
+                log.info("Restarting to load new version...")
+
+                async def _delayed_exit():
+                    await asyncio.sleep(2)
+                    os._exit(1)  # non-zero so systemd restarts us
+
+                asyncio.ensure_future(_delayed_exit())
+
             return {
                 "ok": r.returncode == 0,
                 "old_version": old_version,
                 "new_version": new_version,
                 "steps": steps,
-                "restart_required": old_version != new_version,
             }
         except Exception as e:
             log.error("Update failed: %s", e)
