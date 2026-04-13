@@ -90,8 +90,6 @@ class Device:
         # ── Status database (persists across reconnects) ───
         self._glossary = load_glossary()
         self._status: dict = build_status(glossary=self._glossary)
-        self._registered_fields: set[str] = set()
-        self._required_queries: set[str] = set()
 
         # ── Gateway info (populated from version/pi_status) ─
         self.gateway_info: dict = {
@@ -167,23 +165,24 @@ class Device:
         return result
 
     @property
-    def required_queries(self) -> set[str]:
-        return frozenset(self._required_queries)
+    def required_queries(self) -> frozenset[str]:
+        """Compute required queries from the database. No caching — always fresh."""
+        return frozenset(self._compute_required_queries())
 
-    # ── Field registration ──────────────────────────────────
+    # ── Query computation (from database) ───────────────────
 
-    def register_fields(self, field_names: set[str] | list[str]):
-        self._registered_fields = set(field_names)
-        self._recompute_queries()
+    def _compute_required_queries(self) -> set[str]:
+        """Scan the status database for available fields and deduplicate
+        the query frames needed to populate them.
 
-    def register_all_available(self):
-        self._registered_fields = set(self.available_fields.keys())
-        self._recompute_queries()
-
-    def _recompute_queries(self):
+        This is the single source of truth — no external registration needed.
+        """
         needed = set()
         all_fields = walk_fields(self._glossary)
-        for fname in self._registered_fields:
+        for fname, fdata in self._status["fields"].items():
+            fa = fdata.get("feature_available", "never")
+            if fa in ("never", "capability"):
+                continue  # not confirmed available
             gdef = all_fields.get(fname, {})
             protocols = gdef.get("protocols", {})
             for pkey, pdef in protocols.items():
@@ -191,8 +190,7 @@ class Device:
                     query_key = self._response_to_query(pkey)
                     if query_key:
                         needed.add(query_key)
-        self._required_queries = needed
-        log.debug("Required queries: %s (for %d fields)", needed, len(self._registered_fields))
+        return needed
 
     @staticmethod
     def _response_to_query(response_key: str) -> str | None:
@@ -233,7 +231,7 @@ class Device:
         await self._query_gateway_info()
         await self._query_capabilities()
 
-        # Start poll loop
+        # Start poll loop (queries derived from database each cycle)
         self._poll_task = asyncio.create_task(self._poll_loop())
 
         # Start supervisor (restarts loops if they die)
@@ -385,11 +383,11 @@ class Device:
             await asyncio.sleep(self.poll_interval)
 
     async def _send_poll_queries(self):
-        """Send minimum query set for registered fields."""
+        """Send minimum query set derived from the status database."""
         if not self._client or not self._client._ws:
             return  # skip this cycle, try next
 
-        queries = self._required_queries or {"cmd_0x41"}
+        queries = self._compute_required_queries() or {"cmd_0x41"}
 
         for qkey in queries:
             if not self._running:
@@ -539,16 +537,18 @@ class Device:
             log.debug("Frame decode error: %s", e)
 
     def _snapshot_fields(self) -> dict[str, object]:
+        """Snapshot current values of all available fields."""
         snap = {}
-        for fname in self._registered_fields:
+        for fname in self.available_fields:
             r = read_field(self._status, fname)
             snap[fname] = r["value"] if r else None
         return snap
 
     def _detect_changes(self, old_values: dict[str, object]):
+        """Compare current values with snapshot and fire callbacks."""
         if not self.on_state_change:
             return
-        for fname in self._registered_fields:
+        for fname in self.available_fields:
             r = read_field(self._status, fname)
             new_val = r["value"] if r else None
             old_val = old_values.get(fname)
@@ -630,5 +630,6 @@ class Device:
     def read_full(self, field_name: str) -> dict | None:
         return read_field(self._status, field_name)
 
-    def read_all_registered(self) -> dict[str, object]:
-        return {fname: self.read(fname) for fname in self._registered_fields}
+    def read_all_available(self) -> dict[str, object]:
+        """Read all available fields. Returns {name: value}."""
+        return {fname: self.read(fname) for fname in self.available_fields}

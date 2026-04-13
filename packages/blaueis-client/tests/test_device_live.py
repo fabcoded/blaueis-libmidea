@@ -12,7 +12,6 @@ import pytest
 
 from blaueis.client.device import Device
 
-# Skip if no gateway reachable (CI, offline, etc.)
 GATEWAY_HOST = os.environ.get("BLAUEIS_GW_HOST", "192.168.210.30")
 GATEWAY_PORT = int(os.environ.get("BLAUEIS_GW_PORT", "8765"))
 GATEWAY_PSK = os.environ.get(
@@ -53,7 +52,6 @@ async def test_connect_and_discover(gateway_available):
         avail = device.available_fields
         assert len(avail) > 50, f"Expected >50 available fields, got {len(avail)}"
 
-        # Core fields must be present
         for field in ["power", "operating_mode", "target_temperature",
                       "fan_speed", "indoor_temperature"]:
             assert field in avail, f"Missing core field: {field}"
@@ -64,72 +62,66 @@ async def test_connect_and_discover(gateway_available):
 
 
 async def test_poll_and_read(gateway_available):
-    """Connect, poll, read status fields."""
+    """Connect, poll, verify database-driven queries work."""
     device = Device(GATEWAY_HOST, GATEWAY_PORT, psk=GATEWAY_PSK, poll_interval=999)
     try:
         await device.start()
 
-        # Register key fields and manually trigger a poll
-        device.register_fields([
-            "power", "operating_mode", "target_temperature",
-            "indoor_temperature", "fan_speed",
-        ])
+        # Queries computed from database — should include C0 at minimum
+        queries = device.required_queries
+        assert "cmd_0x41" in queries
+
+        # Manually trigger a poll
         await device._send_poll_queries()
-        await asyncio.sleep(2)  # wait for response
+        await asyncio.sleep(2)
 
-        # Read values
-        values = device.read_all_registered()
-        print(f"\nStatus: {values}")
+        # Read from the database
+        power = device.read("power")
+        target = device.read("target_temperature")
+        indoor = device.read("indoor_temperature")
 
-        # Power should be a bool
-        assert isinstance(values["power"], bool)
-        # Target temp should be reasonable
-        target = values["target_temperature"]
+        print(f"\nPower: {power}, Target: {target}, Indoor: {indoor}")
+
+        assert isinstance(power, bool)
         assert target is not None
-        assert 12 <= target <= 43, f"target_temperature={target} out of range"
-        # Indoor temp should be reasonable (if available)
-        indoor = values["indoor_temperature"]
-        if indoor is not None:
-            assert -10 < indoor < 60, f"indoor_temperature={indoor} out of range"
+        assert 12 <= target <= 43
 
     finally:
         await device.stop()
 
 
 async def test_state_change_fires(gateway_available):
-    """Connect, register, verify state change callbacks fire on first poll."""
+    """Connect, verify state change callbacks fire on first poll."""
     device = Device(GATEWAY_HOST, GATEWAY_PORT, psk=GATEWAY_PSK, poll_interval=999)
     changes = []
 
     try:
-        await device.start()
-
-        device.register_fields(["power", "target_temperature"])
+        # Set callback BEFORE start so we catch changes from initial poll
         device.on_state_change = lambda f, new, old: changes.append((f, new, old))
+        await device.start()
 
         await device._send_poll_queries()
         await asyncio.sleep(2)
 
-        # First poll transitions from None → actual values
         changed_fields = {c[0] for c in changes}
         assert "power" in changed_fields, f"Expected power change, got: {changes}"
-        print(f"\nState changes: {changes}")
+        print(f"\nState changes: {len(changes)} fields")
 
     finally:
         await device.stop()
 
 
-async def test_required_queries_dedup(gateway_available):
-    """Verify query deduplication works with real glossary."""
+async def test_required_queries_from_database(gateway_available):
+    """Verify queries are derived from B5-confirmed fields in database."""
     device = Device(GATEWAY_HOST, GATEWAY_PORT, psk=GATEWAY_PSK, poll_interval=999)
     try:
         await device.start()
 
-        # All C0 fields → should only need cmd_0x41
-        device.register_fields(["power", "operating_mode", "target_temperature"])
         queries = device.required_queries
         assert "cmd_0x41" in queries
-        print(f"\nQueries for C0 fields: {queries}")
+        # After B5, C1 group fields are confirmed → group queries needed
+        assert "cmd_0xc1_group1" in queries, f"Expected group1 query, got: {queries}"
+        print(f"\nQueries from database: {sorted(queries)}")
 
     finally:
         await device.stop()

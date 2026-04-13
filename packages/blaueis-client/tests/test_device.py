@@ -148,41 +148,39 @@ def test_state_change_callback():
     from blaueis.core.process import finalize_capabilities
     finalize_capabilities(d._status, d._glossary)
 
-    # Register fields we care about
-    d.register_fields(["power", "target_temperature"])
-
     changes = []
     d.on_state_change = lambda field, new, old: changes.append((field, new, old))
 
     # First C0 — transition from None to actual values
     d._process_frame(C0_STATUS_HEX)
 
-    # Should have changes for both registered fields
+    # Should have changes for available fields decoded from C0
     changed_fields = {c[0] for c in changes}
     assert "power" in changed_fields
     assert "target_temperature" in changed_fields
 
 
-# ── Field registration tests ────────────────────────────────
+# ── Query computation tests (database-driven) ───────────────
 
 
-def test_register_fields_computes_queries():
+def test_required_queries_from_database():
+    """required_queries are derived from the status database, not registration."""
     d = _make_device()
-    d.register_fields(["power", "operating_mode", "target_temperature"])
-    # All these come from C0, which needs cmd_0x41
+    # Before B5: only 'always'/'readable' fields → still need cmd_0x41
     assert "cmd_0x41" in d.required_queries
 
 
-def test_register_all_available():
+def test_required_queries_include_groups_after_b5():
     d = _make_device()
     d._process_frame(B5_EXTENDED_HEX)
     d._process_frame(B5_SIMPLE_HEX)
     from blaueis.core.process import finalize_capabilities
     finalize_capabilities(d._status, d._glossary)
 
-    d.register_all_available()
-    assert len(d._registered_fields) > 10
-    assert "cmd_0x41" in d.required_queries
+    queries = d.required_queries
+    assert "cmd_0x41" in queries
+    # C1 group fields are available → group queries needed
+    assert "cmd_0xc1_group1" in queries
 
 
 # ── Read convenience ────────────────────────────────────────
@@ -204,11 +202,10 @@ def test_read_full_returns_metadata():
     assert r["source"] == "rsp_0xc0"
 
 
-def test_read_all_registered():
+def test_read_all_available():
     d = _make_device()
     d._process_frame(C0_STATUS_HEX)
-    d.register_fields(["power", "target_temperature", "indoor_temperature"])
-    result = d.read_all_registered()
+    result = d.read_all_available()
     assert "power" in result
     assert "target_temperature" in result
     assert result["power"] is False
