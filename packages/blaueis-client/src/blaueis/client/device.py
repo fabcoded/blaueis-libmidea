@@ -380,17 +380,78 @@ class Device:
     # ── Listen loop ─────────────────────────────────────────
 
     async def _listen_loop(self):
-        """Continuously listen for gateway messages."""
-        try:
-            if self._client:
-                await self._client.listen()
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:
-            log.warning("Listen loop ended: %s", e)
-        finally:
-            if self._running and self.on_disconnected:
+        """Continuously listen for gateway messages. Reconnects on failure."""
+        while self._running:
+            try:
+                if self._client:
+                    await self._client.listen()
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                log.warning("Listen loop ended: %s", e)
+
+            if not self._running:
+                break
+
+            # Connection lost — try to reconnect
+            if self.on_disconnected:
                 self.on_disconnected()
+            await self._reconnect()
+
+    async def _reconnect(self):
+        """Attempt to reconnect to the gateway with backoff."""
+        delays = [5, 10, 30, 60]
+        for attempt, delay in enumerate(delays, 1):
+            if not self._running:
+                return
+            log.info("Reconnecting to %s:%d (attempt %d, wait %ds)...", self.host, self.port, attempt, delay)
+            await asyncio.sleep(delay)
+            if not self._running:
+                return
+            try:
+                if self._client:
+                    await self._client.close()
+
+                psk_bytes = None
+                if self._psk_raw and not self._no_encrypt:
+                    psk_bytes = self._psk_raw if isinstance(self._psk_raw, bytes) else psk_to_bytes(self._psk_raw)
+
+                self._client = HvacClient(self.host, self.port, psk=psk_bytes, no_encrypt=self._no_encrypt)
+                await self._client.connect()
+                self._client.add_listener(self._on_gateway_message)
+
+                if self.on_connected:
+                    self.on_connected()
+
+                log.info("Reconnected to %s:%d", self.host, self.port)
+                return  # success — listen loop will resume
+            except Exception as e:
+                log.warning("Reconnect attempt %d failed: %s", attempt, e)
+
+        # All attempts exhausted — keep retrying every 60s
+        while self._running:
+            await asyncio.sleep(60)
+            if not self._running:
+                return
+            try:
+                if self._client:
+                    await self._client.close()
+
+                psk_bytes = None
+                if self._psk_raw and not self._no_encrypt:
+                    psk_bytes = self._psk_raw if isinstance(self._psk_raw, bytes) else psk_to_bytes(self._psk_raw)
+
+                self._client = HvacClient(self.host, self.port, psk=psk_bytes, no_encrypt=self._no_encrypt)
+                await self._client.connect()
+                self._client.add_listener(self._on_gateway_message)
+
+                if self.on_connected:
+                    self.on_connected()
+
+                log.info("Reconnected to %s:%d", self.host, self.port)
+                return
+            except Exception as e:
+                log.warning("Reconnect failed: %s", e)
 
     # ── Poll loop ───────────────────────────────────────────
 
@@ -404,7 +465,10 @@ class Device:
                 await asyncio.sleep(self.poll_interval)
                 if not self._running:
                     break
-                await self._send_poll_queries()
+                try:
+                    await self._send_poll_queries()
+                except Exception as e:
+                    log.debug("Poll failed (will retry next interval): %s", e)
         except asyncio.CancelledError:
             raise
         except Exception as e:
