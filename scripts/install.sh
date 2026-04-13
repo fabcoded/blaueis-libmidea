@@ -294,7 +294,7 @@ if [ -n "$EXISTING_CONFIG" ]; then
     INSTANCE_NAME=$(basename "$EXISTING_CONFIG" .yaml)
     ok "Imported as instance: $INSTANCE_NAME"
 else
-    "$INSTALL_DIR/venv/bin/python" "$INSTALL_DIR/scripts/blaueis-configure"
+    "$INSTALL_DIR/venv/bin/blaueis-configure"
 fi
 
 # Fix config ownership (wizard may have run as root)
@@ -328,9 +328,10 @@ print(d.get('enabled', True))
 done
 
 # ── Install helper scripts ──────────────────────────
-$SUDO ln -sf "$INSTALL_DIR/scripts/blaueis-configure" /usr/local/bin/blaueis-gw-configure
-$SUDO ln -sf "$INSTALL_DIR/scripts/blaueis-update" /usr/local/bin/blaueis-gw-update
-$SUDO chmod +x /usr/local/bin/blaueis-gw-configure /usr/local/bin/blaueis-gw-update
+$SUDO ln -sf "$INSTALL_DIR/venv/bin/blaueis-configure" /usr/local/bin/blaueis-gw-configure
+$SUDO ln -sf "$INSTALL_DIR/packages/blaueis-gateway/scripts/blaueis-update" /usr/local/bin/blaueis-gw-update
+$SUDO ln -sf "$INSTALL_DIR/packages/blaueis-gateway/scripts/blaueis-uninstall" /usr/local/bin/blaueis-gw-uninstall
+$SUDO chmod +x /usr/local/bin/blaueis-gw-configure /usr/local/bin/blaueis-gw-update /usr/local/bin/blaueis-gw-uninstall
 
 # ── Done ────────────────────────────────────────────
 echo ""
@@ -340,6 +341,8 @@ echo "  Commands:"
 echo "    systemctl status blaueis-gateway@<name>    # check status"
 echo "    blaueis-gw-configure                          # add/edit instance"
 echo "    blaueis-gw-update                             # check for updates"
+echo "    sudo blaueis-gw-uninstall                     # uninstall (keeps config)"
+echo "    sudo blaueis-gw-uninstall --purge             # uninstall + remove config"
 echo ""
 echo "  Config: $CONFIG_DIR/"
 echo "  Logs:   journalctl -u 'blaueis-gateway@*' -f"

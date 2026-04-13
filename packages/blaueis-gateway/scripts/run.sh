@@ -1,11 +1,12 @@
 #!/bin/bash
 # Run HVAC gateway temporarily in foreground (Ctrl+C to stop)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PACKAGE_DIR="$(dirname "$SCRIPT_DIR")"
 
-if [ ! -f "$SCRIPT_DIR/gateway.conf" ]; then
-  echo "No gateway.conf found. Run configure.py first:"
-  echo "  python3 $SCRIPT_DIR/configure.py"
+if [ ! -d "/etc/blaueis-gw/instances" ] || [ -z "$(ls /etc/blaueis-gw/instances/*.yaml 2>/dev/null)" ]; then
+  echo "No instance configured. Run blaueis-configure first:"
+  echo "  blaueis-configure"
   exit 1
 fi
 
-exec python3 "$SCRIPT_DIR/hvac_gateway.py" --config "$SCRIPT_DIR/gateway.conf" "$@"
+exec python3 -m blaueis.gateway.server "$@"

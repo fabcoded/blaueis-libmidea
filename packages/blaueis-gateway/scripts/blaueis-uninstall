@@ -1,0 +1,107 @@
+#!/bin/bash
+# Blaueis Gateway — uninstaller
+#
+# Usage:
+#   sudo blaueis-uninstall            # remove install, keep config
+#   sudo blaueis-uninstall --purge    # remove install + config + system user
+#
+set -e
+
+INSTALL_DIR="/opt/blaueis-gw"
+CONFIG_DIR="/etc/blaueis-gw"
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
+ok()   { echo -e "  ${GREEN}✓${NC} $1"; }
+warn() { echo -e "  ${YELLOW}!${NC} $1"; }
+
+PURGE=false
+if [ "$1" = "--purge" ]; then
+    PURGE=true
+fi
+
+# ── Root check ─────────────────────────────────────
+if [ "$EUID" -ne 0 ]; then
+    echo "Run with sudo: sudo blaueis-uninstall $*"
+    exit 1
+fi
+
+echo ""
+echo -e "${BLUE}─── Blaueis Gateway Uninstall ───────────────────────${NC}"
+echo ""
+
+if [ "$PURGE" = true ]; then
+    echo "  Mode: purge (remove everything including config and user)"
+else
+    echo "  Mode: uninstall (keep config in $CONFIG_DIR)"
+fi
+echo ""
+
+# ── Stop and disable all gateway instances ─────────
+echo "Stopping services..."
+for svc in $(systemctl list-units --type=service --no-legend 'blaueis-gateway@*' 2>/dev/null | awk '{print $1}'); do
+    systemctl stop "$svc" 2>/dev/null || true
+    systemctl disable "$svc" 2>/dev/null || true
+    ok "Stopped and disabled $svc"
+done
+# Also stop the target
+systemctl stop blaueis-gateway.target 2>/dev/null || true
+systemctl disable blaueis-gateway.target 2>/dev/null || true
+
+# ── Remove systemd units ──────────────────────────
+echo ""
+echo "Removing systemd units..."
+rm -f /etc/systemd/system/blaueis-gateway@.service
+rm -f /etc/systemd/system/blaueis-gateway.target
+systemctl daemon-reload
+ok "Systemd units removed"
+
+# ── Remove CLI symlinks ───────────────────────────
+echo ""
+echo "Removing CLI commands..."
+for cmd in blaueis-gw-configure blaueis-gw-update blaueis-gw-uninstall; do
+    if [ -L "/usr/local/bin/$cmd" ] || [ -f "/usr/local/bin/$cmd" ]; then
+        rm -f "/usr/local/bin/$cmd"
+        ok "Removed /usr/local/bin/$cmd"
+    fi
+done
+
+# ── Remove install directory ──────────────────────
+echo ""
+if [ -d "$INSTALL_DIR" ]; then
+    echo "Removing $INSTALL_DIR..."
+    rm -rf "$INSTALL_DIR"
+    ok "Removed $INSTALL_DIR"
+else
+    warn "$INSTALL_DIR not found (already removed?)"
+fi
+
+# ── Purge: config + user ──────────────────────────
+if [ "$PURGE" = true ]; then
+    echo ""
+    if [ -d "$CONFIG_DIR" ]; then
+        echo "Removing $CONFIG_DIR..."
+        rm -rf "$CONFIG_DIR"
+        ok "Removed $CONFIG_DIR"
+    else
+        warn "$CONFIG_DIR not found"
+    fi
+
+    echo ""
+    if id "blaueis-gw" &>/dev/null; then
+        echo "Removing system user blaueis-gw..."
+        userdel blaueis-gw 2>/dev/null || true
+        ok "Removed user blaueis-gw"
+    else
+        warn "User blaueis-gw not found"
+    fi
+else
+    echo ""
+    echo -e "  ${YELLOW}Config kept at $CONFIG_DIR${NC}"
+    echo "  (instance configs and encryption keys are preserved)"
+    echo "  To remove: sudo rm -rf $CONFIG_DIR"
+fi
+
+# ── Done ──────────────────────────────────────────
+echo ""
+echo -e "${GREEN}─── Blaueis Gateway Uninstalled ─────────────────────${NC}"
+echo ""
