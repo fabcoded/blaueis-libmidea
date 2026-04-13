@@ -385,9 +385,11 @@ class Device:
     async def _send_poll_queries(self):
         """Send minimum query set derived from the status database."""
         if not self._client or not self._client._ws:
+            log.debug("Poll skipped: no connection")
             return  # skip this cycle, try next
 
         queries = self._compute_required_queries() or {"cmd_0x41"}
+        log.info("Poll: sending %d queries: %s", len(queries), sorted(queries))
 
         for qkey in queries:
             if not self._running:
@@ -518,6 +520,8 @@ class Device:
             ts = datetime.now(UTC).isoformat()
 
             protocol_key = identify_frame(body)
+
+            log.debug("Frame received: %s (%dB)", protocol_key, len(body))
 
             if protocol_key == "rsp_0xb5":
                 next_frame = process_b5(self._status, body, self._glossary, timestamp=ts)
