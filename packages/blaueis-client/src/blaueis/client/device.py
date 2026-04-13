@@ -389,18 +389,25 @@ class Device:
             return  # skip this cycle, try next
 
         queries = self._compute_required_queries() or {"cmd_0x41"}
-        log.info("Poll: sending %d queries: %s", len(queries), sorted(queries))
+        log.debug("Poll: %d queries", len(queries))
 
-        for qkey in queries:
+        sent = 0
+        for qkey in sorted(queries):
             if not self._running:
+                break
+            if not self._client or not self._client._ws:
+                log.warning("Poll aborted: connection lost mid-cycle")
                 break
             frame = self._build_query_frame(qkey)
             if frame:
                 try:
                     await self._client.send_frame(frame.hex(" "))
+                    sent += 1
                 except Exception as e:
-                    log.debug("Send failed for %s: %s", qkey, e)
+                    log.warning("Send failed for %s: %s", qkey, e)
+                    break  # connection likely dead, stop sending
                 await asyncio.sleep(0.1)  # inter-frame spacing
+        log.debug("Poll sent %d/%d queries", sent, len(queries))
 
     # ── Capability discovery (once) ─────────────────────────
 
@@ -499,6 +506,12 @@ class Device:
             if "instance" in msg:
                 self.gateway_info["instance"] = msg["instance"]
 
+        elif msg_type == "ack":
+            log.debug("ACK ref=%s status=%s", msg.get("ref"), msg.get("status"))
+
+        elif msg_type == "error":
+            log.warning("Gateway error ref=%s: %s", msg.get("ref"), msg.get("msg"))
+
         elif msg_type == "pi_status":
             self.gateway_stats = msg
             if "device_name" in msg:
@@ -521,7 +534,7 @@ class Device:
 
             protocol_key = identify_frame(body)
 
-            log.debug("Frame received: %s (%dB)", protocol_key, len(body))
+            log.debug("RX %s (%dB)", protocol_key, len(body))
 
             if protocol_key == "rsp_0xb5":
                 next_frame = process_b5(self._status, body, self._glossary, timestamp=ts)
