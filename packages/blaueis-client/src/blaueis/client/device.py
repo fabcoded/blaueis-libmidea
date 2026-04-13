@@ -19,7 +19,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 
 from blaueis.client.ws_client import HvacClient
 from blaueis.core.codec import (
@@ -338,7 +338,7 @@ class Device:
             raw = bytes.fromhex(hex_str.replace(" ", ""))
             parsed = parse_frame(raw)
             body = parsed["body"]
-            ts = datetime.now().isoformat()
+            ts = datetime.now(UTC).isoformat()
 
             protocol_key = identify_frame(body)
 
