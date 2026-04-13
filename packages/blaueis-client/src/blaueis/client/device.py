@@ -82,10 +82,19 @@ class Device:
         self._registered_fields: set[str] = set()
         self._required_queries: set[str] = set()  # protocol_keys needed
 
+        # Gateway info (populated from version/pi_status messages)
+        self.gateway_info: dict = {
+            "version": "unknown",
+            "device_name": "Midea AC",
+            "instance": "",
+        }
+        self.gateway_stats: dict = {}  # latest pi_status data
+
         # Callbacks
         self.on_state_change: Callable[[str, object, object], None] | None = None
         self.on_connected: Callable[[], None] | None = None
         self.on_disconnected: Callable[[], None] | None = None
+        self.on_gateway_stats: Callable[[dict], None] | None = None
 
         # Tasks
         self._listen_task: asyncio.Task | None = None
@@ -211,6 +220,9 @@ class Device:
         # Start listen loop
         self._listen_task = asyncio.create_task(self._listen_loop())
 
+        # Query gateway info
+        await self._query_gateway_info()
+
         # Query capabilities
         await self._query_capabilities()
 
@@ -273,6 +285,23 @@ class Device:
 
     # ── Frame reception ─────────────────────────────────────
 
+    async def _query_gateway_info(self):
+        """Request gateway version/name info."""
+        if not self._client:
+            return
+        await self._client._send({"type": "version", "ref": 0})
+        # Wait briefly for response
+        for _ in range(10):
+            await asyncio.sleep(0.2)
+            if self.gateway_info.get("version") != "unknown":
+                break
+        log.info(
+            "Gateway: %s (instance=%s, version=%s)",
+            self.gateway_info.get("device_name"),
+            self.gateway_info.get("instance"),
+            self.gateway_info.get("version"),
+        )
+
     def _on_gateway_message(self, msg: dict):
         """Handle all messages from the gateway."""
         msg_type = msg.get("type")
@@ -283,6 +312,25 @@ class Device:
             if direction != "rx":
                 return  # skip our own TX echoes
             self._process_frame(hex_str)
+
+        elif msg_type == "version":
+            self.gateway_info["version"] = msg.get("version", "unknown")
+            if "device_name" in msg:
+                self.gateway_info["device_name"] = msg["device_name"]
+            if "instance" in msg:
+                self.gateway_info["instance"] = msg["instance"]
+
+        elif msg_type == "pi_status":
+            self.gateway_stats = msg
+            if "device_name" in msg:
+                self.gateway_info["device_name"] = msg["device_name"]
+            if "instance" in msg:
+                self.gateway_info["instance"] = msg["instance"]
+            if self.on_gateway_stats:
+                try:
+                    self.on_gateway_stats(msg)
+                except Exception:
+                    log.exception("on_gateway_stats callback error")
 
     def _process_frame(self, hex_str: str):
         """Decode a received frame and update status."""

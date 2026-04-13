@@ -265,7 +265,12 @@ class GatewayServer:
             await client.send({"type": "pong"})
 
         elif msg_type == "version":
-            await client.send({"type": "version", "version": GW_VERSION})
+            await client.send({
+                "type": "version",
+                "version": GW_VERSION,
+                "device_name": self.config.get("device_name", "Midea AC"),
+                "instance": self.config.get("_instance_name", ""),
+            })
 
         elif msg_type == "logs":
             n = msg.get("n", 20)
@@ -405,6 +410,8 @@ class GatewayServer:
             stats["model"] = self.protocol.model
             stats["clients"] = len(self._clients)
             stats["version"] = GW_VERSION
+            stats["device_name"] = self.config.get("device_name", "Midea AC")
+            stats["instance"] = self.config.get("_instance_name", "")
             if self._clients:
                 await self._broadcast(stats)
 
@@ -566,6 +573,8 @@ def main():
         else:
             config = load_config(global_path=args.global_config, instance_path=args.instance_config)
             config["_instance_path"] = args.instance_config or ""
+            if args.instance_config:
+                config["_instance_name"] = os.path.splitext(os.path.basename(args.instance_config))[0]
     except PermissionError:
         print(
             f"ERROR: Cannot read config file: {config_path}\n"
