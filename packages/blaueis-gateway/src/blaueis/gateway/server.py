@@ -578,7 +578,7 @@ def main():
     except FileNotFoundError:
         print(
             f"ERROR: Config file not found: {config_path}\n"
-            f"  Run 'blaueis-configure' to create it, or check the\n"
+            f"  Run 'blaueis-gw configure' to create it, or check the\n"
             f"  instance name in the systemd service.",
             file=sys.stderr,
         )

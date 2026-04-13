@@ -161,7 +161,7 @@ def generate_psk() -> bytes:
 def psk_to_bytes(psk_str: str) -> bytes:
     """SHA-256 hash a passphrase into 32 raw bytes for the AES-256 handshake.
 
-    Must match the key derivation in blaueis-configure (psk_to_key).
+    Must match the key derivation in blaueis-gw configure (psk_to_key).
     """
     import hashlib
 

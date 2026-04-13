@@ -5,9 +5,9 @@ Creates or updates an instance config in /etc/blaueis-gw/instances/<name>.yaml.
 Also creates the global config /etc/blaueis-gw/gateway.yaml if it doesn't exist.
 
 Usage:
-    blaueis-configure                           # interactive
-    blaueis-configure --instance bedroom        # add/edit specific instance
-    blaueis-configure --instance bedroom --psk "mySecretKey123"  # with existing key
+    blaueis-gw configure                           # interactive
+    blaueis-gw configure --instance bedroom        # add/edit specific instance
+    blaueis-gw configure --instance bedroom --psk "mySecretKey123"  # with existing key
 """
 
 import argparse
@@ -161,7 +161,7 @@ logging:
   level: INFO
 
 # Allow the HA integration to trigger gateway updates remotely.
-# Set to false to require manual updates via blaueis-gw-update.
+# Set to false to require manual updates via blaueis-gw update.
 allow_remote_update: true
 """
     GLOBAL_CONFIG.write_text(content)

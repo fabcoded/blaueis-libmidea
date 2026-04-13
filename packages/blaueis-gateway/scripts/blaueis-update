@@ -2,9 +2,9 @@
 # Blaueis Gateway — update checker and applier
 #
 # Usage:
-#   blaueis-update              # check for updates (no changes)
-#   blaueis-update --apply      # stop services → update → start → health check
-#   blaueis-update --rollback   # revert to previous version
+#   blaueis-gw update              # check for updates (no changes)
+#   blaueis-gw update --apply      # stop services → update → start → health check
+#   blaueis-gw update --rollback   # revert to previous version
 #
 # Must be run with sudo (needs to stop/start systemd services and
 # write to /opt/blaueis-gw which is owned by the blaueis service user).
@@ -32,7 +32,7 @@ elif command -v sudo &>/dev/null; then
     SUDO="sudo"
     RUN_AS="sudo -u $OWNER"
 else
-    echo "Run with sudo: sudo blaueis-update $*"
+    echo "Run with sudo: sudo blaueis-gw update $*"
     exit 1
 fi
 
@@ -64,8 +64,8 @@ fi
 if [ "$1" != "--apply" ] && [ "$1" != "--rollback" ]; then
     echo -e "${YELLOW}Update available: $CURRENT → $LATEST${NC}"
     echo ""
-    echo "  To apply:   sudo blaueis-update --apply"
-    echo "  To rollback: sudo blaueis-update --rollback"
+    echo "  To apply:   sudo blaueis-gw update --apply"
+    echo "  To rollback: sudo blaueis-gw update --rollback"
     exit 0
 fi
 
@@ -150,7 +150,7 @@ if [ ${#STARTED[@]} -gt 0 ]; then
         else
             fail "$name — FAILED"
             echo "      Check: journalctl -u $svc --no-pager -n 20"
-            echo "      Rollback: sudo blaueis-update --rollback"
+            echo "      Rollback: sudo blaueis-gw update --rollback"
             all_healthy=false
         fi
     done
@@ -161,7 +161,7 @@ if [ ${#STARTED[@]} -gt 0 ]; then
     else
         echo -e "${RED}Some instances failed to start.${NC}"
         echo "  Review the logs, then either fix the issue or rollback:"
-        echo "  sudo blaueis-update --rollback"
+        echo "  sudo blaueis-gw update --rollback"
         exit 1
     fi
 else

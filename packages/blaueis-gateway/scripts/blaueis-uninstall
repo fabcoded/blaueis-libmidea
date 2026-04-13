@@ -58,7 +58,7 @@ ok "Systemd units removed"
 # ── Remove CLI symlinks ───────────────────────────
 echo ""
 echo "Removing CLI commands..."
-for cmd in blaueis-gw-configure blaueis-gw-update blaueis-gw-uninstall; do
+for cmd in blaueis-gw blaueis-gw-configure blaueis-gw-update blaueis-gw-uninstall; do
     if [ -L "/usr/local/bin/$cmd" ] || [ -f "/usr/local/bin/$cmd" ]; then
         rm -f "/usr/local/bin/$cmd"
         ok "Removed /usr/local/bin/$cmd"

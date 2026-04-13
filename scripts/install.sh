@@ -327,22 +327,25 @@ print(d.get('enabled', True))
     fi
 done
 
-# ── Install helper scripts ──────────────────────────
-$SUDO ln -sf "$INSTALL_DIR/venv/bin/blaueis-configure" /usr/local/bin/blaueis-gw-configure
-$SUDO ln -sf "$INSTALL_DIR/packages/blaueis-gateway/scripts/blaueis-update" /usr/local/bin/blaueis-gw-update
-$SUDO ln -sf "$INSTALL_DIR/packages/blaueis-gateway/scripts/blaueis-uninstall" /usr/local/bin/blaueis-gw-uninstall
-$SUDO chmod +x /usr/local/bin/blaueis-gw-configure /usr/local/bin/blaueis-gw-update /usr/local/bin/blaueis-gw-uninstall
+# ── Install CLI ────────────────────────────────────
+$SUDO ln -sf "$INSTALL_DIR/packages/blaueis-gateway/scripts/blaueis-gw" /usr/local/bin/blaueis-gw
+$SUDO chmod +x /usr/local/bin/blaueis-gw
+# Clean up old per-command symlinks (from pre-dispatch versions)
+for old_cmd in blaueis-gw-configure blaueis-gw-update blaueis-gw-uninstall; do
+    $SUDO rm -f "/usr/local/bin/$old_cmd"
+done
 
 # ── Done ────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}─── Blaueis Gateway Installed ────────────────────────${NC}"
 echo ""
 echo "  Commands:"
-echo "    systemctl status blaueis-gateway@<name>    # check status"
-echo "    blaueis-gw-configure                          # add/edit instance"
-echo "    blaueis-gw-update                             # check for updates"
-echo "    sudo blaueis-gw-uninstall                     # uninstall (keeps config)"
-echo "    sudo blaueis-gw-uninstall --purge             # uninstall + remove config"
+echo "    blaueis-gw status                            # check all instances"
+echo "    blaueis-gw configure                         # add/edit instance"
+echo "    blaueis-gw logs [instance] [-f]              # view logs"
+echo "    sudo blaueis-gw update                       # check for updates"
+echo "    sudo blaueis-gw uninstall                    # uninstall (keeps config)"
+echo "    sudo blaueis-gw uninstall --purge            # uninstall + remove config"
 echo ""
 echo "  Config: $CONFIG_DIR/"
 echo "  Logs:   journalctl -u 'blaueis-gateway@*' -f"
