@@ -290,8 +290,11 @@ echo ""
 echo ""
 if [ -n "$EXISTING_CONFIG" ]; then
     info "Importing config from $EXISTING_CONFIG..."
-    cp "$EXISTING_CONFIG" "$CONFIG_DIR/instances/"
     INSTANCE_NAME=$(basename "$EXISTING_CONFIG" .yaml)
+    TARGET="$CONFIG_DIR/instances/$INSTANCE_NAME.yaml"
+    if [ "$(realpath "$EXISTING_CONFIG")" != "$(realpath "$TARGET")" ]; then
+        cp "$EXISTING_CONFIG" "$TARGET"
+    fi
     ok "Imported as instance: $INSTANCE_NAME"
 else
     "$INSTALL_DIR/venv/bin/blaueis-configure"
