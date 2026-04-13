@@ -328,8 +328,10 @@ print(d.get('enabled', True))
 done
 
 # ── Install CLI ────────────────────────────────────
+$SUDO chmod +x "$INSTALL_DIR/packages/blaueis-gateway/scripts/blaueis-gw" \
+    "$INSTALL_DIR/packages/blaueis-gateway/scripts/blaueis-update" \
+    "$INSTALL_DIR/packages/blaueis-gateway/scripts/blaueis-uninstall"
 $SUDO ln -sf "$INSTALL_DIR/packages/blaueis-gateway/scripts/blaueis-gw" /usr/local/bin/blaueis-gw
-$SUDO chmod +x /usr/local/bin/blaueis-gw
 # Clean up old per-command symlinks (from pre-dispatch versions)
 for old_cmd in blaueis-gw-configure blaueis-gw-update blaueis-gw-uninstall; do
     $SUDO rm -f "/usr/local/bin/$old_cmd"
