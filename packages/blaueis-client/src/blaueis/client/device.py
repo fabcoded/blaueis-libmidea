@@ -407,18 +407,30 @@ class Device:
             return
 
         log.info("Querying B5 capabilities...")
+        caps_before = len(self._status.get("capabilities_raw", []))
+
+        # Send extended query, wait for response
         try:
             await self._client.send_frame(build_cap_query_extended().hex(" "))
-            await asyncio.sleep(0.5)
-            await self._client.send_frame(build_cap_query_simple().hex(" "))
         except Exception as e:
-            log.warning("B5 query send failed: %s", e)
+            log.warning("B5 extended send failed: %s", e)
 
-        # Wait for responses (processed by listen loop via _on_gateway_message)
         for _ in range(20):
             await asyncio.sleep(0.25)
-            if self._status["meta"].get("b5_received", False):
-                break
+            if len(self._status.get("capabilities_raw", [])) > caps_before:
+                break  # got extended response
+
+        # Send simple query, wait for response
+        caps_after_ext = len(self._status.get("capabilities_raw", []))
+        try:
+            await self._client.send_frame(build_cap_query_simple().hex(" "))
+        except Exception as e:
+            log.warning("B5 simple send failed: %s", e)
+
+        for _ in range(20):
+            await asyncio.sleep(0.25)
+            if len(self._status.get("capabilities_raw", [])) > caps_after_ext:
+                break  # got simple response
 
         finalize_capabilities(self._status, self._glossary)
         log.info("B5 complete: %d available fields", len(self.available_fields))
