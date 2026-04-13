@@ -95,9 +95,14 @@ def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict) -> 
                 status_field["feature_available"] = "always"
 
 
-def process_b5(status: dict, body: bytes, glossary: dict, timestamp: str | None = None):
-    """Process a B5 capability frame and update the status file."""
-    records = parse_b5_tlv(body)
+def process_b5(status: dict, body: bytes, glossary: dict, timestamp: str | None = None) -> bool:
+    """Process a B5 capability frame and update the status file.
+
+    Returns the next_frame flag: True if more B5 pages are available.
+    """
+    parsed = parse_b5_tlv(body)
+    records = parsed["records"]
+    next_frame = parsed["next_frame"]
 
     # Append raw records (multiple B5 queries may be needed for all caps)
     existing = status.get("capabilities_raw", [])
@@ -117,6 +122,8 @@ def process_b5(status: dict, body: bytes, glossary: dict, timestamp: str | None 
     status["meta"]["b5_received"] = True
     status["meta"]["phase"] = "post_b5"
     status["meta"]["frame_counts"]["rsp_0xb5"] = status["meta"]["frame_counts"].get("rsp_0xb5", 0) + 1
+
+    return next_frame
 
 
 def finalize_capabilities(status: dict, glossary: dict):

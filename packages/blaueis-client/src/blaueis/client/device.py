@@ -111,6 +111,12 @@ class Device:
         self.on_disconnected: Callable[[], None] | None = None
         self.on_gateway_stats: Callable[[dict], None] | None = None
 
+        # ── B5 state machine ───────────────────────────────
+        self._b5_state: str = "idle"  # idle | waiting | done
+        self._b5_next_frame: bool = False  # set by frame handler
+        self._b5_page: int = 0  # current page being queried
+        self._b5_response_event: asyncio.Event | None = None
+
         # ── Task management ────────────────────────────────
         self._running = False
         self._supervisor_task: asyncio.Task | None = None
@@ -399,7 +405,16 @@ class Device:
     # ── Capability discovery (once) ─────────────────────────
 
     async def _query_capabilities(self):
-        """Send B5 queries and wait for responses. Called once during start()."""
+        """Query B5 capabilities using response-driven state machine.
+
+        Sends B5 page 0 (extended), waits for response, checks next_frame
+        flag. If set, sends page 1 (simple), waits, repeats. Finalizes
+        when next_frame=0 or timeout. Called once during start().
+
+        Other frames (C0 heartbeats, etc.) arriving during the wait are
+        processed normally by the listen loop — only B5 responses drive
+        the state machine.
+        """
         if not self._client:
             return
         if self.capabilities_received:
@@ -407,33 +422,42 @@ class Device:
             return
 
         log.info("Querying B5 capabilities...")
-        caps_before = len(self._status.get("capabilities_raw", []))
+        b5_queries = [build_cap_query_extended, build_cap_query_simple]
+        page = 0
 
-        # Send extended query, wait for response
-        try:
-            await self._client.send_frame(build_cap_query_extended().hex(" "))
-        except Exception as e:
-            log.warning("B5 extended send failed: %s", e)
+        while page < len(b5_queries):
+            # Set up state machine for this page
+            self._b5_state = "waiting"
+            self._b5_next_frame = False
+            self._b5_response_event = asyncio.Event()
 
-        for _ in range(20):
-            await asyncio.sleep(0.25)
-            if len(self._status.get("capabilities_raw", [])) > caps_before:
-                break  # got extended response
+            # Send query
+            try:
+                frame = b5_queries[page]()
+                await self._client.send_frame(frame.hex(" "))
+                log.debug("B5 page %d query sent", page)
+            except Exception as e:
+                log.warning("B5 page %d send failed: %s", page, e)
+                break
 
-        # Send simple query, wait for response
-        caps_after_ext = len(self._status.get("capabilities_raw", []))
-        try:
-            await self._client.send_frame(build_cap_query_simple().hex(" "))
-        except Exception as e:
-            log.warning("B5 simple send failed: %s", e)
+            # Wait for response (driven by _process_frame setting the event)
+            try:
+                await asyncio.wait_for(self._b5_response_event.wait(), timeout=5.0)
+            except asyncio.TimeoutError:
+                log.warning("B5 page %d response timeout", page)
+                break
 
-        for _ in range(20):
-            await asyncio.sleep(0.25)
-            if len(self._status.get("capabilities_raw", [])) > caps_after_ext:
-                break  # got simple response
+            log.debug("B5 page %d received (next_frame=%s)", page, self._b5_next_frame)
 
+            if not self._b5_next_frame:
+                break  # no more pages
+            page += 1
+
+        self._b5_state = "done"
+        self._b5_response_event = None
         finalize_capabilities(self._status, self._glossary)
-        log.info("B5 complete: %d available fields", len(self.available_fields))
+        log.info("B5 complete: %d pages, %d available fields",
+                 page + 1, len(self.available_fields))
 
     async def _query_gateway_info(self):
         """Request gateway version/name. Called once during start()."""
@@ -498,7 +522,12 @@ class Device:
             protocol_key = identify_frame(body)
 
             if protocol_key == "rsp_0xb5":
-                process_b5(self._status, body, self._glossary, timestamp=ts)
+                next_frame = process_b5(self._status, body, self._glossary, timestamp=ts)
+                # Drive B5 state machine
+                if self._b5_state == "waiting":
+                    self._b5_next_frame = next_frame
+                    if self._b5_response_event:
+                        self._b5_response_event.set()
             else:
                 old_values = self._snapshot_fields()
                 process_data_frame(

@@ -363,11 +363,15 @@ def decode_field(
 # ── B5 TLV parser ────────────────────────────────────────────────────────
 
 
-def parse_b5_tlv(body: bytes) -> list[dict]:
+def parse_b5_tlv(body: bytes) -> dict:
     """Parse a B5 response body into TLV records.
 
-    Body layout: body[0]=0xB5, body[1]=record_count, body[2..]=records.
-    Each record: cap_id(1) + cap_type(1) + data_len(1) + data(N).
+    Body layout: body[0]=0xB5, body[1]=record_count, body[2..]=records,
+    then trailing bytes: next_frame(1) + reserved(1).
+
+    Returns dict with:
+        records: list of cap record dicts
+        next_frame: bool — True if more capability pages available
     """
     if body[0] != 0xB5:
         raise ValueError(f"Not a B5 body: starts with 0x{body[0]:02X}")
@@ -398,7 +402,12 @@ def parse_b5_tlv(body: bytes) -> list[dict]:
         )
         pos += 3 + data_len
 
-    return records
+    # Trailing bytes after TLV records: next_frame flag
+    next_frame = False
+    if pos < len(body):
+        next_frame = body[pos] == 1
+
+    return {"records": records, "next_frame": next_frame}
 
 
 def parse_b0b1_tlv(body: bytes) -> list[dict]:
