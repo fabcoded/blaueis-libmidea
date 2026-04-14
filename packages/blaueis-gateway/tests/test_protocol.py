@@ -131,7 +131,7 @@ async def run_tests():
     reader = MockReader()
     writer = MockWriter()
     forwarded = []
-    proto.set_on_frame(lambda raw, ts, d="rx": forwarded.append((raw, d)))
+    proto.set_on_frame(lambda raw, ts, d="rx", meta=None: forwarded.append((raw, d)))
 
     check("initial state is DISCOVER", proto.state == DISCOVER)
 
@@ -225,7 +225,7 @@ async def run_tests():
     proto2.appliance = 0xAC
     proto2.silence_timer = asyncio.get_event_loop().time()
     forwarded2 = []
-    proto2.set_on_frame(lambda raw, ts, d="rx": forwarded2.append((raw, d)))
+    proto2.set_on_frame(lambda raw, ts, d="rx", meta=None: forwarded2.append((raw, d)))
 
     reader7 = MockReader()
     writer7 = MockWriter()
@@ -288,7 +288,7 @@ async def run_tests():
     proto7.appliance = 0xAC
     proto7.silence_timer = asyncio.get_event_loop().time()
     mirrored = []
-    proto7.set_on_frame(lambda raw, ts, d="rx": mirrored.append((raw, d)))
+    proto7.set_on_frame(lambda raw, ts, d="rx", meta=None: mirrored.append((raw, d)))
 
     reader12 = MockReader()
     writer12 = MockWriter()
@@ -307,7 +307,7 @@ async def run_tests():
     proto8.appliance = 0xAC
     proto8.silence_timer = asyncio.get_event_loop().time()
     mirrored2 = []
-    proto8.set_on_frame(lambda raw, ts, d="rx": mirrored2.append((raw, d)))
+    proto8.set_on_frame(lambda raw, ts, d="rx", meta=None: mirrored2.append((raw, d)))
 
     reader13 = MockReader()
     writer13 = MockWriter()

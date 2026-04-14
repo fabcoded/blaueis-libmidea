@@ -62,7 +62,8 @@ def test_init_defaults():
     assert c.no_encrypt is False
     assert c._ws is None
     assert c._session is None
-    assert c._ref_counter == 0
+    assert c.gw_session.next_req_id == 0
+    assert c.gw_session.sid is None
 
 
 @pytest.mark.asyncio

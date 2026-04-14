@@ -63,7 +63,7 @@ def test_defaults_no_paths():
     assert cfg["ws_host"] == "0.0.0.0"
     assert cfg["ws_port"] == 8765
     assert cfg["max_queue"] == 16
-    assert cfg["frame_spacing_ms"] == 100
+    assert cfg["frame_spacing_ms"] == 150
     assert cfg["stats_interval"] == 60
     assert cfg["fake_ip"] == "192.168.1.100"
     assert cfg["signal_level"] == 4

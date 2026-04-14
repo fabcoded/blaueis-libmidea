@@ -20,6 +20,7 @@ import os
 import platform
 import signal
 import sys
+import time
 
 from blaueis.core.crypto import (
     HandshakeError,
@@ -28,10 +29,23 @@ from blaueis.core.crypto import (
     create_hello_ok,
     psk_to_bytes,
 )
+from blaueis.core.debug_ring import DebugRing, log_event
 from blaueis.core.frame import FrameError, validate_frame
-from blaueis.gateway.uart_protocol import UartProtocol
+from blaueis.gateway.slot_pool import SlotPool, SlotPoolExhausted
+from blaueis.gateway.uart_protocol import VERBOSE, UartProtocol
 
 log = logging.getLogger("hvac_gateway")
+
+
+def _extract_msg_id(frame: bytes) -> int | None:
+    """Extract the Midea message-id byte (best-effort).
+
+    Midea UART frames: AA <len> AC 00 00 00 00 00 <kind> 03 <msg_id> ...
+    Short/malformed frames return None.
+    """
+    if len(frame) < 12 or frame[0] != 0xAA:
+        return None
+    return frame[10]
 
 
 INSTALL_DIR = "/opt/blaueis-gw"
@@ -79,13 +93,16 @@ def load_config(global_path: str = None, instance_path: str = None, legacy_path:
         "ws_host": "0.0.0.0",
         "ws_port": 8765,
         "max_queue": 16,
-        "frame_spacing_ms": 100,
+        "frame_spacing_ms": 150,
         "stats_interval": 60,
         "fake_ip": "192.168.1.100",
         "signal_level": 4,
         "log_level": "INFO",
         "device_name": "Midea AC",
         "allow_remote_update": True,
+        "debug_ring_enabled": True,
+        "debug_ring_size_mb": 5,
+        "slot_pool_size": 8,
     }
 
     if legacy_path:
@@ -101,7 +118,7 @@ def load_config(global_path: str = None, instance_path: str = None, legacy_path:
                 "ws_host": section.get("ws_host", "0.0.0.0"),
                 "ws_port": int(section.get("ws_port", "8765")),
                 "max_queue": int(section.get("max_queue", "8")),
-                "frame_spacing_ms": int(section.get("frame_spacing_ms", "100")),
+                "frame_spacing_ms": int(section.get("frame_spacing_ms", "150")),
                 "stats_interval": int(section.get("stats_interval", "60")),
                 "fake_ip": section.get("fake_ip", "192.168.1.100"),
                 "signal_level": int(section.get("signal_level", "4")),
@@ -197,13 +214,26 @@ def get_pi_stats() -> dict:
 # ── WebSocket handler ─────────────────────────────────────────────────────
 
 
+# Event kinds a subscriber can opt in/out of. Provenance is NEVER a filter
+# dimension (flight_recorder.md §1.1).
+_VALID_INCLUDE_KINDS = frozenset({"rx", "tx", "ignored"})
+_VALID_ANNOTATE_FIELDS = frozenset({
+    "origin", "req_id", "msg_id", "tx_seq", "reply_to",
+})
+
+
 class ClientConnection:
     """One connected WebSocket client with its own crypto session."""
 
-    def __init__(self, ws, session=None, no_encrypt=False):
+    def __init__(self, ws, session=None, no_encrypt=False, sid: int | None = None):
         self.ws = ws
         self.session = session
         self.no_encrypt = no_encrypt
+        self.sid = sid
+        # Default subscription: RX frames only, no provenance annotation —
+        # matches the wire behaviour clients saw before §4.1 existed.
+        self.include_kinds: set[str] = {"rx"}
+        self.annotate_fields: set[str] = set()
 
     async def send(self, msg: dict):
         try:
@@ -223,18 +253,90 @@ class ClientConnection:
 class GatewayServer:
     """WebSocket server that bridges multiple clients to the UART protocol."""
 
-    def __init__(self, config: dict, no_encrypt: bool = False):
+    def __init__(
+        self,
+        config: dict,
+        no_encrypt: bool = False,
+        debug_ring: DebugRing | None = None,
+    ):
         self.config = config
         self.no_encrypt = no_encrypt
         self.protocol = UartProtocol(config)
         self._clients: set[ClientConnection] = set()
         self._uart_reader = None
         self._uart_writer = None
+        self.debug_ring = debug_ring
+        self.slot_pool = SlotPool(size=config.get("slot_pool_size", 8))
+        self._bg_tasks: set[asyncio.Future] = set()
 
     async def _broadcast(self, msg: dict):
         """Send a message to all connected clients."""
         for client in list(self._clients):
             await client.send(msg)
+
+    def _on_uart_frame(
+        self,
+        raw: bytes,
+        ts: float,
+        direction: str = "rx",
+        meta: dict | None = None,
+    ) -> None:
+        """Always-on UART tap.
+
+        Attached unconditionally at startup (not per-client). Emits a
+        structured event into the debug ring for every TX/RX, and broadcasts
+        the frame to connected WS clients when any are present, honouring
+        each client's subscribe filter. Ring always gets the full record
+        regardless of subscriber state.
+        """
+        meta = meta or {}
+        event = f"uart_{direction}"
+        hex_dump = raw.hex(" ")
+        # Fallback: if the caller did not supply msg_id in meta, derive it
+        # from the frame. Makes the callback robust under direct invocation.
+        msg_id = meta.get("msg_id")
+        if msg_id is None:
+            msg_id = _extract_msg_id(raw)
+
+        # Ring record — every known provenance field passes through.
+        log_event(
+            log, VERBOSE, event,
+            port="uart", peer="ac",
+            len=len(raw), hex=hex_dump,
+            msg_id=msg_id,
+            tx_seq=meta.get("tx_seq"),
+            origin=meta.get("origin"),
+            req_id=meta.get("req_id"),
+            reply_to=meta.get("reply_to"),
+        )
+
+        if not self._clients:
+            return
+
+        base = {"type": "frame", "hex": hex_dump, "ts": ts, "dir": direction}
+        # Fields a client can opt into via `subscribe.annotate`.
+        provenance = {
+            "origin": meta.get("origin"),
+            "req_id": meta.get("req_id"),
+            "msg_id": meta.get("msg_id"),
+            "tx_seq": meta.get("tx_seq"),
+            "reply_to": meta.get("reply_to"),
+        }
+
+        for client in list(self._clients):
+            if direction not in client.include_kinds:
+                continue
+            if client.annotate_fields:
+                payload = dict(base)
+                for field in client.annotate_fields:
+                    val = provenance.get(field)
+                    if val is not None:
+                        payload[field] = val
+            else:
+                payload = base
+            task = asyncio.ensure_future(client.send(payload))
+            self._bg_tasks.add(task)
+            task.add_done_callback(self._bg_tasks.discard)
 
     async def _handle_client_message(self, client: ClientConnection, raw_msg: str):
         """Process a message from a WebSocket client."""
@@ -251,7 +353,10 @@ class GatewayServer:
             try:
                 frame_bytes = bytes.fromhex(msg["hex"].replace(" ", ""))
                 validate_frame(frame_bytes)
-                ok = await self.protocol.queue_frame(frame_bytes)
+                origin = f"ws:{client.sid}" if client.sid is not None else "ws:?"
+                ok = await self.protocol.queue_frame(
+                    frame_bytes, origin=origin, req_id=ref,
+                )
                 if ok:
                     await client.send({"type": "ack", "ref": ref, "status": "queued"})
                 else:
@@ -276,6 +381,47 @@ class GatewayServer:
             n = msg.get("n", 20)
             lines = await self._read_journal(n=min(n, 100))
             await client.send({"type": "logs", "ref": ref, "lines": lines})
+
+        elif msg_type == "subscribe":
+            include = msg.get("include", ["rx"])
+            annotate = msg.get("annotate", [])
+            if not isinstance(include, list) or not isinstance(annotate, list):
+                await client.send({
+                    "type": "error", "ref": ref,
+                    "msg": "subscribe.include and subscribe.annotate must be lists",
+                })
+                return
+            bad_include = [k for k in include if k not in _VALID_INCLUDE_KINDS]
+            bad_annotate = [f for f in annotate if f not in _VALID_ANNOTATE_FIELDS]
+            if bad_include or bad_annotate:
+                await client.send({
+                    "type": "error", "ref": ref,
+                    "msg": f"unknown values: include={bad_include} annotate={bad_annotate}",
+                })
+                return
+            client.include_kinds = set(include)
+            client.annotate_fields = set(annotate)
+            await client.send({
+                "type": "subscribed", "ref": ref,
+                "include": sorted(client.include_kinds),
+                "annotate": sorted(client.annotate_fields),
+            })
+
+        elif msg_type == "debug_dump":
+            if self.debug_ring is None:
+                await client.send({
+                    "type": "error", "ref": ref,
+                    "msg": "debug ring disabled in gateway config",
+                })
+            else:
+                await client.send({
+                    "type": "debug_dump",
+                    "ref": ref,
+                    "jsonl": self.debug_ring.dump_jsonl(),
+                    "size_bytes": self.debug_ring.byte_count,
+                    "record_count": self.debug_ring.record_count,
+                    "ring_capacity_bytes": self.debug_ring.size_bytes,
+                })
 
         elif msg_type == "update":
             if not self.config.get("allow_remote_update", True):
@@ -309,22 +455,41 @@ class GatewayServer:
             log.warning("Handshake failed for %s: %s", websocket.remote_address, e)
             return
 
-        client = ClientConnection(websocket, session, self.no_encrypt)
+        try:
+            sid = self.slot_pool.acquire()
+        except SlotPoolExhausted:
+            log.warning(
+                "Slot pool exhausted (%d in use); rejecting %s",
+                self.slot_pool.in_use_count, websocket.remote_address,
+            )
+            with contextlib.suppress(Exception):
+                await websocket.send(json.dumps({
+                    "type": "error",
+                    "code": "slot_pool_full",
+                    "msg": f"gateway accepts max {self.slot_pool.size} concurrent clients",
+                }))
+            return
+
+        client = ClientConnection(websocket, session, self.no_encrypt, sid=sid)
         self._clients.add(client)
-        log.info("Active clients: %d", len(self._clients))
+        log.info("Active clients: %d (slot %d)", len(self._clients), sid)
 
-        # Set up frame forwarding (once, for all clients)
-        if len(self._clients) == 1:
-            _bg_tasks = set()  # prevent GC of fire-and-forget tasks
+        # Tell the client its assigned slot + server wall time.
+        await client.send({
+            "type": "hello",
+            "sid": sid,
+            "pool_size": self.slot_pool.size,
+            "server_time": time.time(),
+        })
 
-            def on_uart_frame(raw_frame: bytes, timestamp: float, direction: str = "rx"):
-                task = asyncio.ensure_future(
-                    self._broadcast({"type": "frame", "hex": raw_frame.hex(" "), "ts": timestamp, "dir": direction})
-                )
-                _bg_tasks.add(task)
-                task.add_done_callback(_bg_tasks.discard)
-
-            self.protocol.set_on_frame(on_uart_frame)
+        log_event(
+            log, VERBOSE, "ws_connect",
+            port="ws", peer=f"ws:{sid}", sid=sid,
+            ctx={
+                "addr": str(websocket.remote_address),
+                "encrypted": not self.no_encrypt,
+            },
+        )
 
         try:
             async for message in websocket:
@@ -333,11 +498,16 @@ class GatewayServer:
             pass
         finally:
             self._clients.discard(client)
-            if not self._clients:
-                self.protocol.set_on_frame(None)
-                log.info("Last client disconnected")
+            self.slot_pool.release(sid)
+            log_event(
+                log, VERBOSE, "ws_disconnect",
+                port="ws", peer=f"ws:{sid}", sid=sid,
+                ctx={"remaining_clients": len(self._clients)},
+            )
+            if self._clients:
+                log.info("Client %d disconnected, %d remaining", sid, len(self._clients))
             else:
-                log.info("Client disconnected, %d remaining", len(self._clients))
+                log.info("Last client (slot %d) disconnected", sid)
 
     async def _run_update(self) -> dict:
         """Pull latest code and reinstall packages. Returns result dict."""
@@ -539,6 +709,10 @@ class GatewayServer:
 
         log.info("Starting gateway %s on ws://%s:%d", GW_VERSION, host, port)
 
+        # Always-on UART tap: ring captures every frame regardless of
+        # whether a WS client is connected (flight_recorder.md §4.2).
+        self.protocol.set_on_frame(self._on_uart_frame)
+
         async with websockets.serve(self._ws_handler, host, port):
             log.info("WebSocket server listening")
             await asyncio.gather(
@@ -612,9 +786,8 @@ def main():
         )
         sys.exit(1)
 
-    # Custom VERBOSE level (5) — below DEBUG (10)
-    # See: https://docs.python.org/3/library/logging.html#logging-levels
-    VERBOSE = 5
+    # Custom VERBOSE level (5) — below DEBUG (10). Defined once in
+    # uart_protocol.py; re-assert the level name here for clarity.
     logging.addLevelName(VERBOSE, "VERBOSE")
 
     if args.verbose:
@@ -623,13 +796,30 @@ def main():
         level_name = config["log_level"].upper()
         log_level = {"VERBOSE": VERBOSE}.get(level_name, getattr(logging, level_name, logging.INFO))
 
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s %(name)s %(levelname)s %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    # Root logger is lowered to VERBOSE so DebugRing sees every record;
+    # the stream/journald handler filters independently at user log_level.
+    # Result: journal stays at configured level, ring captures everything.
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.setLevel(VERBOSE)
 
-    server = GatewayServer(config, no_encrypt=args.no_encrypt)
+    stream = logging.StreamHandler()
+    stream.setLevel(log_level)
+    stream.setFormatter(logging.Formatter(
+        fmt="%(asctime)s %(name)s %(levelname)s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    ))
+    root.addHandler(stream)
+
+    debug_ring: DebugRing | None = None
+    if config.get("debug_ring_enabled", True):
+        size_mb = int(config.get("debug_ring_size_mb", 5))
+        debug_ring = DebugRing(size_bytes=size_mb * 1024 * 1024)
+        debug_ring.setLevel(VERBOSE)
+        root.addHandler(debug_ring)
+        log.info("DebugRing enabled (%d MB)", size_mb)
+
+    server = GatewayServer(config, no_encrypt=args.no_encrypt, debug_ring=debug_ring)
 
     loop = asyncio.new_event_loop()
 

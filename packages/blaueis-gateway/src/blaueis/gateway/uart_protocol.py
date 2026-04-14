@@ -11,6 +11,7 @@ trigger re-handshake, etc.).
 """
 
 import asyncio
+import collections
 import logging
 import time
 
@@ -61,6 +62,22 @@ REHANDSHAKE_MSGS = {0x82, 0x83}
 # MSG types to silently ignore (no response, no forward)
 IGNORE_MSGS = {0x61}  # time sync — dongle doesn't respond
 
+# Correlation — advisory annotation only, never gates frame processing.
+# See flight_recorder.md §1.1 and §4.5.
+CORRELATION_TTL = 2.0       # drop outstanding TX older than this
+HEURISTIC_WINDOW = 0.5      # nearest-TX heuristic falls off after this
+
+
+def _frame_msg_id(raw: bytes) -> int | None:
+    """Extract the Midea protocol message-id byte.
+
+    Frame layout: AA <len> AC 00 00 00 00 00 <kind> 03 <msg_id> ...
+    Returns None for short or malformed frames.
+    """
+    if len(raw) < 12 or raw[0] != 0xAA:
+        return None
+    return raw[10]
+
 
 class UartProtocol:
     """Dongle protocol state machine for Midea UART bus."""
@@ -83,6 +100,11 @@ class UartProtocol:
         # mirror_tx_all: also mirror client-originated frames relayed to UART
         self.mirror_tx_gateway = self.config.get("mirror_tx_gateway", False)
         self.mirror_tx_all = self.config.get("mirror_tx_all", False)
+        # Correlation state — advisory only, never gates processing (§1.1).
+        # msg_id → {origin, req_id, tx_ts, tx_seq}. OrderedDict preserves TX
+        # order for the heuristic fallback (newest unanswered TX wins).
+        self._outstanding_tx: "collections.OrderedDict[int, dict]" = collections.OrderedDict()
+        self._tx_seq = 0
 
     @property
     def fake_ip(self) -> tuple[int, int, int, int]:
@@ -95,36 +117,161 @@ class UartProtocol:
         return self.config.get("signal_level", 4)
 
     def set_on_frame(self, callback):
-        """Set callback for ALL frames received from AC (forwarded to client)."""
+        """Set callback for ALL frames observed on the UART bus.
+
+        Callback signature: ``(raw: bytes, ts: float, direction: str, meta: dict)``.
+        `direction` is "rx" (from AC) or "tx" (sent to AC). `meta` may carry
+        `msg_id`, `tx_seq`, `origin`, `req_id`, `reply_to` — all optional.
+        """
         self._on_frame = callback
 
     def _next_seq(self) -> int:
         self.msg_counter = (self.msg_counter + 1) & 0xFF
         return self.msg_counter
 
-    def _forward_to_client(self, raw: bytes, direction: str = "rx"):
-        """Forward a raw frame to the client callback (if connected).
+    def _forward_to_client(
+        self,
+        raw: bytes,
+        direction: str = "rx",
+        *,
+        origin: str | None = None,
+        req_id: int | None = None,
+    ) -> None:
+        """Forward a raw frame to the client callback with provenance metadata.
 
         direction: "rx" = from AC, "tx" = we sent to AC (mirrored)
+        origin / req_id: set for TX to identify who caused the transmission.
+
+        For RX, attempts to correlate against the outstanding-TX map and
+        attaches `reply_to` to the meta. Correlation is best-effort and
+        advisory — callers do not change behaviour based on it.
         """
-        if self._on_frame:
-            self._on_frame(raw, time.monotonic(), direction)
+        if not self._on_frame:
+            return
+
+        meta: dict = {}
+        msg_id = _frame_msg_id(raw)
+        if msg_id is not None:
+            meta["msg_id"] = msg_id
+
+        if direction == "tx":
+            self._tx_seq += 1
+            meta["tx_seq"] = self._tx_seq
+            if origin is not None:
+                meta["origin"] = origin
+            if req_id is not None:
+                meta["req_id"] = req_id
+            if msg_id is not None:
+                self._record_outstanding_tx(
+                    msg_id, origin=origin, req_id=req_id,
+                    tx_seq=self._tx_seq,
+                )
+        elif direction == "rx" and msg_id is not None:
+            reply_to = self._correlate_rx(msg_id)
+            if reply_to is not None:
+                meta["reply_to"] = reply_to
+
+        self._on_frame(raw, time.monotonic(), direction, meta)
+
+    # ── Correlation ───────────────────────────────────────────────────
+
+    def _record_outstanding_tx(
+        self,
+        msg_id: int,
+        *,
+        origin: str | None,
+        req_id: int | None,
+        tx_seq: int,
+    ) -> None:
+        now = time.monotonic()
+        # Evict expired entries (TTL) before inserting so the map stays bounded.
+        while self._outstanding_tx:
+            k, v = next(iter(self._outstanding_tx.items()))
+            if now - v["tx_ts"] > CORRELATION_TTL:
+                self._outstanding_tx.popitem(last=False)
+            else:
+                break
+        # Last write wins — if the same msg_id is in flight twice, the newer TX
+        # is what any subsequent RX should correlate to.
+        self._outstanding_tx[msg_id] = {
+            "origin": origin,
+            "req_id": req_id,
+            "tx_ts": now,
+            "tx_seq": tx_seq,
+        }
+
+    def _correlate_rx(self, msg_id: int) -> dict | None:
+        """Return a `reply_to` dict or None. Never raises."""
+        now = time.monotonic()
+        entry = self._outstanding_tx.pop(msg_id, None)
+        if entry is not None:
+            return {
+                "req_id": entry["req_id"],
+                "origin": entry["origin"],
+                "confidence": "confirmed",
+            }
+        # Heuristic: nearest unanswered TX within HEURISTIC_WINDOW.
+        if self._outstanding_tx:
+            last_key = next(reversed(self._outstanding_tx))
+            last = self._outstanding_tx[last_key]
+            if now - last["tx_ts"] <= HEURISTIC_WINDOW:
+                self._outstanding_tx.pop(last_key)
+                return {
+                    "req_id": last["req_id"],
+                    "origin": last["origin"],
+                    "confidence": "heuristic",
+                }
+        return None
 
     # ── UART I/O helpers ──────────────────────────────────────────────
 
-    async def _send(self, writer, frame: bytes, *, mirror: bool = True):
+    async def _send(
+        self,
+        writer,
+        frame: bytes,
+        *,
+        mirror: bool = True,
+        origin: str = "gw:handshake",
+        req_id: int | None = None,
+    ):
         """Write a frame to UART with inter-frame spacing.
 
-        If mirror=True and mirror_tx_gateway is enabled, the frame is
-        also forwarded to the client with direction="tx".
+        `origin` identifies who caused this transmission for ring records and
+        WS broadcasts (closed vocabulary: `gw:handshake`, `gw:query_reply`,
+        `gw:followme`, `ws:<sid>`). Even when `mirror_tx_gateway` is False,
+        the provenance path still records this TX in the outstanding-TX map
+        so that any subsequent RX can correlate.
+
+        If mirror=True and mirror_tx_gateway is enabled, the frame is also
+        broadcast to connected WS clients as a `frame` message.
         """
-        spacing = self.config.get("frame_spacing_ms", 100) / 1000.0
+        spacing = self.config.get("frame_spacing_ms", 150) / 1000.0
         log.log(VERBOSE, "UART TX (%dB): %s", len(frame), frame.hex(" "))
         writer.write(frame)
         await writer.drain()
         if mirror and self.mirror_tx_gateway:
-            self._forward_to_client(frame, direction="tx")
+            self._forward_to_client(frame, direction="tx", origin=origin, req_id=req_id)
+        else:
+            # No WS mirroring, but we still record the TX for correlation so
+            # the matching RX can be annotated in the ring / broadcast.
+            self._record_tx_for_correlation(frame, origin=origin, req_id=req_id)
         await asyncio.sleep(spacing)
+
+    def _record_tx_for_correlation(
+        self,
+        frame: bytes,
+        *,
+        origin: str | None,
+        req_id: int | None,
+    ) -> None:
+        """Update outstanding-TX state without invoking the on-frame callback."""
+        msg_id = _frame_msg_id(frame)
+        if msg_id is None:
+            return
+        self._tx_seq += 1
+        self._record_outstanding_tx(
+            msg_id, origin=origin, req_id=req_id, tx_seq=self._tx_seq,
+        )
 
     async def _read_one_frame(self, reader) -> bytes | None:
         """Read one frame from UART, scanning for 0xAA start.
@@ -155,13 +302,21 @@ class UartProtocol:
             log.log(VERBOSE, "UART RX (%dB): %s", len(frame), frame.hex(" "))
             return frame
 
-    async def _send_and_wait(self, writer, reader, frame: bytes, timeout: float) -> tuple[dict | None, bytes | None]:
+    async def _send_and_wait(
+        self,
+        writer,
+        reader,
+        frame: bytes,
+        timeout: float,
+        *,
+        origin: str = "gw:handshake",
+    ) -> tuple[dict | None, bytes | None]:
         """Send a frame and wait for response.
 
         Returns (parsed_frame, raw_bytes) or (None, None).
         Any non-matching frames received while waiting are forwarded to client.
         """
-        await self._send(writer, frame)
+        await self._send(writer, frame, origin=origin)
         deadline = time.monotonic() + timeout
 
         while time.monotonic() < deadline:
@@ -199,6 +354,7 @@ class UartProtocol:
     async def _handle_ac_query(self, parsed: dict, writer):
         """Handle an AC query that needs a local response (can arrive any time)."""
         msg = parsed["msg_type"]
+        origin = "gw:query_reply"
 
         if msg == 0x63:
             ip_str = ".".join(str(x) for x in self.fake_ip)
@@ -216,12 +372,12 @@ class UartProtocol:
                 sub=self.sub,
                 seq=self._next_seq(),
             )
-            await self._send(writer, resp_frame)
+            await self._send(writer, resp_frame, origin=origin)
 
         elif msg in VERSION_INFO_MSGS:
             log.debug("AC requests version info (0x%02X) → responding", msg)
             resp_frame = build_version_response(self.appliance, self.proto, self.sub)
-            await self._send(writer, resp_frame)
+            await self._send(writer, resp_frame, origin=origin)
 
         elif msg == 0x68:
             # WiFi config query — respond with minimal config
@@ -233,7 +389,7 @@ class UartProtocol:
                 proto=self.proto,
                 sub=self.sub,
             )
-            await self._send(writer, resp_frame)
+            await self._send(writer, resp_frame, origin=origin)
 
     # ── State machine ─────────────────────────────────────────────────
 
@@ -319,7 +475,7 @@ class UartProtocol:
         """ANNOUNCE: send network init, transition to RUNNING."""
         log.info("ANNOUNCE: sending network init (0x0D) with IP %s", ".".join(str(x) for x in self.fake_ip))
         frame = build_network_init(self.appliance, self.fake_ip, self.proto, self.sub)
-        await self._send(writer, frame)
+        await self._send(writer, frame, origin="gw:handshake")
         self.silence_timer = time.monotonic()
         self.state = RUNNING
         log.info("ANNOUNCE → RUNNING")
@@ -332,15 +488,23 @@ class UartProtocol:
 
         # Check for pending TX from client
         try:
-            tx_frame = self._tx_queue.get_nowait()
-            # Client-originated frames: only mirror if mirror_tx_all is set
+            tx_frame, tx_origin, tx_req_id = self._tx_queue.get_nowait()
             writer.write(tx_frame)
             await writer.drain()
             if self.mirror_tx_all:
-                self._forward_to_client(tx_frame, direction="tx")
-            spacing = self.config.get("frame_spacing_ms", 100) / 1000.0
+                self._forward_to_client(
+                    tx_frame, direction="tx",
+                    origin=tx_origin, req_id=tx_req_id,
+                )
+            else:
+                # No WS mirror, but record for RX correlation.
+                self._record_tx_for_correlation(
+                    tx_frame, origin=tx_origin, req_id=tx_req_id,
+                )
+            spacing = self.config.get("frame_spacing_ms", 150) / 1000.0
             await asyncio.sleep(spacing)
-            log.debug("TX queued frame (%d bytes)", len(tx_frame))
+            log.debug("TX queued frame (%d bytes, %s ref=%s)",
+                      len(tx_frame), tx_origin, tx_req_id)
         except asyncio.QueueEmpty:
             pass
 
@@ -376,7 +540,7 @@ class UartProtocol:
         if msg in REHANDSHAKE_MSGS:
             log.info("AC requests re-handshake (0x%02X), restarting", msg)
             ack = build_frame(bytes([0x00]), msg_type=msg, appliance=self.appliance)
-            await self._send(writer, ack)
+            await self._send(writer, ack, origin="gw:handshake")
             self.state = DISCOVER
             self.appliance = 0xFF
 
@@ -396,10 +560,22 @@ class UartProtocol:
 
     # ── Client-facing commands ────────────────────────────────────────
 
-    async def queue_frame(self, frame: bytes) -> bool:
-        """Queue a raw frame for UART transmission. Returns False if queue full."""
+    async def queue_frame(
+        self,
+        frame: bytes,
+        *,
+        origin: str = "ws:unknown",
+        req_id: int | None = None,
+    ) -> bool:
+        """Queue a raw frame for UART transmission.
+
+        `origin` and `req_id` are recorded as provenance on the resulting
+        TX ring record and the outstanding-TX correlation entry. Callers
+        should pass ``origin=f"ws:{sid}"`` and ``req_id=<wire ref>``.
+        Returns False if the queue is full.
+        """
         try:
-            self._tx_queue.put_nowait(frame)
+            self._tx_queue.put_nowait((frame, origin, req_id))
             return True
         except asyncio.QueueFull:
             log.warning("TX queue full (%d), dropping frame", self._tx_queue.maxsize)
