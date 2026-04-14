@@ -222,6 +222,39 @@ def test_response_to_query_mapping():
     assert Device._response_to_query("rsp_0xa1") == "cmd_0x41"
 
 
+# ── C1 group query frame build ──────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "query_key,expected_page",
+    [
+        ("cmd_0xc1_group0", 0x40),
+        ("cmd_0xc1_group1", 0x41),
+        ("cmd_0xc1_group2", 0x42),
+        ("cmd_0xc1_group3", 0x43),
+        ("cmd_0xc1_group5", 0x45),
+        ("cmd_0xc1_group6", 0x46),
+        ("cmd_0xc1_group7", 0x47),
+        ("cmd_0xc1_group11", 0x4B),
+        ("cmd_0xc1_group12", 0x4C),
+    ],
+)
+def test_build_c1_group_query_page_and_appliance(query_key, expected_page):
+    """Regression: _build_query_frame must pass the group page as `page`,
+    not positionally (which previously bound it to `appliance`)."""
+    d = _make_device()
+    frame = d._build_query_frame(query_key)
+    assert frame is not None, f"no frame built for {query_key}"
+    parsed = parse_frame(frame)
+    assert parsed["appliance"] == 0xAC, (
+        f"{query_key}: appliance=0x{parsed['appliance']:02X}, expected 0xAC "
+        f"(page leaked into appliance arg)"
+    )
+    assert parsed["body"][3] == expected_page, (
+        f"{query_key}: body[3]=0x{parsed['body'][3]:02X}, expected 0x{expected_page:02X}"
+    )
+
+
 # ── Available fields structure ──────────────────────────────
 
 

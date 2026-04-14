@@ -587,7 +587,7 @@ class Device:
                 from blaueis.core.frame import build_group_query
                 group_num = int(query_key.split("group")[1])
                 page = 0x40 + group_num
-                return build_group_query(page)
+                return build_group_query(page=page)
             except (ValueError, ImportError):
                 log.warning("Cannot build query for %s", query_key)
                 return None
