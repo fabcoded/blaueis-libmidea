@@ -63,6 +63,33 @@ RECONNECT_DELAYS = [5, 10, 30, 60]  # initial backoff sequence
 RECONNECT_FOREVER_INTERVAL = 60  # after exhausting backoff
 
 
+def _parse_b1_property_id(raw) -> tuple[int, int] | None:
+    """Normalise a glossary ``property_id`` into a ``(lo, hi)`` tuple.
+
+    The glossary writes property ids as ``"0x42,0x00"`` (string) in the
+    protocol decode blocks. Accepts strings, tuples, lists, or ints (in
+    which case ``hi`` defaults to 0).
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        parts = [p.strip() for p in raw.split(",")]
+        if len(parts) != 2:
+            return None
+        try:
+            return (int(parts[0], 0) & 0xFF, int(parts[1], 0) & 0xFF)
+        except ValueError:
+            return None
+    if isinstance(raw, (list, tuple)) and len(raw) == 2:
+        try:
+            return (int(raw[0]) & 0xFF, int(raw[1]) & 0xFF)
+        except (ValueError, TypeError):
+            return None
+    if isinstance(raw, int):
+        return (raw & 0xFF, 0)
+    return None
+
+
 class Device:
     """Autonomous HVAC device connected via Blaueis gateway.
 
@@ -171,14 +198,21 @@ class Device:
 
     # ── Query computation (from database) ───────────────────
 
+    # Max number of B1 property ids per query frame. The probe tool uses 8;
+    # real OEM dongles bundle ~16–20. Below the body-length ceiling either way.
+    _B1_BATCH_SIZE = 8
+
     def _compute_required_queries(self) -> set[str]:
         """Scan the status database for available fields and deduplicate
         the query frames needed to populate them.
 
         This is the single source of truth — no external registration needed.
         """
-        needed = set()
+        needed: set[str] = set()
         all_fields = walk_fields(self._glossary)
+        b1_prop_ids: list[tuple[int, int]] = []
+        b1_seen: set[tuple[int, int]] = set()
+
         for fname, fdata in self._status["fields"].items():
             fa = fdata.get("feature_available", "never")
             if fa in ("never", "capability"):
@@ -186,10 +220,28 @@ class Device:
             gdef = all_fields.get(fname, {})
             protocols = gdef.get("protocols", {})
             for pkey, pdef in protocols.items():
-                if pdef.get("direction") == "response":
-                    query_key = self._response_to_query(pkey)
-                    if query_key:
-                        needed.add(query_key)
+                if pdef.get("direction") != "response":
+                    continue
+                if pkey == "rsp_0xb1":
+                    for entry in pdef.get("decode", []) or []:
+                        pair = _parse_b1_property_id(entry.get("property_id"))
+                        if pair is not None and pair not in b1_seen:
+                            b1_seen.add(pair)
+                            b1_prop_ids.append(pair)
+                    continue
+                query_key = self._response_to_query(pkey)
+                if query_key:
+                    needed.add(query_key)
+
+        # Register one query key per B1 batch — _build_query_frame resolves
+        # each to the right slice of the sorted prop_id list.
+        if b1_prop_ids:
+            self._b1_prop_ids = sorted(b1_prop_ids)
+            n_batches = (len(self._b1_prop_ids) + self._B1_BATCH_SIZE - 1) // self._B1_BATCH_SIZE
+            for i in range(n_batches):
+                needed.add(f"cmd_0xb1_batch_{i}")
+        else:
+            self._b1_prop_ids = []
         return needed
 
     @staticmethod
@@ -202,8 +254,9 @@ class Device:
             return "cmd_0xb5"
         if response_key in ("rsp_0xa1",):
             return "cmd_0x41"
-        if response_key in ("rsp_0xb1",):
-            return None
+        # rsp_0xb1 is handled by _compute_required_queries directly because
+        # the query carries a list of prop_ids extracted from the glossary —
+        # no static command key maps to it.
         return None
 
     # ── Lifecycle ───────────────────────────────────────────
@@ -590,6 +643,19 @@ class Device:
                 return build_group_query(page=page)
             except (ValueError, ImportError):
                 log.warning("Cannot build query for %s", query_key)
+                return None
+        if query_key.startswith("cmd_0xb1_batch_"):
+            try:
+                from blaueis.core.frame import build_b1_property_query
+                batch = int(query_key.rsplit("_", 1)[1])
+                start = batch * self._B1_BATCH_SIZE
+                end = start + self._B1_BATCH_SIZE
+                pairs = getattr(self, "_b1_prop_ids", [])[start:end]
+                if not pairs:
+                    return None
+                return build_b1_property_query(pairs)
+            except (ValueError, ImportError):
+                log.warning("Cannot build B1 query for %s", query_key)
                 return None
         log.debug("Unknown query key: %s", query_key)
         return None

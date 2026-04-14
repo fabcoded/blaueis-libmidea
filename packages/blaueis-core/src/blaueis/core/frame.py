@@ -293,6 +293,45 @@ def build_cap_query_simple(appliance: int = 0xAC, proto: int = 0, sub: int = 0) 
     )
 
 
+# ── B1 property query ──────────────────────────────────────────────────
+
+
+def build_b1_property_query(
+    prop_ids,
+    appliance: int = 0xAC,
+    proto: int = 0,
+    sub: int = 0,
+) -> bytes:
+    """CMD 0xB1 — property query (triggers 0xB1 response).
+
+    `prop_ids` is an iterable of ``(lo, hi)`` byte pairs identifying the
+    properties to read. Body layout: ``0xB1, count, [(lo, hi) × count]``.
+    The AC replies with a 0xB1 frame containing, per prop, ``(lo, hi, dl,
+    data…)``; a device that does not implement a property returns
+    ``dl == 0`` for it rather than dropping the id.
+
+    The caller is responsible for keeping the total body under the
+    length-byte ceiling (250 bytes → ~120 prop_ids max). Practical batch
+    sizes used elsewhere in the workspace: 8–16 per frame.
+    """
+    pairs = list(prop_ids)
+    if not pairs:
+        raise ValueError("prop_ids must not be empty")
+    body = bytearray()
+    body.append(0xB1)
+    body.append(len(pairs))
+    for lo, hi in pairs:
+        body.append(lo & 0xFF)
+        body.append(hi & 0xFF)
+    return build_frame(
+        body=bytes(body),
+        msg_type=0x03,
+        appliance=appliance,
+        proto=proto,
+        sub=sub,
+    )
+
+
 # ── Gateway handshake frame builders ───────────────────────────────────
 #
 # These build the UART-level handshake frames the gateway sends to the AC
