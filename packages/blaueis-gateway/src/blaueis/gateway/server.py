@@ -152,6 +152,16 @@ def load_config(global_path: str = None, instance_path: str = None, legacy_path:
                 "device_name": device.get("name", "Midea AC"),
             }
         )
+        # Pass-through for top-level tuning / debug flags so instance YAML can
+        # override the defaults in the `config = {...}` block above.
+        for k in (
+            "mirror_tx_gateway", "mirror_tx_all",
+            "debug_ring_enabled", "debug_ring_size_mb", "slot_pool_size",
+            "max_queue", "frame_spacing_ms", "stats_interval",
+            "fake_ip", "signal_level", "allow_remote_update",
+        ):
+            if k in inst:
+                config[k] = inst[k]
 
     return config
 
