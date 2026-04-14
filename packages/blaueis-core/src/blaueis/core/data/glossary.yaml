@@ -2684,9 +2684,10 @@ fields:
       confidence: confirmed
       sources:
       - serial_protocol.md §3.2/§4.1
-    ptc_heater:
-      description: PTC auxiliary electric heater level. Used for supplemental heating in cold conditions. 2-bit field (body[9]
-        bits 4:3) with 4 levels, not a simple bool.
+    auxiliary_heat_level:
+      description: Auxiliary electric heater (PTC element) level. Supplemental heating stage used
+        when the heat pump alone cannot meet demand. 2-bit field at body[9] bits[4:3] — four
+        possible stages; only off and low are observed on Q11.
       field_class: stateful_enum
       feature_available: readable
       data_type: uint8
@@ -2694,10 +2695,11 @@ fields:
       alt_names:
         dudanov: m_ptc
         midea_lua: PTCValue
+        midea_protocol: ptc_heater
       protocols:
         cmd_0x40:
           frame: 0x40 Set
-          byte: body[9] bits[4:3] (2-bit PTC level, same as response)
+          byte: body[9] bits[4:3] (2-bit stage)
           direction: command
           decode:
           - offset: 9
@@ -2707,7 +2709,7 @@ fields:
           section: §3.2
         rsp_0xc0:
           frame: 0xC0 Response
-          byte: 'body[9] bits[4:3] (2-bit field: PTCValue)'
+          byte: 'body[9] bits[4:3] (2-bit stage)'
           decode:
           - offset: 9
             bits:
@@ -2727,17 +2729,18 @@ fields:
             direction: capability
             section: §3.4.1
         default:
-          description: 'Pre-B5: assume PTC heater selectable (off / on)'
+          description: 'Pre-B5: assume all four stages selectable until the capability narrows the set'
           valid_set:
           - 0
           - 1
+          - 2
+          - 3
           correction: snap_nearest
           note: 'Permissive default applied at boot, replaced once B5 narrows it.
 
-            Note: the 0xC0 frame reports a 2-bit value (bits[4:3]) but the
-
-            default treats it as a simple on/off.
-
+            The 2-bit field allows raw 0..3; on Q11 only raw 0 and 1 are known to be used
+            (off / low), matching the legacy binary interpretation. Raw 2 and 3 remain
+            declared for SKUs that may stage the aux heat — unverified.
             '
         values:
           not_supported:
@@ -2758,21 +2761,32 @@ fields:
       values:
         'off':
           raw: 0
-          description: PTC auxiliary heater off
-        'on':
+          description: Auxiliary heater off
+          confidence: confirmed
+        'low':
           raw: 1
-          description: PTC auxiliary heater on
-      disambiguation: 'Previously ASYMMETRIC (0x40 used 1-bit, 0xC0 used 2-bit). Fixed
+          description: Auxiliary heater stage 1 — the only non-off level observed on Q11 (maps
+            to the historical binary 'on').
+          confidence: confirmed
+        'medium':
+          raw: 2
+          description: Auxiliary heater stage 2 — label hypothetical; no hardware observed to
+            drive this level.
+          confidence: hypothesis
+        'high':
+          raw: 3
+          description: Auxiliary heater stage 3 — label hypothetical; no hardware observed to
+            drive this level.
+          confidence: hypothesis
+      disambiguation: 'Previously named ptc_heater (moved to alt_names.midea_protocol).
 
-        2026-04-10: both now use bits[4:3]. The Lua constants are
-
-        BYTE_PTC_ON=0x08 (bits[4:3]=1) and BYTE_PTC_OFF=0x00 (bits[4:3]=0),
-
-        confirming binary on/off. The Lua also has a conditional
-
-        PTCForceValue (bit 4 OR 0x10) — a service/debug force-override
-
-        NOT modelled in the glossary.
+        The 0x40 and 0xC0 frames both use body[9] bits[4:3], confirmed 2026-04-10.
+        Lua constants observed: BYTE_PTC_ON=0x08 (bits[4:3]=1) and BYTE_PTC_OFF=0x00
+        (bits[4:3]=0), matching the confirmed off/low stages. Raw 2 and 3 are reachable
+        in the protocol encoding but no reference implementation drives them — labels
+        medium/high are hypotheses pending observation on a staging-aux SKU. The Lua
+        also defines a conditional PTCForceValue (bit 4 OR 0x10) — a service/debug
+        force-override NOT modelled in the glossary.
 
         '
       confidence: confirmed

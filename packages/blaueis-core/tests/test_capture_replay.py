@@ -53,7 +53,7 @@ PROMOTED_FIELDS = [
     "turbo_mode",
     "fan_speed",
     "frost_protection",
-    "ptc_heater",
+    "auxiliary_heat_level",
     "silky_cool",
     "screen_display",
     "humidity_setpoint",
@@ -69,7 +69,7 @@ EXPECTED_TYPE = {
     "turbo_mode": (bool,),
     "fan_speed": (int,),
     "frost_protection": (bool,),
-    "ptc_heater": (int,),
+    "auxiliary_heat_level": (int,),
     "silky_cool": (bool,),
     "screen_display": (int,),
     "humidity_setpoint": (int,),
@@ -78,7 +78,7 @@ EXPECTED_TYPE = {
 # Per-field plausible range after decoding from C0.
 PLAUSIBLE_RANGE = {
     "fan_speed": (0, 127),  # 7-bit field
-    "ptc_heater": (0, 3),  # 2-bit field
+    "auxiliary_heat_level": (0, 3),  # 2-bit field
     "screen_display": (0, 7),  # 3-bit field
     "humidity_setpoint": (0, 100),  # 7-bit, percent
 }

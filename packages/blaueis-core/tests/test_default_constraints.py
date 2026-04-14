@@ -57,7 +57,7 @@ PROMOTED_FIELDS = [
     "turbo_mode",
     "fan_speed",
     "frost_protection",
-    "ptc_heater",
+    "auxiliary_heat_level",
     "silky_cool",
     "screen_display",
     "humidity_setpoint",
@@ -314,16 +314,16 @@ def main():
 
     # Negative case: a readable field whose cap is NOT in B5 should keep
     # the readable level (NOT downgrade to never), because the receiver
-    # can still decode it from rsp_0xc0. ptc_heater cap 0x19 = 0 in S1
-    # (per Session 1 B5: '0x19=0 → not supported on Q11'), so its
+    # can still decode it from rsp_0xc0. auxiliary_heat_level cap 0x19 = 0
+    # in S1 (per Session 1 B5: '0x19=0 → not supported on Q11'), so its
     # cap_value 'not_supported' has feature_available: never. After cap
-    # upgrade ptc_heater becomes 'never' — that's the correct cap-driven
-    # state, not a finalize-sweep regression.
-    ptc_state = status["fields"]["ptc_heater"]["feature_available"]
+    # upgrade auxiliary_heat_level becomes 'never' — that's the correct
+    # cap-driven state, not a finalize-sweep regression.
+    aux_state = status["fields"]["auxiliary_heat_level"]["feature_available"]
     check(
-        "ptc_heater state after S1 (cap=0 → never) is cap-driven, not regression",
-        ptc_state == "never",
-        f"got {ptc_state}",
+        "auxiliary_heat_level state after S1 (cap=0 → never) is cap-driven, not regression",
+        aux_state == "never",
+        f"got {aux_state}",
     )
 
     # ── Summary ──────────────────────────────────────────────────

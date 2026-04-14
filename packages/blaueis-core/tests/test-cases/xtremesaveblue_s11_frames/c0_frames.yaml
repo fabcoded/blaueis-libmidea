@@ -32,7 +32,7 @@ frames:
     pmv_index: 0
     power: true
     power_save: false
-    ptc_heater: 0
+    auxiliary_heat_level: 0
     resume: false
     run_status: true
     screen_display: 0
@@ -81,7 +81,7 @@ frames:
     pmv_index: 0
     power: true
     power_save: false
-    ptc_heater: 0
+    auxiliary_heat_level: 0
     resume: false
     run_status: true
     screen_display: 0
@@ -128,7 +128,7 @@ frames:
     pmv_index: 0
     power: true
     power_save: false
-    ptc_heater: 0
+    auxiliary_heat_level: 0
     resume: false
     run_status: true
     screen_display: 0
@@ -175,7 +175,7 @@ frames:
     pmv_index: 0
     power: true
     power_save: false
-    ptc_heater: 0
+    auxiliary_heat_level: 0
     resume: false
     run_status: true
     screen_display: 0
@@ -220,7 +220,7 @@ frames:
     pmv_index: 0
     power: false
     power_save: false
-    ptc_heater: 0
+    auxiliary_heat_level: 0
     resume: false
     run_status: false
     screen_display: 0

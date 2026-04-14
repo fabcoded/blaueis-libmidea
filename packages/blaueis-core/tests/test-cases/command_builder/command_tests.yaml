@@ -35,7 +35,7 @@ tests:
       buzzer: false
       frost_protection: false
       humidity_setpoint: 0
-      ptc_heater: 0
+      auxiliary_heat_level: 0
       temperature_unit: false
     changes: {}
     expect_decode:
