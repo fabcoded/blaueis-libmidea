@@ -126,6 +126,35 @@ def read_field(status: dict, name: str, priority: list[str] | None = None) -> di
     return None
 
 
+def write_field(
+    status: dict,
+    name: str,
+    value,
+    *,
+    source: str = "optimistic",
+    generation: str = "new",
+    ts: float | None = None,
+) -> None:
+    """Inject a value into the status DB under a synthetic slot.
+
+    Used for optimistic state updates on outgoing set commands. The next
+    real AC response populates its own slot with a newer `ts` and wins
+    the read via the "newest by ts" cascade in `read_field`. No explicit
+    cleanup required — optimistic values fade naturally as fresh frames
+    arrive.
+
+    Does NOT fire state_change callbacks — that's the caller's job so it
+    can drive HA entity refreshes from the same call site.
+    """
+    import time
+    if ts is None:
+        ts = time.monotonic()
+    fields = status.setdefault("fields", {})
+    field = fields.setdefault(name, {"sources": {}})
+    sources = field.setdefault("sources", {})
+    sources[source] = {"value": value, "ts": ts, "generation": generation}
+
+
 def _list_disagreements(sources: dict, winner_key: str, winner_value) -> list[dict]:
     """Return every slot whose value differs from the winner.
 

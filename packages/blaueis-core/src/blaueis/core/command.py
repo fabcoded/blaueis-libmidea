@@ -22,12 +22,29 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from blaueis.core.query import read_field
-from blaueis.core.codec import build_field_map, encode_field, load_glossary
+from blaueis.core.codec import build_field_map, encode_field, load_glossary, walk_fields
+from blaueis.core.ux_gating import default_for_masked_field, is_field_visible
 
 # Default freshness window for sibling fields. Picked to be loose enough that
 # a normal scan loop (15s) keeps everything fresh, tight enough that a multi-
 # minute gap (e.g. dongle restart) gets caught.
 DEFAULT_PREFLIGHT_THRESHOLD_SECONDS = 30.0
+
+
+# ── UX mask helper ───────────────────────────────────────────────────────
+
+
+def _effective_operating_mode(status: dict, changes: dict):
+    """Mode used to evaluate ``ux.visible_in_modes`` for outgoing bits.
+
+    `changes` wins: if the caller is changing mode in this very frame,
+    the masker sees the NEW mode and zeroes old-mode-only fields. This
+    is what prevents stale eco=1 carrying from cool into a heat-mode C3.
+    """
+    if "operating_mode" in changes:
+        return changes["operating_mode"]
+    r = read_field(status, "operating_mode")
+    return r["value"] if r else None
 
 
 # ── Set-command preflight helpers ────────────────────────────────────────
@@ -295,6 +312,11 @@ def build_command_body(
 
     fields_encoded = 0
 
+    # Full per-field glossary for UX-mask lookup. The field_map is flattened
+    # and lacks the `ux` block, so we walk the raw glossary once.
+    all_gdefs = walk_fields(glossary)
+    effective_mode = _effective_operating_mode(status, changes)
+
     for field in field_map:
         name = field["name"]
         decode_steps = field["decode"]
@@ -318,6 +340,16 @@ def build_command_body(
 
         if value is None:
             value = False if data_type == "bool" else 0
+
+        # UX mask: if this field is not in `changes` AND its ux block hides
+        # it in the effective mode, force a safe default so stale state from
+        # a prior mode doesn't hitchhike on the outgoing frame. Explicit
+        # sets always pass through untouched (caller asked for it; the AC
+        # is authoritative about whether it takes effect).
+        if name not in changes:
+            gdef = all_gdefs.get(name)
+            if not is_field_visible(gdef, current_mode=effective_mode):
+                value = default_for_masked_field(gdef)
 
         # Encode into body
         encode_field(body, decode_steps, data_type, value, encodings)

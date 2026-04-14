@@ -49,7 +49,7 @@ from blaueis.core.process import (
     process_data_frame,
     process_raw_frame,
 )
-from blaueis.core.query import read_field
+from blaueis.core.query import read_field, write_field
 from blaueis.core.status import build_status
 
 log = logging.getLogger("blaueis.device")
@@ -171,6 +171,17 @@ class Device:
     @property
     def capabilities_received(self) -> bool:
         return self._status["meta"].get("b5_received", False)
+
+    def field_gdef(self, name: str) -> dict | None:
+        """Return the full glossary definition for a field (or None)."""
+        return walk_fields(self._glossary).get(name)
+
+    def caps_bitmap(self) -> dict:
+        """B5-derived capability flags, keyed by name. Stub today — returns
+        an empty dict; UX-gating code that reads `hardware_flag` falls
+        conservatively (masked) when a flag is absent. Parsing individual
+        bits out of the B5 response is a separate, deferred change."""
+        return {}
 
     @property
     def available_fields(self) -> dict[str, dict]:
@@ -689,6 +700,7 @@ class Device:
             if result["body"] is not None:
                 frame = build_frame(result["body"], msg_type=0x02)
                 await self._client.send_frame(frame.hex(" "))
+                self._apply_optimistic(x40_changes)
                 log.info("Sent 0x40 command: %s", x40_changes)
             elif result["preflight"]:
                 log.warning("Command blocked by preflight: %s", result["preflight"])
@@ -699,10 +711,37 @@ class Device:
             if result["body"] is not None:
                 frame = build_frame(result["body"], msg_type=0x02)
                 await self._client.send_frame(frame.hex(" "))
+                self._apply_optimistic(b0_changes)
                 log.info("Sent 0xB0 command: %s", b0_changes)
             results["cmd_0xb0"] = result
 
         return results
+
+    def _apply_optimistic(self, changes: dict) -> None:
+        """Write sent changes into the status DB and fire state_change
+        callbacks immediately.
+
+        Invoked AFTER a successful WS send — if the send failed, we must
+        not lie to HA about the state. The AC's next poll response is
+        authoritative: it either agrees (no second event) or overrides
+        (state_change fires with the correction). Drift window is bounded
+        by the poll interval (~15 s).
+        """
+        for fname, new_val in changes.items():
+            old = read_field(self._status, fname)
+            old_val = old["value"] if old else None
+            if old_val == new_val:
+                continue
+            try:
+                write_field(self._status, fname, new_val)
+            except Exception:
+                log.exception("optimistic write failed for %s", fname)
+                continue
+            if self.on_state_change:
+                try:
+                    self.on_state_change(fname, new_val, old_val)
+                except Exception:
+                    log.exception("on_state_change optimistic callback error for %s", fname)
 
     # ── Field reading (convenience) ─────────────────────────
 
