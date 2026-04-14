@@ -104,3 +104,23 @@ def test_default_type_zero_numeric() -> None:
 
 def test_default_none_gdef() -> None:
     assert default_for_masked_field(None) == 0
+
+
+# ── regression guard: optimistic + real-frame ts types must be comparable ─
+
+def test_write_field_ts_is_iso_string_by_default() -> None:
+    """Regression: earlier version defaulted to time.monotonic() (float),
+    which broke _newest's max() when a real-frame slot with an ISO string
+    ts coexisted. Optimistic writes now default to ISO strings."""
+    from blaueis.core.query import read_field, write_field
+    status: dict = {"fields": {}}
+    # Simulate real frame slot with ISO string ts (the convention).
+    write_field(status, "demo_field", 1, source="rsp_0xc0", ts="2026-04-14T23:00:00+00:00")
+    # Optimistic write with default ts — must also be a string.
+    write_field(status, "demo_field", 2)
+    slots = status["fields"]["demo_field"]["sources"]
+    for key, slot in slots.items():
+        assert isinstance(slot["ts"], str), f"slot {key} has non-string ts: {type(slot['ts'])}"
+    # read_field must not raise (it internally max()-sorts the ts values).
+    r = read_field(status, "demo_field")
+    assert r is not None

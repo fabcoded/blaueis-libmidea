@@ -133,7 +133,7 @@ def write_field(
     *,
     source: str = "optimistic",
     generation: str = "new",
-    ts: float | None = None,
+    ts: str | None = None,
 ) -> None:
     """Inject a value into the status DB under a synthetic slot.
 
@@ -143,12 +143,18 @@ def write_field(
     cleanup required — optimistic values fade naturally as fresh frames
     arrive.
 
+    `ts` MUST be an ISO-format string (`datetime.isoformat()`). The rest
+    of the codebase populates slot `ts` fields via
+    ``datetime.now(UTC).isoformat()``; mixing float and string ts in
+    sibling slots breaks `_newest`'s max() comparison. Default generates
+    a fresh ISO string.
+
     Does NOT fire state_change callbacks — that's the caller's job so it
     can drive HA entity refreshes from the same call site.
     """
-    import time
     if ts is None:
-        ts = time.monotonic()
+        from datetime import UTC, datetime
+        ts = datetime.now(UTC).isoformat()
     fields = status.setdefault("fields", {})
     field = fields.setdefault(name, {"sources": {}})
     sources = field.setdefault("sources", {})

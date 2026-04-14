@@ -66,16 +66,19 @@ def test_callback_exception_does_not_break_other_fields() -> None:
 
 
 def test_optimistic_slot_loses_to_newer_real_slot() -> None:
-    """The optimistic slot has ts=monotonic(); a subsequent real response
-    with a later ts must win the read."""
+    """The optimistic slot ts is an ISO string (matching the decoder
+    convention); a subsequent real response with a newer ISO ts must
+    win the read. Mixed float/string ts would raise in _newest.max()."""
+    from datetime import UTC, datetime
     d = _fresh_device()
     d._apply_optimistic({"eco_mode": True})
 
-    # Simulate a real AC response arriving after — same field, newer ts.
-    import time
+    # Simulate a real AC response arriving a minute later — ISO string ts
+    # is what process_data_frame actually writes.
+    later_iso = datetime(2099, 1, 1, tzinfo=UTC).isoformat()
     write_field(d._status, "eco_mode", False,
                 source="rsp_0xc0", generation="legacy",
-                ts=time.monotonic() + 10)
+                ts=later_iso)
 
     r = read_field(d._status, "eco_mode")
     assert r["value"] is False
