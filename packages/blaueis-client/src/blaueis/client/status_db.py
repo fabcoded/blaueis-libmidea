@@ -24,6 +24,10 @@ from blaueis.core.ux_gating import default_for_masked_field, is_field_visible
 
 log = logging.getLogger("blaueis.device")
 
+# Sentinel returned by _clamp_to_envelope when a disabled cap
+# (valid_set=[]) should cause the write to be dropped entirely.
+_DROP = object()
+
 
 class StatusDB:
     """Atomic wrapper around the glossary-driven status dict.
@@ -112,6 +116,16 @@ class StatusDB:
             # Step 2: Mutex expansion — forward + reverse pass
             expanded = self._expand_mutex_forces(gated, all_fields)
 
+            # Step 2.5: Constraint gate — clamp to active cap envelope.
+            # Runs AFTER mutex expansion so glossary-forced values are
+            # re-validated: any clamp at this stage signals a glossary
+            # inconsistency (mutex force outside active_constraints).
+            expanded = self._apply_constraint_gate(
+                expanded, all_fields, effective_mode=expanded.get(
+                    "operating_mode", self.read("operating_mode"),
+                ),
+            )
+
             # Step 3: Split by protocol, build frames, send
             x40, b0 = self._split_by_protocol(expanded, all_fields)
             results = {}
@@ -183,6 +197,113 @@ class StatusDB:
                 )
 
         return accepted, rejected
+
+    # ── Constraint gate ───────────────────────────────────
+
+    def _apply_constraint_gate(
+        self, changes: dict, all_fields: dict, effective_mode: object,
+    ) -> dict:
+        """Clamp values to the active cap envelope.
+
+        Policy: always clamp to the nearest valid value. Silent to the
+        caller; log.warning for the audit trail. Clamping is protective —
+        it prevents out-of-range writes from reaching the wire when the
+        caller (or a mutex force) has drifted from the active cap.
+
+        Envelope resolution:
+          - status["fields"][fname]["active_constraints"]
+          - If `by_mode` present, pick entry for `effective_mode`
+          - Else use the top-level envelope
+
+        Bounds handled:
+          - valid_range: clamp to [lo, hi]
+          - valid_set: snap to nearest member (disabled caps with
+            valid_set=[] drop the write with a warning)
+
+        Skips:
+          - data_type == "bool" (no bounds applicable)
+          - active_constraints missing/empty (pre-B5 boot)
+        """
+        out = dict(changes)
+        for fname, value in list(out.items()):
+            gdef = all_fields.get(fname, {})
+            if gdef.get("data_type") == "bool":
+                continue
+
+            fstate = self._status.get("fields", {}).get(fname, {})
+            ac = fstate.get("active_constraints") or {}
+            if not ac:
+                continue
+
+            envelope = ac
+            by_mode = ac.get("by_mode")
+            if isinstance(by_mode, dict) and effective_mode is not None:
+                mode_name = self._mode_label(effective_mode)
+                if mode_name and mode_name in by_mode:
+                    envelope = by_mode[mode_name]
+
+            clamped = self._clamp_to_envelope(value, envelope)
+            if clamped is _DROP:
+                log.warning(
+                    "constraint gate: dropped %s=%r (feature disabled on "
+                    "this unit, valid_set empty)",
+                    fname, value,
+                )
+                out.pop(fname, None)
+                continue
+            if clamped != value:
+                log.warning(
+                    "constraint gate: clamped %s=%r → %r "
+                    "(envelope=%s, mode=%s)",
+                    fname, value, clamped,
+                    self._envelope_summary(envelope),
+                    effective_mode,
+                )
+                out[fname] = clamped
+        return out
+
+    @staticmethod
+    def _clamp_to_envelope(value: object, envelope: dict) -> object:
+        """Clamp to valid_range or snap to valid_set. Returns _DROP when
+        the cap is disabled (valid_set=[])."""
+        valid_set = envelope.get("valid_set")
+        if valid_set is not None:
+            if not valid_set:
+                return _DROP
+            try:
+                return min(valid_set, key=lambda x: abs(x - value))
+            except TypeError:
+                return value
+
+        valid_range = envelope.get("valid_range")
+        if isinstance(valid_range, (list, tuple)) and len(valid_range) == 2:
+            lo, hi = valid_range
+            try:
+                return max(lo, min(hi, value))
+            except TypeError:
+                return value
+
+        return value
+
+    def _mode_label(self, raw_mode: object) -> str | None:
+        """Map operating_mode raw (int) to its glossary label (cool, heat, ...)."""
+        gdef = (
+            self._glossary.get("fields", {})
+            .get("control", {})
+            .get("operating_mode", {})
+        )
+        for label, entry in (gdef.get("values") or {}).items():
+            if isinstance(entry, dict) and entry.get("raw") == raw_mode:
+                return label
+        return None
+
+    @staticmethod
+    def _envelope_summary(envelope: dict) -> str:
+        if "valid_range" in envelope:
+            return f"range={envelope['valid_range']}"
+        if "valid_set" in envelope:
+            return f"set={envelope['valid_set']}"
+        return "none"
 
     # ── Mutex expansion ───────────────────────────────────
 
