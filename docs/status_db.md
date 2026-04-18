@@ -292,6 +292,52 @@ flowchart LR
     style G fill:#ffd,stroke:#aa0
 ```
 
+### 5.0 Design invariants
+
+The pipeline's gates are deliberately asymmetric. Everything below
+rests on three assumptions that must hold for every writable field in
+the glossary; they justify why we only validate truthy writes and
+never block "off" commands.
+
+**I1. Every writable field can be set OFF in any mode.**
+"Off" means `False` for bools, `0` (or the glossary `default_value`)
+for numerics and enums. This is the safe universal state. A field may
+be *reportable* as non-zero in a mode where it can't be turned ON by
+the user (e.g. frost protection reading back as `0` in cool mode), but
+writing the off value on the wire is always accepted by the hardware.
+
+**I2. Truthy writes may be mode-dependent.**
+`ux.visible_in_modes` restricts when a field can be turned ON, never
+when it can be turned OFF. A field with `visible_in_modes: [heat]`
+means "can only be ON in heat," not "can only be written in heat."
+The mode gate therefore only needs to inspect truthy writes — zero
+forces always pass.
+
+**I3. Mutex forces describe siblings, not capabilities.**
+`mutual_exclusion.when_on.forces` lists fields whose state must be
+coerced when this field is turned ON. By convention the values are
+zero/False (turn siblings off), which — by **I1** — is always
+mode-safe. A truthy force is possible in principle (and we have one:
+`no_wind_sense → breezeless = 1`), but it must satisfy the mode
+compatibility predicate that `glossary_lint` enforces: for every mode
+where the source field is valid, the forced field must also be valid.
+Inconsistent truthy forces are a glossary bug, not a runtime
+contingency.
+
+**Consequences for the pipeline:**
+- The mode gate (`_apply_mode_gate`) and the post-expansion mask
+  (`_mask_mode_invalid_forces`) only touch fields whose value is
+  truthy under `_is_active_value`.
+- `_mask_mode_invalid_forces` writes `default_for_masked_field(gdef)`
+  (which, by **I1**, is always safe) rather than raising — masking
+  in place keeps the optimistic state consistent with the wire.
+- `default_for_masked_field` can be a pure function of the glossary
+  definition; it never has to know the mode.
+- The constraint gate (`_apply_constraint_gate`) ignores booleans
+  entirely — the envelope check only applies to numeric/enum ranges.
+
+---
+
 ### 5.1 Mode gate — reject wrong-mode writes
 
 Before any expansion, the mode gate checks each field's
