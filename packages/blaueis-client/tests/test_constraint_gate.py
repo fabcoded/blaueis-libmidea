@@ -180,3 +180,63 @@ class TestCommandIntegration:
 
         assert result["expanded"]["target_temperature"] == 29.0
         assert any("clamped" in r.message for r in caplog.records)
+
+
+class TestMutexChainCrossesModeGate:
+    """Hypothetical: cool-mode mutex chain forces a heat-only field truthy.
+
+    The real glossary has only one truthy mutex force total
+    (no_wind_sense → breezeless=1, both valid in cool), so this scenario
+    can't occur today. The test synthesizes the chain by overriding the
+    in-memory glossary — a regression guard for the day someone adds a
+    truthy force that crosses a mode boundary.
+
+    Chain: strong_wind=True → turbo_mode=1 → frost_protection=1
+           (visible in cool/heat/fan_only) → (cool/heat) → (heat only!)
+
+    Expected: frost_protection is masked out before reaching the encoder,
+    because mode gate must be authoritative over mutex forces.
+    """
+
+    @pytest.mark.asyncio
+    async def test_mutex_force_cannot_bypass_mode_gate(self, caplog):
+        db = StatusDB()
+        write_field(db._status, "operating_mode", 2, ts=1.0)  # cool
+        write_field(db._status, "power", True, ts=1.0)
+
+        # Inject a synthetic truthy-force chain into the in-memory glossary
+        # so mutex expansion pulls in frost_protection=1 in cool mode.
+        ctrl = db._glossary["fields"]["control"]
+        ctrl["strong_wind"]["mutual_exclusion"] = {
+            "when_on": {"forces": {"turbo_mode": 1}},
+        }
+        ctrl["turbo_mode"]["mutual_exclusion"] = {
+            "when_on": {"forces": {"frost_protection": 1}},
+        }
+
+        sent = []
+        async def fake_send(frame_hex: str) -> None:
+            sent.append(frame_hex)
+
+        with caplog.at_level(logging.WARNING, logger="blaueis.device"):
+            result = await db.command({"strong_wind": True}, fake_send)
+
+        expanded = result["expanded"]
+
+        # User-requested field: strong_wind is valid in cool, accepted
+        assert expanded.get("strong_wind") is True
+
+        # Mutex-forced chain pulled in turbo_mode (valid in cool) — fine
+        assert expanded.get("turbo_mode") == 1
+
+        # The guard: frost_protection is ONLY visible in heat. Even though
+        # mutex expansion tried to force it truthy, the pipeline must NOT
+        # let it reach the encoder in cool mode. Either:
+        #   (a) dropped from expanded, or
+        #   (b) masked to False/0 (default_for_masked_field)
+        fp = expanded.get("frost_protection")
+        assert fp in (None, False, 0), (
+            f"frost_protection={fp!r} slipped through mode gate via mutex "
+            f"force in cool mode — the pipeline must re-validate mutex-"
+            f"expanded fields against the effective operating_mode."
+        )

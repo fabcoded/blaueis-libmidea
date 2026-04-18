@@ -116,6 +116,17 @@ class StatusDB:
             # Step 2: Mutex expansion — forward + reverse pass
             expanded = self._expand_mutex_forces(gated, all_fields)
 
+            # Step 2b: Mode re-check on expanded. If mutex forward-expansion
+            # produced a truthy value for a mode-invalid field (glossary
+            # inconsistency), mask it to the safe default. Mirrors the
+            # expander's reverse-pass pattern; self-heals the optimistic
+            # state so the status dict stays consistent with the wire.
+            expanded = self._mask_mode_invalid_forces(
+                expanded, all_fields, effective_mode=expanded.get(
+                    "operating_mode", self.read("operating_mode"),
+                ),
+            )
+
             # Step 2.5: Constraint gate — clamp to active cap envelope.
             # Runs AFTER mutex expansion so glossary-forced values are
             # re-validated: any clamp at this stage signals a glossary
@@ -197,6 +208,42 @@ class StatusDB:
                 )
 
         return accepted, rejected
+
+    # ── Post-expansion mode mask ──────────────────────────
+
+    def _mask_mode_invalid_forces(
+        self, expanded: dict, all_fields: dict, effective_mode: object,
+    ) -> dict:
+        """Mask truthy mutex-forced fields that are mode-invalid.
+
+        Mutex expansion can pull a truthy value into `expanded` for a
+        field whose `ux.visible_in_modes` excludes the effective mode.
+        This shouldn't happen with a consistent glossary (glossary_lint
+        flags mode-incompatible truthy forces), but if it does we mask
+        the field to its safe default so the outgoing frame carries 0
+        AND the optimistic write synchronizes the status dict.
+
+        Forcing OFF (zero/False) is always safe — we only touch truthy
+        values.
+        """
+        out = dict(expanded)
+        for fname, value in list(out.items()):
+            gdef = all_fields.get(fname, {})
+            if not self._is_active_value(gdef, value):
+                continue
+            modes = (gdef.get("ux") or {}).get("visible_in_modes")
+            if modes is None:
+                continue
+            if is_field_visible(gdef, current_mode=effective_mode):
+                continue
+            safe = default_for_masked_field(gdef)
+            log.warning(
+                "mutex force produced mode-invalid %s=%r in mode=%s — "
+                "masking to %r (glossary inconsistency?)",
+                fname, value, effective_mode, safe,
+            )
+            out[fname] = safe
+        return out
 
     # ── Constraint gate ───────────────────────────────────
 
