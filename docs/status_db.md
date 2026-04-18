@@ -186,10 +186,15 @@ sequenceDiagram
         Dev->>DB: command({frost_protection: True})
         activate DB
         DB->>DB: acquire lock
+        DB->>DB: feature_gate(changes)
+        Note over DB: feature_available != "never" → pass
+        DB->>DB: power_gate(changes)
+        Note over DB: power=True (device on) → pass
         DB->>DB: mode_gate(changes)
         Note over DB: operating_mode=4 (heat),<br/>frost_protection visible_in_modes=[heat]<br/>→ ACCEPTED
         DB->>DB: expand_mutex_forces()
         Note over DB: expanded: {frost_protection:True,<br/>turbo:0, eco:0, strong_wind:0, sleep:0}
+        DB->>DB: mask + constraint gate
         DB->>DB: split → x40 / b0
         DB->>DB: build_command_body(x40)
         DB->>WS: send x40 frame
@@ -270,27 +275,45 @@ representing the net state transition.
 
 ---
 
-## 5. Command pipeline — mode gate + mutex + frame build
+## 5. Command pipeline
 
 The COMMAND operation runs a multi-step pipeline under a single lock
-hold. Each step narrows or augments the caller's changes dict:
+hold. Each step narrows or augments the caller's changes dict. Rejection
+gates feed a shared `rejected` dict; expansion and clamp gates transform
+the surviving values in place.
 
 ```mermaid
-flowchart LR
-    A["changes dict"] --> B["Mode Gate"]
-    B -->|accepted| C["Mutex Expansion"]
+flowchart TD
+    A["changes dict"] --> B["Feature Gate"]
+    B -->|accepted| C["Power Gate"]
     B -->|rejected| R["rejected dict"]
-    C --> D["Protocol Split"]
-    D --> E["Frame Build + Send"]
-    E --> F["Optimistic Write"]
-    F --> G["Release Lock"]
-    G --> H["Flush Callbacks"]
+    C -->|accepted| D["Mode Gate"]
+    C -->|rejected| R
+    D -->|accepted| E["Mutex Expansion"]
+    D -->|rejected| R
+    E --> F["Mask Mode-Invalid Forces"]
+    F --> G["Constraint Gate (clamp)"]
+    G --> H["Protocol Split → x40 / b0"]
+    H --> I["Frame Build + Send"]
+    I --> J["Optimistic Write"]
+    J --> K["Release Lock"]
+    K --> L["Flush Callbacks"]
 
     style B fill:#fdd,stroke:#a33
-    style C fill:#ddf,stroke:#33a
-    style E fill:#dfd,stroke:#0a0
-    style G fill:#ffd,stroke:#aa0
+    style C fill:#fdd,stroke:#a33
+    style D fill:#fdd,stroke:#a33
+    style E fill:#ddf,stroke:#33a
+    style F fill:#fdd,stroke:#a33
+    style G fill:#ddf,stroke:#33a
+    style I fill:#dfd,stroke:#0a0
+    style K fill:#ffd,stroke:#aa0
 ```
+
+The three rejection gates (feature / power / mode) run in order of
+increasing context: feature is a hardware-capability check, power is
+a device-state check, mode is a field-state check. This ordering means
+the most fundamental reason comes out in the `rejected` dict when a
+write fails for multiple reasons.
 
 ### 5.0 Design invariants
 
@@ -324,7 +347,31 @@ where the source field is valid, the forced field must also be valid.
 Inconsistent truthy forces are a glossary bug, not a runtime
 contingency.
 
+**I4. Feature availability is a hardware precondition.**
+B5 capability negotiation marks each field's `feature_available` as
+`always`, `capability`, `readable`, or `never`. A `never` field has
+no physical presence on the device — writing it would ship a frame
+the device silently ignores, leaving ghost optimistic state that
+never gets corrected. The feature gate runs first, before any mode
+or state check, and is a pure lookup on
+`status["fields"][name]["feature_available"]`. Fields with no status
+entry or no `feature_available` key default to `always` (accept) —
+pre-B5 state does not block writes.
+
+**I5. Power must be ON for any non-power write.**
+A powered-off AC discards writes to every field except `power`
+itself. The power gate reads the current `power` state and rejects
+all non-power fields in the batch — unless the batch itself sets
+`power=True`, in which case the device will apply the rest after it
+wakes up. Pre-poll (`power is None`) is not blocked; the user gets
+one command worth of optimistic grace before the first response
+fixes the real state. `power=False` in a batch does NOT unlock
+siblings: only `power=True` releases the gate.
+
 **Consequences for the pipeline:**
+- Rejection gates run in order of increasing context: feature
+  (hardware capability) → power (device-level state) → mode
+  (field-level state). The most fundamental reason always surfaces.
 - The mode gate (`_apply_mode_gate`) and the post-expansion mask
   (`_mask_mode_invalid_forces`) only touch fields whose value is
   truthy under `_is_active_value`.
@@ -338,7 +385,62 @@ contingency.
 
 ---
 
-### 5.1 Mode gate — reject wrong-mode writes
+### 5.1 Feature gate — reject unsupported fields
+
+The feature gate runs first and is the cheapest check in the pipeline:
+a pure lookup on `status["fields"][name]["feature_available"]`. Fields
+marked `never` (B5 reported the capability as absent) are rejected
+immediately; `always`, `capability`, and `readable` all pass. Missing
+fields or missing `feature_available` keys default to `always`, which
+accepts — this keeps pre-B5 boots and test fixtures from being
+blocked by an incomplete status dict.
+
+By **I4**, a `never` field cannot be physically written; the device
+has no byte for it and no response ever reports it. Accepting the
+write would ship a frame the AC silently ignores, leaving the
+optimistic slot stuck at whatever the caller asked for. The feature
+gate keeps the optimistic DB honest.
+
+```mermaid
+flowchart TD
+    A["changes: breezeless = True"]
+    A --> B{"status['fields']['breezeless']<br/>['feature_available']"}
+    B -->|never| C["REJECTED: not supported by device"]
+    B -->|always / capability / readable| D["ACCEPTED → continue to power gate"]
+    B -->|missing key → default 'always'| D
+
+    style C fill:#fdd,stroke:#a33
+    style D fill:#dfd,stroke:#0a0
+```
+
+### 5.2 Power gate — reject non-power writes when off
+
+The power gate reads the current `power` field and, if it is `False`,
+rejects every non-power field in the batch. The only exception is a
+batch that itself sets `power=True`: turning the device on in the
+same command unlocks the rest of the batch, and the AC applies them
+after it wakes up. `power=False` in the batch is **not** an unlock —
+it's a no-op toward off.
+
+`power is None` (pre-poll, before the first C0 response) does **not**
+block writes. The user gets one command of optimistic grace; the next
+ingest corrects the real state.
+
+```mermaid
+flowchart TD
+    A["changes: target_temperature = 22.0"]
+    A --> B{"read('power')"}
+    B -->|None (pre-poll)| D["ACCEPTED → continue to mode gate"]
+    B -->|True| D
+    B -->|False| C{"'power' in batch<br/>AND batch[power] is True?"}
+    C -->|yes| D
+    C -->|no| E["REJECTED: device is off"]
+
+    style E fill:#fdd,stroke:#a33
+    style D fill:#dfd,stroke:#0a0
+```
+
+### 5.3 Mode gate — reject wrong-mode writes
 
 Before any expansion, the mode gate checks each field's
 `ux.visible_in_modes` against the current `operating_mode`. If the
@@ -372,7 +474,7 @@ mode, not the current one — the caller intends to switch.
 **Fields without `visible_in_modes`** always pass (power,
 target_temperature, fan_speed, etc.).
 
-### 5.2 Forward pass — field ON forces dependencies
+### 5.4 Forward pass — field ON forces dependencies
 
 When a field is being set to an active value (truthy for bools, non-zero
 for enums/numerics), its `mutual_exclusion.when_on.forces` targets are
@@ -388,7 +490,7 @@ truthy (e.g., `no_wind_sense` forces `breezeless=1`), the target enters
 the queue and its own forces are expanded. A depth cap of 10 prevents
 runaway loops from glossary misconfiguration.
 
-### 5.3 Reverse pass — mode change clears incompatible fields
+### 5.5 Reverse pass — mode change clears incompatible fields
 
 If `operating_mode` appears in the expanded dict (from the caller or from
 forward expansion), all fields with `ux.visible_in_modes` excluding the
@@ -399,7 +501,29 @@ for bools, `0` for numerics).
 This is the runtime equivalent of `build_command_body()`'s UX masking,
 but applied to the expanded changes dict so `_apply_optimistic()` sees it.
 
-### 5.4 Expansion algorithm
+### 5.6 Post-expansion mask — neutralize mode-invalid forces
+
+Forward expansion may add truthy forces (currently only
+`no_wind_sense → breezeless=1`). If the caller is in a mode where
+the forced field is not visible, the mask step rewrites that value
+to `default_for_masked_field(gdef)` (typically `False` / `0`) before
+the frame is built. By **I1**, that default is always mode-safe.
+
+This keeps the expanded dict consistent with the frame that will
+actually be sent and with the optimistic write that follows. Glossary
+lint enforces mode-subset on truthy forces at build time, so this
+mask is belt-and-suspenders protection against a drift between
+glossary and device.
+
+### 5.7 Constraint gate — clamp numeric envelopes
+
+After expansion and masking, `_apply_constraint_gate` clamps numeric
+and enum values to their `active_constraints` envelope. Booleans are
+ignored. Out-of-range values are clamped in place (not rejected) and
+the clamp is reported at DEBUG; the device would have rejected or
+saturated the value anyway, but the optimistic DB stays honest.
+
+### 5.8 Expansion algorithm
 
 ```mermaid
 flowchart TD
@@ -443,7 +567,7 @@ flowchart TD
     style X fill:#dfd,stroke:#0a0
 ```
 
-### 5.5 Protocol frame distribution
+### 5.9 Protocol frame distribution
 
 Mutex forces targets span two protocol frames:
 
@@ -460,7 +584,7 @@ frames. The StatusDB lock holds across both sends, preventing any
 INGEST from interleaving between them. From HA's perspective, the
 combined operation is atomic.
 
-### 5.6 Pipeline examples
+### 5.10 Pipeline examples
 
 **Example 1: Frost protection in cool mode — REJECTED by mode gate**
 ```
@@ -674,8 +798,12 @@ sequenceDiagram
     participant HA as HA / Automation
     participant Dev as Device.set()
     participant DB as StatusDB.command()
-    participant Gate as _apply_mode_gate()
+    participant Feat as _apply_feature_gate()
+    participant Pwr as _apply_power_gate()
+    participant Mode as _apply_mode_gate()
     participant Mutex as _expand_mutex_forces()
+    participant Mask as _mask_mode_invalid_forces()
+    participant Con as _apply_constraint_gate()
     participant Build as build_command_body()
     participant WS as HvacClient.send_frame()
     participant Opt as _apply_optimistic()
@@ -688,12 +816,29 @@ sequenceDiagram
     activate DB
     Note over DB: acquire lock
 
-    DB->>Gate: _apply_mode_gate(changes, all_fields)
-    Gate-->>DB: (accepted, rejected)
+    DB->>Feat: _apply_feature_gate(changes)
+    Note over Feat: reject feature_available=never
+    Feat-->>DB: (accepted, rejected)
+
+    DB->>Pwr: _apply_power_gate(accepted)
+    Note over Pwr: if power=False and no power=True<br/>in batch, reject non-power fields
+    Pwr-->>DB: (accepted, rejected)
+
+    DB->>Mode: _apply_mode_gate(accepted, all_fields)
+    Note over Mode: reject truthy writes<br/>outside visible_in_modes
+    Mode-->>DB: (accepted, rejected)
 
     DB->>Mutex: _expand_mutex_forces(accepted, all_fields)
     Note over Mutex: forward pass: forces<br/>reverse pass: mode compat
     Mutex-->>DB: expanded dict
+
+    DB->>Mask: _mask_mode_invalid_forces(expanded)
+    Note over Mask: neutralize truthy forces<br/>that violate mode gate
+    Mask-->>DB: masked expanded
+
+    DB->>Con: _apply_constraint_gate(expanded)
+    Note over Con: clamp numerics/enums to<br/>active_constraints envelope
+    Con-->>DB: clamped expanded
 
     DB->>DB: _split_by_protocol(expanded) → x40, b0
 
