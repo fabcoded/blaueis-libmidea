@@ -109,9 +109,22 @@ class StatusDB:
         """
         async with self._lock:
             all_fields = walk_fields(self._glossary)
+            rejected: dict = {}
+
+            # Step 0a: Feature gate — reject writes to feature_available=never.
+            # Fundamental: the field doesn't exist on this hardware, so the
+            # write can never succeed regardless of mode or power state.
+            gated, r = self._apply_feature_gate(changes)
+            rejected.update(r)
+
+            # Step 0b: Power gate — when power is off and the batch does not
+            # turn it on, only `power` itself may be written.
+            gated, r = self._apply_power_gate(gated)
+            rejected.update(r)
 
             # Step 1: Mode gate — reject fields not valid in current mode
-            gated, rejected = self._apply_mode_gate(changes, all_fields)
+            gated, r = self._apply_mode_gate(gated, all_fields)
+            rejected.update(r)
 
             # Step 2: Mutex expansion — forward + reverse pass
             expanded = self._expand_mutex_forces(gated, all_fields)
@@ -171,6 +184,70 @@ class StatusDB:
 
         self._flush_events()
         return {"expanded": expanded, "rejected": rejected, "results": results}
+
+    # ── Feature gate ──────────────────────────────────────
+
+    def _apply_feature_gate(
+        self, changes: dict,
+    ) -> tuple[dict, dict]:
+        """Reject writes to fields whose feature_available is 'never'.
+
+        feature_available lives in status["fields"][name]["feature_available"]
+        and is set by B5 capability processing. A value of 'never' means the
+        device model does not support the feature at all — the write can
+        never succeed.
+
+        Missing key defaults to 'always' (accept) so that pre-B5 state does
+        not mass-reject writes.
+        """
+        accepted: dict = {}
+        rejected: dict = {}
+        for fname, value in changes.items():
+            fstate = self._status["fields"].get(fname, {})
+            fa = fstate.get("feature_available", "always")
+            if fa == "never":
+                rejected[fname] = "feature not supported on this device"
+                log.warning(
+                    "Feature gate rejected %s=%r: feature_available=never",
+                    fname, value,
+                )
+            else:
+                accepted[fname] = value
+        return accepted, rejected
+
+    # ── Power gate ────────────────────────────────────────
+
+    def _apply_power_gate(
+        self, changes: dict,
+    ) -> tuple[dict, dict]:
+        """When power is off, only `power` may be written.
+
+        Rule: if current power is False AND the batch does not include
+        `power=True`, reject every non-power field. This mirrors the
+        device's behavior — it ignores value writes while off — and
+        prevents ghost optimistic writes from desynchronizing the status
+        dict from the hardware.
+
+        If current power is unknown (None, pre-poll), skip enforcement;
+        we don't want to block the very first command after connect.
+        """
+        current_power = self.read("power")
+        if current_power is not False:
+            return changes, {}
+        if changes.get("power") is True:
+            return changes, {}
+
+        accepted: dict = {}
+        rejected: dict = {}
+        for fname, value in changes.items():
+            if fname == "power":
+                accepted[fname] = value
+            else:
+                rejected[fname] = "device is off — only power can be written"
+                log.warning(
+                    "Power gate rejected %s=%r: power is off", fname, value,
+                )
+        return accepted, rejected
 
     # ── Mode gate ─────────────────────────────────────────
 
