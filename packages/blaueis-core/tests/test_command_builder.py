@@ -11,13 +11,11 @@ Usage:
 import sys
 from pathlib import Path
 
-from pathlib import Path
-
 import yaml
-from blaueis.core.command import build_command_body
-from blaueis.core.status import build_status
 from blaueis.core.codec import decode_frame_fields, load_glossary
+from blaueis.core.command import build_command_body
 from blaueis.core.process import finalize_capabilities, process_raw_frame
+from blaueis.core.status import build_status
 
 
 def main():

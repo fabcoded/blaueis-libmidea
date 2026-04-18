@@ -21,10 +21,10 @@ frames:
       t3_outdoor_coil_temp: 1.0
       t4_outdoor_ambient_temp: 4.0
       discharge_pipe_temp: 56
-      compressor_current: 0
+      compressor_idle: 0
       outdoor_total_current: 1
       outdoor_supply_voltage: 229
-    notes: "Compressor off. T2=45C (residual heat in exchanger). T3=1C (outdoor coil cold). Voltage=229V (standby)."
+    notes: "Compressor off. T2=45C (residual heat in exchanger). T3=1C (outdoor coil cold). Voltage=229V (standby). compressor_idle=0 (Q11 reports 0 always — hardware-variant-dependent)."
 
   - name: "cool mode active — compressor running 56Hz"
     timestamp: 327.4
@@ -37,10 +37,10 @@ frames:
       t3_outdoor_coil_temp: 4.0
       t4_outdoor_ambient_temp: 3.5
       discharge_pipe_temp: 46
-      compressor_current: 0
+      compressor_idle: 0
       outdoor_total_current: 2
       outdoor_supply_voltage: 221
-    notes: "Compressor at 56Hz chasing FT=71Hz. T2 dropped to 12.5C (evaporator cooling). Voltage=221V (under load)."
+    notes: "Compressor at 56Hz chasing FT=71Hz. T2 dropped to 12.5C (evaporator cooling). Voltage=221V (under load). compressor_idle=0 (Q11 reports 0 always)."
 
   - name: "end of session — compressor off"
     timestamp: 651.5
@@ -53,7 +53,7 @@ frames:
       t3_outdoor_coil_temp: 6.0
       t4_outdoor_ambient_temp: 5.0
       discharge_pipe_temp: 34
-      compressor_current: 0
+      compressor_idle: 0
       outdoor_total_current: 1
       outdoor_supply_voltage: 228
     notes: "Session end. T2 recovered to 20C (exchanger warming). Tp cooling to 34C. Voltage 228V (standby)."

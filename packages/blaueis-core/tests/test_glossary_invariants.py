@@ -27,8 +27,6 @@ Usage:
 """
 
 import sys
-from pathlib import Path
-
 
 from blaueis.core.codec import build_field_map, build_frame_from_spec, load_glossary, walk_fields
 

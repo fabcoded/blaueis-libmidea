@@ -30,15 +30,14 @@ import argparse
 import asyncio
 import json
 import logging
-import sys
 import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
 import websockets  # noqa: E402
-from blaueis.core.crypto import complete_handshake_client, create_hello, psk_to_bytes  # noqa: E402
 from blaueis.core.codec import build_frame_from_spec, load_glossary  # noqa: E402
+from blaueis.core.crypto import complete_handshake_client, create_hello, psk_to_bytes  # noqa: E402
 from blaueis.core.frame import build_frame, parse_frame  # noqa: E402
 
 log = logging.getLogger("ac_probe")

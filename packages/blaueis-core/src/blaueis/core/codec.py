@@ -454,7 +454,11 @@ def decode_enum_cap(cap_def: dict, raw_value: int) -> dict:
     for sym_name, vdef in values.items():
         if vdef.get("raw") == raw_value:
             result = {"decoded_key": sym_name, "raw": raw_value}
-            for k in ("valid_range", "valid_set", "step", "correction", "ui_gate", "feature_available"):
+            for k in (
+                "valid_range", "valid_set", "step", "correction",
+                "ui_gate", "feature_available",
+                "slider", "values", "custom_value",
+            ):
                 if k in vdef:
                     result[k] = vdef[k]
             return result

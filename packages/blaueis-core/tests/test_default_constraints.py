@@ -36,12 +36,10 @@ from collections import Counter
 from pathlib import Path
 
 import yaml
-
-
-from blaueis.core.status import build_status
-from blaueis.core.query import read_field
 from blaueis.core.codec import load_glossary, walk_fields
 from blaueis.core.process import finalize_capabilities, process_raw_frame
+from blaueis.core.query import read_field
+from blaueis.core.status import build_status
 
 REPO_TESTCASES = Path(__file__).resolve().parent / "test-cases"
 B5_FIXTURE = REPO_TESTCASES / "xtremesaveblue_s1" / "b5_frames.yaml"

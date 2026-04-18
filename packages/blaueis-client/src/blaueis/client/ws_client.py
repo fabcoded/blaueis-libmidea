@@ -15,8 +15,7 @@ import asyncio
 import json
 import logging
 import time
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 from blaueis.core.crypto import (
     complete_handshake_client,
@@ -124,10 +123,7 @@ class HvacClient:
     async def _recv(self) -> dict:
         """Receive and decrypt a message from the gateway."""
         raw = await self._ws.recv()
-        if self._session and not self.no_encrypt:
-            msg = self._session.decrypt_json(raw)
-        else:
-            msg = json.loads(raw)
+        msg = self._session.decrypt_json(raw) if self._session and not self.no_encrypt else json.loads(raw)
         log_event(
             log, _VERBOSE, "ws_in",
             port="ws", peer=f"ws:{self.gw_session.sid}" if self.gw_session.sid is not None else "ws:?",

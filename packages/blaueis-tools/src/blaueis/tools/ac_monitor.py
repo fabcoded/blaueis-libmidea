@@ -38,11 +38,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 # Insert tools-serial LAST so it ends up FIRST in sys.path.
 
 import websockets  # noqa: E402
-from blaueis.core.quirks import apply_quirks_files  # noqa: E402
-from blaueis.core.command import build_command_body  # noqa: E402
-from blaueis.core.status import build_status  # noqa: E402
-from blaueis.core.query import read_field  # noqa: E402
-from blaueis.core.crypto import complete_handshake_client, create_hello, psk_to_bytes  # noqa: E402
 from blaueis.core.codec import (  # noqa: E402
     build_frame_from_spec,
     build_scan_queue,
@@ -50,8 +45,13 @@ from blaueis.core.codec import (  # noqa: E402
     load_glossary,
     walk_fields,
 )
+from blaueis.core.command import build_command_body  # noqa: E402
+from blaueis.core.crypto import complete_handshake_client, create_hello, psk_to_bytes  # noqa: E402
 from blaueis.core.frame import build_frame, parse_frame  # noqa: E402
 from blaueis.core.process import finalize_capabilities, process_b5, process_data_frame  # noqa: E402
+from blaueis.core.query import read_field  # noqa: E402
+from blaueis.core.quirks import apply_quirks_files  # noqa: E402
+from blaueis.core.status import build_status  # noqa: E402
 
 log = logging.getLogger("ac_monitor")
 

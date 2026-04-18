@@ -8,12 +8,10 @@ Usage:
 """
 
 import sys
-from pathlib import Path
-
 from collections import Counter
 
-from blaueis.core.status import build_status
 from blaueis.core.codec import load_glossary
+from blaueis.core.status import build_status
 
 
 def main():

@@ -21,8 +21,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from blaueis.core.query import read_field
 from blaueis.core.codec import build_field_map, encode_field, load_glossary, walk_fields
+from blaueis.core.query import read_field
 from blaueis.core.ux_gating import default_for_masked_field, is_field_visible
 
 # Default freshness window for sibling fields. Picked to be loose enough that

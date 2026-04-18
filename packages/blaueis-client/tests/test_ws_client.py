@@ -5,18 +5,15 @@ No real network — MockWebSocket feeds canned responses.
 Usage (standalone):  python -m pytest packages/blaueis-client/tests/test_ws_client.py -v
 """
 
-import asyncio
 import json
 
 import pytest
-
 from blaueis.client.ws_client import HvacClient
 from blaueis.core.crypto import (
     complete_handshake_server,
     create_hello_ok,
     generate_psk,
 )
-
 
 # ── Mock WebSocket ──────────────────────────────────────────────────────
 
@@ -211,7 +208,7 @@ async def test_encrypted_send_recv():
     c = HvacClient("localhost", 8765, psk=psk)
 
     # Simulate completed handshake by setting up real crypto sessions
-    from blaueis.core.crypto import complete_handshake_client, complete_handshake_server, create_hello, create_hello_ok
+    from blaueis.core.crypto import complete_handshake_client, create_hello
 
     hello_msg, client_rand = create_hello()
     hello_ok_msg, server_rand = create_hello_ok()

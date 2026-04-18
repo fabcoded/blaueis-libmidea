@@ -136,7 +136,12 @@ await dev.set(power=True, target_temperature=22)
 await dev.stop()
 ```
 
-**Status DB invariant:** `self._status` persists across connection drops. B5
+**StatusDB:** The status dictionary is wrapped in `StatusDB` — an atomic
+state layer that serializes INGEST (AC responses) and COMMAND (set calls)
+via `asyncio.Lock`, enforces glossary-driven mutual exclusion, and batches
+state-change callbacks. See `docs/status_db.md` for the full design.
+
+**Invariant:** `_status` persists across connection drops. B5
 caps loaded once, never cleared. Supervisor restarts dead loops without
 touching state. Per flight_recorder.md §1.1 — every received frame is
 processed regardless of correlation.
@@ -170,6 +175,7 @@ See `docs/flight_recorder.md` §4 for the ring record schema.
 
 ## 7. Cross-cutting concerns
 
+- **StatusDB (atomic state + mutex enforcement):** `docs/status_db.md`.
 - **Wire protocol over WS:** `docs/ws_protocol.md`.
 - **Flight recorder (debug buffer):** `docs/flight_recorder.md`.
 - **Operations / install / config / update:** `docs/operations.md`.

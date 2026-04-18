@@ -6,8 +6,6 @@ Captured frames from a live Atelier Midea unit (2026-04-13).
 import asyncio
 import json
 
-import pytest
-
 # ── Captured frames (hex strings) ──────────────────────────
 
 # B5 extended: 8 capability records

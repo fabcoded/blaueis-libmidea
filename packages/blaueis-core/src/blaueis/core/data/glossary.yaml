@@ -47,6 +47,14 @@ encodings:
     scale: 1.0
     offset: 0
     note: C1 Group 1 body[14] discharge pipe. MCU applies NTC lookup internally.
+  eev_steps:
+    formula: raw * 8
+    unit: steps
+    scale: 8
+    offset: 0
+    note: Electronic expansion valve position/target. The wire carries a uint8
+      counter that represents the motor step count divided by 8 — multiply back
+      to recover the actual step value. Used by eev_position and eev_target_angle.
   temp_follow_me:
     formula: (raw - 50) / 2.0
     unit: °C
@@ -698,6 +706,25 @@ fields:
       feature_available: capability
       data_type: bool
       device_context: indoor_unit
+      ux:
+        visible_in_modes: [cool, heat, fan_only, dry, auto]
+        sources: community protocol research
+      mutual_exclusion:
+        when_on:
+          forces:
+            breeze_mild: 0
+            breezeless: 0
+            turbo_mode: 0
+            jet_cool: 0
+            swing_vertical: 0
+            louver_swing_angle_ud_enum: 0
+          reason: |
+            TwinFlap breeze family. On FA100 units the three breeze modes
+            (breeze_away, breeze_mild, breezeless) share property 0x43 as a
+            state machine and are mutually exclusive by construction.
+            Non-FA100 units expose them as independent bools but the same
+            logic applies — concurrent deflection geometries fight. Also
+            suppresses swing/turbo/jet_cool which reshape the micro-vent path.
       alt_names:
         midea_lua: wind_avoid
         dudanov: WIND_OFF_ME
@@ -768,6 +795,25 @@ fields:
       feature_available: capability
       data_type: bool
       device_context: indoor_unit
+      ux:
+        visible_in_modes: [cool, heat, fan_only, dry, auto]
+        sources: community protocol research
+      mutual_exclusion:
+        when_on:
+          forces:
+            breeze_away: 0
+            breezeless: 0
+            turbo_mode: 0
+            strong_wind: 0
+            jet_cool: 0
+            swing_vertical: 0
+            louver_swing_angle_ud_enum: 0
+          reason: |
+            TwinFlap breeze family member (see breeze_away for family rules).
+            Intermediate soft-breeze geometry. Concurrent breeze modes,
+            swing, turbo, or jet_cool reshape the micro-vent path and fight
+            this field's geometry. Also forces strong_wind off and auto-fan
+            per community protocol research on FA100 behavior.
       alt_names:
         midea_lua: gentle_wind_sense
         dudanov: BREEZE_CONTROL
@@ -839,6 +885,28 @@ fields:
       feature_available: capability
       data_type: uint8
       device_context: indoor_unit
+      ux:
+        visible_in_modes: [cool, heat, fan_only, dry, auto]
+        sources: community protocol research
+      mutual_exclusion:
+        when_on:
+          forces:
+            breeze_away: 0
+            breeze_mild: 0
+            turbo_mode: 0
+            strong_wind: 0
+            no_wind_sense: 0
+            jet_cool: 0
+            swing_vertical: 0
+            swing_horizontal: 0
+            louver_swing_angle_ud_enum: 0
+            louver_swing_angle_lr_enum: 0
+          reason: |
+            Wind-free mode: micro-hole diffusion, zero direct draft. On FA100
+            this is value 4 of the breeze state machine. Active breezeless
+            geometry cannot coexist with swing (redirects airflow), turbo /
+            strong_wind (boost velocity), jet_cool, no_wind_sense (redundant
+            older variant), or sibling breeze modes.
       alt_names:
         midea_lua: prevent_straight_wind
         dudanov: ONE_KEY_NO_WIND
@@ -1302,6 +1370,21 @@ fields:
       ux:
         visible_in_modes: [cool, auto, dry]
         sources: own observation
+      mutual_exclusion:
+        when_on:
+          forces:
+            turbo_mode: 0
+            strong_wind: 0
+            no_wind_sense: 0
+            jet_cool: 0
+            frost_protection: 0
+          reason: |
+            Energy-saving target: low compressor output, reduced fan. Mutually
+            exclusive with high-output presets (turbo, strong_wind, jet_cool)
+            and with frost_protection (unrelated setpoint override). Also
+            forces no_wind_sense off per community protocol research. Probe
+            evidence: AC keeps eco_mode set and silently drops turbo when
+            both arrive same frame. Schema is UX guidance, not wire enforcement.
       alt_names:
         midea_lua: eco
         dudanov: m_ecoMode
@@ -1425,6 +1508,8 @@ fields:
       feature_available: readable
       data_type: bool
       device_context: indoor_unit
+      ha:
+        enabled_default: false
       alt_names:
         midea_lua: exchangeAir
         handbook: Fresh Air, Ventilation
@@ -1453,6 +1538,8 @@ fields:
       data_type: bool
       device_context: indoor_unit
       default_value: true
+      ha:
+        enabled_default: false
       protocols:
         cmd_0x40:
           frame: 0x40 Set
@@ -1468,33 +1555,13 @@ fields:
       sources:
       - own captures Sessions 1-12 (all 0x40 frames have body[3] bit 7 set)
     fan_speed:
-      description: Fan speed setting. Discrete named levels or stepless percentage depending on B5 cap 0x10.
+      description: Fan speed setting. Each cap value defines the enum presets and
+        slider behaviour that apply when that cap is active. No field-level values
+        block — every enum/slider option lives inside capability.values.<cap>.
       field_class: stateful_enum
       feature_available: readable
       data_type: uint8
       device_context: indoor_unit
-      values:
-        auto:
-          raw: 102
-          description: Automatic fan control
-        turbo:
-          raw: 100
-          description: Maximum speed
-        high:
-          raw: 80
-          description: High speed
-        medium:
-          raw: 60
-          description: Medium speed
-        low:
-          raw: 40
-          description: Low speed
-        silent:
-          raw: 20
-          description: Silent / mute
-        fixed:
-          raw: 101
-          description: System-controlled (controller-managed)
       alt_names:
         midea_lua: windMode
         dudanov: m_fanSpeed
@@ -1564,12 +1631,26 @@ fields:
           stepless:
             raw: 1
             feature_available: always
-            description: Stepless slider
+            description: Stepless slider — free 0-102 percentage.
             valid_range:
             - 0
             - 102
             step: 1
             correction: clamp
+            slider:
+              name: "Fan Mode Val"
+              range: [1, 100]
+              mode: clamp
+            custom_value:
+              label: "Custom"
+            # Preset enum for stepless: ultra_low and auto are synthetic
+            # (not cap-declared points, but useful UX anchors at the extremes).
+            values:
+              ultra_low: { raw: 1,   description: "synthetic — minimum speed anchor", label: "Ultra Low" }
+              low:       { raw: 40,  label: "Low" }
+              medium:    { raw: 60,  label: "Medium" }
+              high:      { raw: 80,  label: "High" }
+              auto:      { raw: 102, description: "synthetic — escapes slider, enum-only", label: "Auto" }
           disabled_2:
             raw: 2
             feature_available: never
@@ -1584,6 +1665,13 @@ fields:
             - 40
             - 80
             correction: snap_nearest
+            slider:
+              name: "Fan Mode Val"
+              range: [1, 100]
+              mode: snap_nearest
+            values:
+              low:  { raw: 40, label: "Low" }
+              high: { raw: 80, label: "High" }
           low_high_auto:
             raw: 4
             feature_available: always
@@ -1593,6 +1681,14 @@ fields:
             - 80
             - 102
             correction: snap_nearest
+            slider:
+              name: "Fan Mode Val"
+              range: [1, 100]
+              mode: snap_nearest
+            values:
+              low:  { raw: 40,  label: "Low" }
+              high: { raw: 80,  label: "High" }
+              auto: { raw: 102, label: "Auto" }
           standard:
             raw: 5
             feature_available: always
@@ -1603,6 +1699,15 @@ fields:
             - 80
             - 102
             correction: snap_nearest
+            slider:
+              name: "Fan Mode Val"
+              range: [1, 100]
+              mode: snap_nearest
+            values:
+              low:    { raw: 40,  label: "Low" }
+              medium: { raw: 60,  label: "Medium" }
+              high:   { raw: 80,  label: "High" }
+              auto:   { raw: 102, label: "Auto" }
           full:
             raw: 6
             feature_available: always
@@ -1614,6 +1719,16 @@ fields:
             - 80
             - 102
             correction: snap_nearest
+            slider:
+              name: "Fan Mode Val"
+              range: [1, 100]
+              mode: snap_nearest
+            values:
+              silent: { raw: 20,  label: "Silent" }
+              low:    { raw: 40,  label: "Low" }
+              medium: { raw: 60,  label: "Medium" }
+              high:   { raw: 80,  label: "High" }
+              auto:   { raw: 102, label: "Auto" }
           no_auto:
             raw: 7
             feature_available: always
@@ -1623,6 +1738,14 @@ fields:
             - 60
             - 80
             correction: snap_nearest
+            slider:
+              name: "Fan Mode Val"
+              range: [1, 100]
+              mode: snap_nearest
+            values:
+              low:    { raw: 40, label: "Low" }
+              medium: { raw: 60, label: "Medium" }
+              high:   { raw: 80, label: "High" }
         alt_names:
           dudanov: CAPABILITY_FAN_SPEED_CONTROL
           msmart: windType / windMap
@@ -1657,10 +1780,12 @@ fields:
       - protocol_shared.md §6
     follow_me:
       description: 'Follow Me / I Feel: use external sensor temperature for control loop instead of unit thermistor.'
-      field_class: stateful_bool
+      field_class: binary_sensor
       feature_available: always
       data_type: bool
       device_context: indoor_unit
+      ha:
+        entity_category: diagnostic
       alt_names:
         midea_lua: bodySense
         handbook: Follow Me, I Feel
@@ -1718,6 +1843,20 @@ fields:
       feature_available: readable
       data_type: bool
       device_context: indoor_unit
+      ux:
+        visible_in_modes: [heat]
+        sources: community protocol research
+      mutual_exclusion:
+        when_on:
+          forces:
+            turbo_mode: 0
+            eco_mode: 0
+            strong_wind: 0
+            sleep_mode: 0
+          reason: |
+            Anti-freeze guard: fixed 8°C setpoint, overrides user setpoint.
+            Mutually exclusive with every comfort-targeted preset — frost
+            protection is a safety mode, not a comfort program.
       alt_names:
         dudanov: m_frostProtection
         msmart: freeze_protection
@@ -1986,6 +2125,44 @@ fields:
       device_context: indoor_unit
       alt_names:
         midea_app: jetCool
+      ux:
+        visible_in_modes: [cool]
+        sources: community protocol research
+      mutual_exclusion:
+        when_on:
+          forces:
+            turbo_mode: 0
+            strong_wind: 0
+            eco_mode: 0
+            swing_vertical: 0
+            swing_horizontal: 0
+            louver_swing_angle_ud_enum: 0
+            louver_swing_angle_lr_enum: 0
+            breeze_away: 0
+            breeze_mild: 0
+            breezeless: 0
+            no_wind_sense: 0
+            new_wind_sense: 0
+          reason: |
+            Source-of-truth mutex set, consumed by integration UX-overlay
+            (compute "temporary function presence"), NOT by wire enforcement.
+            Integration passes user intent to AC unmodified; AC firmware is
+            authority. Overlay rule: when jet_cool is on, the listed fields
+            are normally hidden / disabled in the UI — UNLESS one of them
+            already carries a non-default value (preserved from earlier
+            state). In that case the field's button stays available so the
+            user can clear it manually. The button hides on next render once
+            the field returns to its default value.
+
+            Probe evidence (atelier unit, cool mode):
+              swing_v + vane_angle: AC tolerates simultaneously (no enforcement)
+              turbo + eco/strong:   AC silently drops turbo (real firmware mutex)
+              turbo solo:           never engages on this unit (firmware-disabled)
+              breeze family:        not yet probed on this unit
+
+            OEM app also writes rate_select=100 alongside — out of our enum
+            domain [0..3], so integration does not mirror that side effect.
+            AC handles its own throughput internally.
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -2312,6 +2489,8 @@ fields:
       feature_available: always
       data_type: bool
       default_value: true
+      ha:
+        enabled_default: false
       protocols:
         cmd_0x40:
           frame: 0x40 Set
@@ -2802,6 +2981,11 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       feature_available: capability
+      ux:
+        visible_in_modes: [cool, heat, fan_only, dry, auto]
+        sources: community protocol research
+        note: Passive parameter — driven by performance-preset forces, not
+          typically adjusted standalone. Shown when cap-confirmed.
       alt_names:
         midea_lua: rate_select
         handbook: Rate Select, Speed Mode
@@ -3199,6 +3383,21 @@ fields:
       feature_available: always
       data_type: bool
       device_context: indoor_unit
+      ux:
+        visible_in_modes: [cool, heat, dry, auto]
+        sources: community protocol research
+        note: Also technically selectable in fan_only but degenerates to a bare
+          shutdown timer with no temperature regulation — excluded from UX.
+      mutual_exclusion:
+        when_on:
+          forces:
+            turbo_mode: 0
+            strong_wind: 0
+            jet_cool: 0
+          reason: |
+            Night-quiet comfort program: low fan, gradual setpoint drift.
+            Mutually exclusive with high-output presets (turbo, strong_wind,
+            jet_cool) whose loud operation defeats the purpose.
       alt_names:
         midea_lua: sleepValue
         dudanov: m_sleep
@@ -3311,14 +3510,18 @@ fields:
         default:
           description: 'Pre-B5: assume horizontal swing selectable (off / on)'
           valid_set:
-          - false
-          - true
+          - 0
+          - 3
           correction: snap_nearest
           note: 'Permissive default applied at boot — assume both axes
 
             available. Replaced once B5 cap 0x15 reveals which axes
 
             the device actually supports (ud_only / both / lr_only).
+
+            Raw values 0 / 3 are the 2-bit enum encoding from the
+
+            field-level `values:` block.
 
             '
         values:
@@ -3406,14 +3609,20 @@ fields:
         default:
           description: 'Pre-B5: assume vertical swing selectable (off / on)'
           valid_set:
-          - false
-          - true
+          - 0
+          - 3
           correction: snap_nearest
           note: 'Permissive default applied at boot — assume both axes
 
             available. Replaced once B5 cap 0x15 reveals which axes
 
-            the device actually supports.
+            the device actually supports. Raw values 0 / 3 are the 2-bit
+
+            enum encoding (off / on) from the field-level `values:` block;
+
+            previously this listed Python booleans which produced broken
+
+            HA select options "False"/"True".
 
             '
         values:
@@ -3737,6 +3946,22 @@ fields:
       feature_available: always
       data_type: bool
       device_context: indoor_unit
+      ux:
+        visible_in_modes: [cool, heat, fan_only]
+        sources: community protocol research
+      mutual_exclusion:
+        when_on:
+          forces:
+            turbo_mode: 0
+            eco_mode: 0
+            jet_cool: 0
+            sleep_mode: 0
+          reason: |
+            Fan-side power boost (compressor frequency untouched). Mutually
+            exclusive with turbo (overlapping high-output intent), with
+            energy-saving modes (eco, sleep), and with jet_cool (own fan
+            profile). Probe evidence (atelier unit): strong_wind + turbo in
+            same frame — AC keeps strong_wind, drops turbo.
       alt_names:
         midea_lua: strong_wind
       protocols:
@@ -3770,6 +3995,28 @@ fields:
       feature_available: readable
       data_type: bool
       device_context: indoor_unit
+      ux:
+        visible_in_modes: [cool, heat]
+        sources: community protocol research
+        note: Restricted to compressor-active cooling and heating modes. Some
+          device families further restrict via a B5 sub-capability (turbo-type
+          mask) — verify per unit when that cap appears.
+      mutual_exclusion:
+        when_on:
+          forces:
+            eco_mode: 0
+            strong_wind: 0
+            jet_cool: 0
+            sleep_mode: 0
+            frost_protection: 0
+          reason: |
+            Performance preset: maximum compressor output to reach setpoint
+            quickly. Mutually exclusive with energy-saving modes (eco,
+            sleep), with frost_protection (fixed 8°C override), and with
+            jet_cool/strong_wind (overlapping high-output intents).
+            Probe evidence (atelier unit): AC firmware silently drops turbo
+            when eco or strong_wind is set in same frame. Schema is UX
+            guidance, not wire enforcement.
       alt_names:
         dudanov: m_turbo
         msmart: turbo_mode
@@ -4081,9 +4328,12 @@ fields:
       note: Not documented in user handbooks. Property-only (no 0x40/0xC0 body bits). On YB100, property 0x33 wind_avoid is
         internally routed to 0x32 with value 0x02.
       confidence: hypothesis
-    wind_swing_lr_angle:
-      description: 'Horizontal (left-right) vane angle position. Values are percentage-based positions: 0=fixed, 1/25/50/75/100
-        map to 5 physical positions. 50 = center. Sent via B0 property 0x0A.'
+    louver_swing_angle_lr_enum:
+      description: 'Horizontal (left-right) vane angle position. 5 user-selectable
+        positions (raw 1 / 25 / 50 / 75 / 100) plus raw 0 (backend-only "released"
+        — AC sets this to release the vane when a pattern mode like swing takes
+        over; not user-selectable). Sent via B0 property 0x0A.'
+      label: "Louver Angle LR"
       field_class: stateful_enum
       data_type: uint8
       device_context: indoor_unit
@@ -4094,22 +4344,29 @@ fields:
       values:
         'off':
           raw: 0
-          description: Fixed position (no swing)
-        pos_1:
+          user_selectable: false
+          description: Released — AC controls vane (pattern mode, swing, or power off). Only the AC sets this.
+          label: "--"
+        left:
           raw: 1
-          description: Position 1 — far left (1%)
-        pos_2:
+          description: Far left (1%)
+          label: "Far Left"
+        left_mid:
           raw: 25
-          description: Position 2 — left (25%)
+          description: Left of centre (25%)
+          label: "Left"
         center:
           raw: 50
-          description: Center position (50%)
-        pos_4:
+          description: Center (50%)
+          label: "Center"
+        right_mid:
           raw: 75
-          description: Position 4 — right (75%)
-        pos_5:
+          description: Right of centre (75%)
+          label: "Right"
+        right:
           raw: 100
-          description: Position 5 — far right (100%)
+          description: Far right (100%)
+          label: "Far Right"
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4154,6 +4411,11 @@ fields:
             raw: 1
             feature_available: always
             description: LR angle control available
+            slider:
+              name: "Louver Angle LR"
+              range: [1, 100]
+              step: 1
+              mode: clamp
         alt_names:
           midea_lua: b5_wind_swing_lr_angle
         confidence: consistent
@@ -4165,9 +4427,12 @@ fields:
       sources:
       - Session 1 B5 query
       - midea-msmart device/AC SwingAngle enum
-    wind_swing_ud_angle:
-      description: 'Vertical (up-down) vane angle position. Same percentage-based encoding as wind_swing_lr_angle: 0=fixed,
-        1/25/50/75/100 = 5 positions. 50 = center. Sent via B0 property 0x09.'
+    louver_swing_angle_ud_enum:
+      description: 'Vertical (up-down) vane angle position. 5 user-selectable
+        positions (raw 1 / 25 / 50 / 75 / 100) plus raw 0 (backend-only "released"
+        — AC sets this to release the vane when a pattern mode like swing takes
+        over; not user-selectable). Sent via B0 property 0x09.'
+      label: "Louver Angle UD"
       field_class: stateful_enum
       data_type: uint8
       device_context: indoor_unit
@@ -4178,22 +4443,29 @@ fields:
       values:
         'off':
           raw: 0
-          description: Fixed position (no swing)
-        pos_1:
+          user_selectable: false
+          description: Released — AC controls vane (pattern mode, swing, or power off). Only the AC sets this.
+          label: "--"
+        up:
           raw: 1
-          description: Position 1 — highest (1%)
-        pos_2:
+          description: Highest / top (1%)
+          label: "Top"
+        up_mid:
           raw: 25
-          description: Position 2 — high (25%)
+          description: Above centre (25%)
+          label: "Upper"
         center:
           raw: 50
-          description: Center position (50%)
-        pos_4:
+          description: Centre (50%)
+          label: "Middle"
+        down_mid:
           raw: 75
-          description: Position 4 — low (75%)
-        pos_5:
+          description: Below centre (75%)
+          label: "Lower"
+        down:
           raw: 100
-          description: Position 5 — lowest (100%)
+          description: Lowest / bottom (100%)
+          label: "Bottom"
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4238,6 +4510,11 @@ fields:
             raw: 1
             feature_available: always
             description: UD angle control available
+            slider:
+              name: "Louver Angle UD"
+              range: [1, 100]
+              step: 1
+              mode: clamp
         alt_names:
           midea_lua: b5_wind_swing_ud_angle
         confidence: consistent
@@ -4255,6 +4532,23 @@ fields:
       feature_available: capability
       data_type: bool
       device_context: indoor_unit
+      ux:
+        visible_in_modes: [cool, heat]
+        sources: community protocol research
+      mutual_exclusion:
+        when_on:
+          forces:
+            eco_mode: 0
+            strong_wind: 0
+            turbo_mode: 0
+            swing_vertical: 0
+            breezeless: 1
+          reason: |
+            Older wind-free variant. On FA-type units, activating no_wind_sense
+            engages breezeless (cascade, not exclusion) — schema records
+            forced value of 1 to signal the dependency. Other fields must go
+            off: eco, strong_wind, turbo (overlapping/incompatible airflow
+            shapes) and vertical swing (defeats diffusion geometry).
       alt_names:
         midea_app: noWindSense
       protocols:
@@ -4703,6 +4997,9 @@ fields:
       feature_available: capability
       data_type: bool
       device_context: indoor_unit
+      ux:
+        visible_in_modes: [cool, heat]
+        sources: community protocol research
       alt_names:
         midea_app: newWindSense
       protocols:
@@ -5176,13 +5473,21 @@ fields:
       sources:
       - serial_protocol.md §4.1
     compensated_setpoint:
-      description: Compensated temperature setpoint (Tsc). Internal raw value after control loop adjustments.
+      description: Compensated temperature setpoint (Tsc) — the internal control
+        loop target after adjustments. Encoding (raw - 30) / 2 °C, shared with
+        t1_indoor_coil.
       field_class: sensor
       feature_available: readable
       data_type: uint8
       device_context: indoor_unit
+      unit: °C
       alt_names:
         midea_lua: compensated_temp_setpoint
+      ha:
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: °C
+        suggested_display_precision: 1
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -5192,18 +5497,25 @@ fields:
             bits:
             - 7
             - 0
+            encoding: temp_offset30_half
           direction: response
           section: §4.2.5
-      note: 'Raw value, not (val-50)/2. S8: 93 (active heating). S1: 74-82 (varying load).'
-      confidence: hypothesis
-    compressor_current:
-      description: Compressor current draw. Raw value, unit unclear.
-      field_class: sensor
+      note: 'Observations consistent with (raw-30)/2: S8 raw=93 → 31.5 °C
+        (active heating boost); S1 raw=74-82 → 22-26 °C (varying load); live
+        raw=75 → 22.5 °C (steady-state, slightly above user target 21 °C).'
+      confidence: consistent
+    compressor_idle:
+      description: Compressor idle flag. 1 = idle, 0 = running. OEM app mislabels this as compressor current (压缩机电流).
+      field_class: binary_sensor
       feature_available: readable
-      data_type: uint8
+      data_type: bool
       device_context: outdoor_unit
       alt_names:
         midea_lua: compressor_current
+        midea_js: yaSuoJiDianLiu
+      ha:
+        device_class: running
+        entity_category: diagnostic
       protocols:
         rsp_0xc1_group1:
           frame: 0xC1 Group 1
@@ -5211,11 +5523,15 @@ fields:
           decode:
           - offset: 6
             bits:
-            - 7
+            - 0
             - 0
           direction: response
           section: §4.2.1
-      confidence: hypothesis
+      note: 'OEM weex.js labels body[6] as 压缩机电流 (compressor current) but live
+        data shows 0/1 binary: Atelier Midea Q14 reads 1=idle 0=running;
+        XtremeSaveBlue Q11 reads 0 always. Not current — no community impl
+        ever decoded this field independently.'
+      confidence: confirmed
     compressor_frequency:
       description: Compressor running frequency (FR). 0 Hz when compressor is off.
       field_class: sensor
@@ -5248,6 +5564,10 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       unit: seconds (raw x 64)
+      ha:
+        device_class: duration
+        state_class: measurement
+        unit_of_measurement: min
       alt_names:
         midea_lua: compressor_run_time
       protocols:
@@ -5270,6 +5590,10 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       unit: Hz
+      ha:
+        device_class: frequency
+        state_class: measurement
+        unit_of_measurement: Hz
       alt_names:
         midea_lua: FT
         handbook: Target Frequency
@@ -5379,6 +5703,8 @@ fields:
       data_type: uint16
       device_context: indoor_unit
       unit: days
+      ha:
+        enabled_default: false
       alt_names:
         midea_lua: curWorkedDay
       protocols:
@@ -5401,6 +5727,8 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: hours
+      ha:
+        enabled_default: false
       alt_names:
         midea_lua: curWorkedHour
       protocols:
@@ -5423,6 +5751,8 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: minutes
+      ha:
+        enabled_default: false
       alt_names:
         midea_lua: curWorkedMin
       protocols:
@@ -5457,6 +5787,8 @@ fields:
         ending:
           raw: 3
           description: Defrost ending
+      ha:
+        enabled_default: false
       alt_names:
         midea_lua: defrost_step
       protocols:
@@ -5568,6 +5900,10 @@ fields:
       alt_names:
         midea_lua: eev_position
         handbook: EEV Position, Expansion Valve
+      ha:
+        state_class: measurement
+        unit_of_measurement: steps
+        suggested_display_precision: 0
       protocols:
         rsp_0xc1_group3:
           frame: 0xC1 Group 3
@@ -5577,6 +5913,7 @@ fields:
             bits:
             - 7
             - 0
+            encoding: eev_steps
           direction: response
           section: §4.2.3
       note: 648 own frames S03-S13, range 0-496 steps. VRF manual (KJR-86S/BK) confirms x8 encoding.
@@ -5602,8 +5939,13 @@ fields:
             bits:
             - 7
             - 0
+            encoding: eev_steps
           direction: response
           section: §4.2.5
+      ha:
+        state_class: measurement
+        unit_of_measurement: steps
+        suggested_display_precision: 0
       note: 'S8: 46 raw = 368 steps. Compare with G3 eev_position (actual).'
       confidence: hypothesis
     error_code:
@@ -5685,6 +6027,8 @@ fields:
       ux:
         hardware_flag: b5_has_humidity_sensor
         sources: own observation — field stays 0 across all modes/power on SKUs without the physical humidity sensor
+      ha:
+        enabled_default: false
       alt_names:
         midea_lua: curHum
       protocols:
@@ -5848,6 +6192,8 @@ fields:
       feature_available: readable
       data_type: uint8
       device_context: indoor_unit
+      ha:
+        enabled_default: false
       alt_names:
         midea_lua: lightAdValue
       protocols:
@@ -5986,6 +6332,11 @@ fields:
       unit: h
       alt_names:
         midea_app: engineTotalWorkedTime
+      ha:
+        device_class: duration
+        state_class: total_increasing
+        unit_of_measurement: h
+        suggested_display_precision: 0
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6093,6 +6444,11 @@ fields:
       unit: V
       alt_names:
         midea_lua: outdoor_dc_bus_voltage
+      ha:
+        device_class: voltage
+        state_class: measurement
+        unit_of_measurement: V
+        suggested_display_precision: 0
       protocols:
         rsp_0xc1_group3:
           frame: 0xC1 Group 3
@@ -6217,13 +6573,19 @@ fields:
         was ~3-5°C all session.'
       confidence: hypothesis
     outdoor_supply_voltage:
-      description: Outdoor unit supply voltage. Raw value.
+      description: Outdoor unit supply voltage. Raw byte = volts AC (European 230 V nominal; observed 231 V on own unit).
       field_class: sensor
       feature_available: readable
       data_type: uint8
       device_context: outdoor_unit
+      unit: V
       alt_names:
         midea_lua: outdoor_supply_voltage
+      ha:
+        device_class: voltage
+        state_class: measurement
+        unit_of_measurement: V
+        suggested_display_precision: 0
       protocols:
         rsp_0xc1_group1:
           frame: 0xC1 Group 1
@@ -6347,6 +6709,8 @@ fields:
       ux:
         hardware_flag: b5_has_pm25_sensor
         sources: own observation — field returns null across all modes/power on SKUs without the physical PM sensor
+      ha:
+        enabled_default: false
       alt_names:
         midea_lua: pm25Value
       protocols:
@@ -6896,6 +7260,8 @@ fields:
       feature_available: readable
       data_type: uint8
       device_context: outdoor_unit
+      ha:
+        enabled_default: false
       alt_names:
         midea_app: engineFlux
       protocols:
@@ -7118,7 +7484,7 @@ fields:
     vane_ud_status:
       description: Up-down vane strip operating status (2-bit enum).
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -7140,7 +7506,7 @@ fields:
     vane_lr_status:
       description: Left-right vane strip operating status (2-bit enum).
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -7162,7 +7528,7 @@ fields:
     vane_top_status:
       description: Top vane strip operating status (2-bit enum).
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -7184,7 +7550,7 @@ fields:
     vane_ud_cool_upper:
       description: Up-down vane upper limit in cooling mode.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -7206,7 +7572,7 @@ fields:
     vane_ud_cool_lower:
       description: Up-down vane lower limit in cooling mode.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -7228,7 +7594,7 @@ fields:
     vane_ud_heat_upper:
       description: Up-down vane upper limit in heating mode.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -7250,7 +7616,7 @@ fields:
     vane_ud_heat_lower:
       description: Up-down vane lower limit in heating mode.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -7272,7 +7638,7 @@ fields:
     vane_ud_angle:
       description: Up-down vane current angle position.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -7294,7 +7660,7 @@ fields:
     vane_lr_upper:
       description: Left-right vane upper limit.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -7316,7 +7682,7 @@ fields:
     vane_lr_lower:
       description: Left-right vane lower limit.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -7338,7 +7704,7 @@ fields:
     vane_lr_angle:
       description: Left-right vane current angle position.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -7613,6 +7979,8 @@ fields:
       data_type: uint16
       device_context: indoor_unit
       unit: d
+      ha:
+        enabled_default: false
       alt_names:
         midea_app: totalWorkedDay
       protocols:
@@ -7637,6 +8005,8 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: h
+      ha:
+        enabled_default: false
       alt_names:
         midea_app: totalWorkedHour
       protocols:
@@ -7660,6 +8030,8 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: min
+      ha:
+        enabled_default: false
       alt_names:
         midea_app: totalWorkedMin
       protocols:
@@ -7683,6 +8055,8 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: s
+      ha:
+        enabled_default: false
       alt_names:
         midea_app: totalWorkedSec
       protocols:
@@ -7706,6 +8080,8 @@ fields:
       data_type: uint16
       device_context: indoor_unit
       unit: d
+      ha:
+        enabled_default: false
       alt_names:
         midea_app: curWorkedDay
       protocols:
@@ -7730,6 +8106,8 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: h
+      ha:
+        enabled_default: false
       alt_names:
         midea_app: curWorkedHour
       protocols:
@@ -7753,6 +8131,8 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: min
+      ha:
+        enabled_default: false
       alt_names:
         midea_app: curWorkedMin
       protocols:
@@ -7776,6 +8156,8 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: s
+      ha:
+        enabled_default: false
       alt_names:
         midea_app: curWorkedSec
       protocols:
@@ -7795,7 +8177,7 @@ fields:
     group7_unknown_byte5:
       description: Group 7 body[5] — unknown. Increments across probe runs (FD->FE->FF). Possibly a counter or timer.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -7815,7 +8197,7 @@ fields:
     group7_unknown_byte6:
       description: Group 7 body[6] — unknown. Decrements with compressor frequency (07->04->02). Correlates with load.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -7835,7 +8217,7 @@ fields:
     group7_unknown_byte7:
       description: Group 7 body[7] — unknown. Mostly stable (01), jumped to 02 at low compressor freq.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -7855,7 +8237,7 @@ fields:
     group7_unknown_byte8:
       description: Group 7 body[8] — unknown. Constant 0x06 across all runs.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -7875,7 +8257,7 @@ fields:
     group7_unknown_byte10:
       description: Group 7 body[10] — unknown. Non-monotonic (8F->58->B3). Possibly a real-time motor parameter.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -7895,7 +8277,7 @@ fields:
     group7_unknown_byte11:
       description: Group 7 body[11] — unknown. Decrements with load (02->01->00).
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -7915,7 +8297,7 @@ fields:
     group12_unknown_byte4:
       description: Group 12 body[4] — unknown. Constant 0x02 across all runs.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -7935,7 +8317,7 @@ fields:
     group12_unknown_byte6:
       description: Group 12 body[6] — unknown. Constant 0x0F across all runs.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       protocols:

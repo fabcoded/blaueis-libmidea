@@ -526,12 +526,6 @@ class GatewayServer:
         old_version = GW_VERSION
         steps = []
 
-        # Derive systemd unit name from instance config path
-        # /etc/blaueis-gw/instances/atelier.yaml → blaueis-gateway@atelier
-        instance_path = self.config.get("_instance_path", "")
-        instance_name = os.path.splitext(os.path.basename(instance_path))[0] if instance_path else ""
-        unit_name = f"blaueis-gateway@{instance_name}" if instance_name else ""
-
         try:
             # Pull latest
             r = await asyncio.to_thread(

@@ -18,8 +18,8 @@ Usage:
 import sys
 from pathlib import Path
 
-
 import yaml
+from blaueis.core.codec import decode_frame_fields, load_glossary
 from blaueis.core.quirks import (
     DEVICE_QUIRKS_SCHEMA,
     apply_device_quirks,
@@ -27,7 +27,6 @@ from blaueis.core.quirks import (
     load_device_quirks,
 )
 from blaueis.core.status import build_status
-from blaueis.core.codec import decode_frame_fields, load_glossary
 
 TESTS_DIR = Path(__file__).resolve().parent
 SPEC_DIR = TESTS_DIR.parent / "src" / "blaueis" / "core" / "data"

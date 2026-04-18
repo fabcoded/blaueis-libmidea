@@ -8,10 +8,8 @@ Usage:
 """
 
 import sys
-from pathlib import Path
 
 # Add gateway/ to path for imports
-
 from blaueis.core.frame import (
     CRC8_TABLE,
     FrameError,

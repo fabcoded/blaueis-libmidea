@@ -23,8 +23,6 @@ Usage:
 """
 
 import sys
-from pathlib import Path
-
 
 from blaueis.core.codec import load_glossary
 

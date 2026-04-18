@@ -30,16 +30,14 @@ Usage:
 """
 
 import sys
-from pathlib import Path
 
-
-from blaueis.core.status import build_status
 from blaueis.core.codec import (
     build_scan_queue,
     detect_dead_frames,
     load_glossary,
     target_field_names,
 )
+from blaueis.core.status import build_status
 
 
 def main():

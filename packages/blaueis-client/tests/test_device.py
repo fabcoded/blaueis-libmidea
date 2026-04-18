@@ -6,17 +6,13 @@ Usage:  python -m pytest packages/blaueis-client/tests/test_device.py -v
 """
 
 import asyncio
-import json
 
 import pytest
-
 from blaueis.client.device import Device
 from blaueis.client.ws_client import HvacClient
 from blaueis.core.frame import parse_frame
-from blaueis.core.codec import identify_frame
 
 from tests.conftest import B5_EXTENDED_HEX, B5_SIMPLE_HEX, C0_STATUS_HEX, MockWebSocket
-
 
 # ── Helpers ─────────────────────────────────────────────────
 
@@ -93,7 +89,7 @@ def test_process_b5_frames():
     assert "indoor_temperature" in avail
 
 
-def test_process_c0_frame():
+async def test_process_c0_frame():
     """C0 frame should populate status fields."""
     d = _make_device()
 
@@ -103,8 +99,9 @@ def test_process_c0_frame():
     from blaueis.core.process import finalize_capabilities
     finalize_capabilities(d._status, d._glossary)
 
-    # Now process C0
+    # Now process C0 — ingest runs as a scheduled task
     d._process_frame(C0_STATUS_HEX)
+    await asyncio.sleep(0)
 
     # Read fields
     assert d.read("power") is False  # AC is off in our capture
@@ -113,10 +110,11 @@ def test_process_c0_frame():
     assert d.read("indoor_temperature") == pytest.approx(21.1, abs=0.5)
 
 
-def test_process_c0_without_b5():
+async def test_process_c0_without_b5():
     """C0 frame should still decode always-available fields without B5."""
     d = _make_device()
     d._process_frame(C0_STATUS_HEX)
+    await asyncio.sleep(0)
 
     # 'always' fields should decode even without B5
     assert d.read("power") is False
@@ -140,7 +138,7 @@ def test_tx_frames_ignored():
 # ── Change detection tests ──────────────────────────────────
 
 
-def test_state_change_callback():
+async def test_state_change_callback():
     """on_state_change should fire when field values change."""
     d = _make_device()
     d._process_frame(B5_EXTENDED_HEX)
@@ -151,8 +149,9 @@ def test_state_change_callback():
     changes = []
     d.on_state_change = lambda field, new, old: changes.append((field, new, old))
 
-    # First C0 — transition from None to actual values
+    # First C0 — transition from None to actual values (ingest is async)
     d._process_frame(C0_STATUS_HEX)
+    await asyncio.sleep(0)
 
     # Should have changes for available fields decoded from C0
     changed_fields = {c[0] for c in changes}
@@ -191,9 +190,10 @@ def test_read_returns_none_for_unknown():
     assert d.read("nonexistent_field") is None
 
 
-def test_read_full_returns_metadata():
+async def test_read_full_returns_metadata():
     d = _make_device()
     d._process_frame(C0_STATUS_HEX)
+    await asyncio.sleep(0)
     r = d.read_full("power")
     assert r is not None
     assert "value" in r
@@ -202,9 +202,10 @@ def test_read_full_returns_metadata():
     assert r["source"] == "rsp_0xc0"
 
 
-def test_read_all_available():
+async def test_read_all_available():
     d = _make_device()
     d._process_frame(C0_STATUS_HEX)
+    await asyncio.sleep(0)
     result = d.read_all_available()
     assert "power" in result
     assert "target_temperature" in result

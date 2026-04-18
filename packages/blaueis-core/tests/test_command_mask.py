@@ -8,11 +8,10 @@ outgoing frame. Fields without a ``ux`` block, or explicitly present in
 from __future__ import annotations
 
 import copy
+
 import pytest
-
-from blaueis.core.command import build_command_body
 from blaueis.core.codec import load_glossary
-
+from blaueis.core.command import build_command_body
 
 # ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -20,7 +19,7 @@ def _glossary_with_ux(base: dict, field_name: str, visible_in_modes: list) -> di
     """Return a deep-copied glossary with a ``ux.visible_in_modes`` block
     injected on the named field. Walks ``fields`` → ``{category}`` → field."""
     g = copy.deepcopy(base)
-    for cat_name, category in g.get("fields", {}).items():
+    for _cat_name, category in g.get("fields", {}).items():
         if field_name in category:
             category[field_name].setdefault("ux", {})
             category[field_name]["ux"]["visible_in_modes"] = list(visible_in_modes)

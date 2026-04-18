@@ -35,9 +35,9 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from jsonschema import Draft202012Validator
 from blaueis.core.codec import walk_fields
 from blaueis.core.process import _apply_caps_to_fields
+from jsonschema import Draft202012Validator
 
 # ── Schema (loaded once at import time) ──────────────────────────────────
 

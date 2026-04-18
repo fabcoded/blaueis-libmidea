@@ -1,54 +1,50 @@
-"""Tests for Device._apply_optimistic — optimistic status write + callback."""
+"""Tests for StatusDB optimistic write path — value persistence + callback dispatch."""
 from __future__ import annotations
 
-import logging
-
-from blaueis.client.device import Device
+from blaueis.client.status_db import StatusDB
 from blaueis.core.query import read_field, write_field
 
 
-def _fresh_device() -> Device:
-    """Bare Device instance without network init — good enough to exercise
-    the optimistic path, which only touches `_status` and `on_state_change`."""
-    d = Device.__new__(Device)
-    d._status = {"fields": {}, "meta": {}}
-    d.on_state_change = None
-    return d
+def _fresh_db() -> StatusDB:
+    """StatusDB instance for optimistic write testing."""
+    return StatusDB()
 
 
 def test_writes_new_value_into_status() -> None:
-    d = _fresh_device()
-    d._apply_optimistic({"eco_mode": True})
-    r = read_field(d._status, "eco_mode")
+    db = _fresh_db()
+    db._apply_optimistic({"eco_mode": True})
+    r = read_field(db._status, "eco_mode")
     assert r is not None
     assert r["value"] is True
 
 
 def test_fires_state_change_callback() -> None:
-    d = _fresh_device()
+    db = _fresh_db()
     events: list[tuple] = []
-    d.on_state_change = lambda f, new, old: events.append((f, new, old))
+    db.on_state_change = lambda f, new, old: events.append((f, new, old))
 
-    d._apply_optimistic({"eco_mode": True, "target_temperature": 22})
+    db._apply_optimistic({"eco_mode": True, "target_temperature": 22})
+    db._flush_events()
 
     names = {e[0] for e in events}
     assert "eco_mode" in names and "target_temperature" in names
-    for f, new, old in events:
+    for _f, _new, old in events:
         assert old is None  # status started empty
 
 
 def test_no_callback_when_value_unchanged() -> None:
-    d = _fresh_device()
-    write_field(d._status, "eco_mode", True, ts=1.0)
+    db = _fresh_db()
+    write_field(db._status, "eco_mode", True, ts=1.0)
     events: list[tuple] = []
-    d.on_state_change = lambda f, new, old: events.append(f)
+    db.on_state_change = lambda f, new, old: events.append(f)
 
-    d._apply_optimistic({"eco_mode": True})   # same value
+    db._apply_optimistic({"eco_mode": True})   # same value
+    db._flush_events()
     assert events == []
 
 
 def test_callback_exception_does_not_break_other_fields() -> None:
-    d = _fresh_device()
+    db = _fresh_db()
     caught: list[str] = []
 
     def cb(field: str, new, old):
@@ -56,13 +52,14 @@ def test_callback_exception_does_not_break_other_fields() -> None:
         if field == "eco_mode":
             raise RuntimeError("explode")
 
-    d.on_state_change = cb
-    d._apply_optimistic({"eco_mode": True, "target_temperature": 22})
+    db.on_state_change = cb
+    db._apply_optimistic({"eco_mode": True, "target_temperature": 22})
+    db._flush_events()
     # Both callbacks were attempted despite the first one raising.
     assert set(caught) == {"eco_mode", "target_temperature"}
     # Both values landed in status.
-    assert read_field(d._status, "eco_mode")["value"] is True
-    assert read_field(d._status, "target_temperature")["value"] == 22
+    assert read_field(db._status, "eco_mode")["value"] is True
+    assert read_field(db._status, "target_temperature")["value"] == 22
 
 
 def test_optimistic_slot_loses_to_newer_real_slot() -> None:
@@ -70,16 +67,16 @@ def test_optimistic_slot_loses_to_newer_real_slot() -> None:
     convention); a subsequent real response with a newer ISO ts must
     win the read. Mixed float/string ts would raise in _newest.max()."""
     from datetime import UTC, datetime
-    d = _fresh_device()
-    d._apply_optimistic({"eco_mode": True})
+    db = _fresh_db()
+    db._apply_optimistic({"eco_mode": True})
 
     # Simulate a real AC response arriving a minute later — ISO string ts
     # is what process_data_frame actually writes.
     later_iso = datetime(2099, 1, 1, tzinfo=UTC).isoformat()
-    write_field(d._status, "eco_mode", False,
+    write_field(db._status, "eco_mode", False,
                 source="rsp_0xc0", generation="legacy",
                 ts=later_iso)
 
-    r = read_field(d._status, "eco_mode")
+    r = read_field(db._status, "eco_mode")
     assert r["value"] is False
     assert r["source"] == "rsp_0xc0"

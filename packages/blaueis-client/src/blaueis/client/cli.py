@@ -20,12 +20,9 @@ import argparse
 import asyncio
 import contextlib
 import logging
-import sys
-from pathlib import Path
 
 # tools-serial has the canonical frame builders. Inserted LAST so it's
 # searched FIRST in sys.path (overrides gateway's stripped-down midea_frame).
-
 from blaueis.client.ws_client import HvacClient
 from blaueis.core.frame import build_cap_query_extended, build_cap_query_simple, build_status_query
 

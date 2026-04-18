@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pytest
-
 from blaueis.core.frame import build_b1_property_query, parse_frame, validate_frame
 
 

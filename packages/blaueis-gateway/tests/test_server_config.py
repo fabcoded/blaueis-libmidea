@@ -7,11 +7,9 @@ Usage:  python -m pytest packages/blaueis-gateway/tests/test_server_config.py -v
 """
 
 import configparser
-import importlib
 import os
 import platform
 import tempfile
-import types
 from pathlib import Path
 
 
@@ -33,7 +31,6 @@ def _load_server_functions():
         "__name__": "blaueis.gateway.server",
     }
     # Extract just load_config and get_pi_stats function defs + their imports
-    import textwrap
     import ast
 
     tree = ast.parse(source)

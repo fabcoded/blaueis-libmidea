@@ -9,7 +9,6 @@ import asyncio
 import os
 
 import pytest
-
 from blaueis.client.device import Device
 
 GATEWAY_HOST = os.environ.get("BLAUEIS_GW_HOST", "192.168.210.30")

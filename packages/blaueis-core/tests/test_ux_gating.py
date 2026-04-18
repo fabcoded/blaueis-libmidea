@@ -1,10 +1,7 @@
 """Tests for blaueis.core.ux_gating.is_field_visible + default_for_masked_field."""
 from __future__ import annotations
 
-import pytest
-
 from blaueis.core.ux_gating import default_for_masked_field, is_field_visible
-
 
 # ── Pass-through cases (no ux block, no mode block) ──────────────────────
 

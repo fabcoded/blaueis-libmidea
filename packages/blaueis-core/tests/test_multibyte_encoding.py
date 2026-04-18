@@ -35,8 +35,6 @@ Usage:
 
 import random
 import sys
-from pathlib import Path
-
 
 from blaueis.core.codec import _read_uint, apply_encoding, decode_frame_fields, load_glossary
 

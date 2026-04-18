@@ -344,6 +344,10 @@
           "$ref": "#/$defs/shares_byte_with",
           "description": "Map of wire-byte position (e.g. 'bodyBytes[8]') to a list of sibling internal-key names that share the same byte. The encoder must reconstruct the byte from all listed siblings before writing, otherwise sibling values get clobbered. Discovered automatically by the field-extractor's shared-bytes pass. See serial_glossary_guide.md Part 3 — shares_byte_with."
         },
+        "ux": {
+          "$ref": "#/$defs/ux_block",
+          "description": "UX-layer metadata: mode visibility fencing, hardware capability gating, provenance. Consumed by the mode gate (StatusDB), command builder UX masking, and HA entity visibility."
+        },
         "mutual_exclusion": {
           "$ref": "#/$defs/mutual_exclusion",
           "description": "Cross-field validity constraints: 'when this field is on, force these other fields to these values' (and inverse for when_off). Sourced from the gating analyzer's forced-state cascades. See serial_glossary_guide.md Part 3 — mutual_exclusion."
@@ -754,6 +758,30 @@
       "additionalProperties": false,
       "properties": {
         "note": { "type": "string" }
+      }
+    },
+    "ux_block": {
+      "type": "object",
+      "description": "UX-layer metadata controlling field visibility and gating.",
+      "additionalProperties": false,
+      "properties": {
+        "visible_in_modes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Operating modes in which this field is visible and writable. Used by the StatusDB mode gate (write fence) and command builder UX mask (frame-level zeroing). Mode names match operating_mode enum labels: auto, cool, dry, heat, fan, smart_dry."
+        },
+        "hardware_flag": {
+          "type": "string",
+          "description": "B5 capability flag name that must be truthy for the field to be visible. When the flag is absent or falsy, the field is permanently masked."
+        },
+        "sources": {
+          "type": "string",
+          "description": "Provenance note: where the UX constraint was derived from (e.g. 'own observation', 'community protocol research')."
+        },
+        "note": {
+          "type": "string",
+          "description": "Additional context about the UX constraint — edge cases, exceptions, device-family differences."
+        }
       }
     },
     "mutual_exclusion": {

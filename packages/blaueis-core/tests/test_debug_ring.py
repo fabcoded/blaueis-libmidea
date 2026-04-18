@@ -6,9 +6,7 @@ import logging
 import threading
 
 import pytest
-
 from blaueis.core.debug_ring import DebugRing, log_event
-
 
 # ── fixtures ──────────────────────────────────────────────────────────────
 

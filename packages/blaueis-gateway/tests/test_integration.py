@@ -11,8 +11,6 @@ Usage:
 import asyncio
 import json
 import sys
-from pathlib import Path
-
 
 import websockets
 from blaueis.client.ws_client import HvacClient

@@ -25,10 +25,10 @@ from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parents[1]
 
-from blaueis.core.status import build_status  # noqa: E402
-from blaueis.core.query import read_field  # noqa: E402
 from blaueis.core.codec import load_glossary  # noqa: E402
 from blaueis.core.process import process_raw_frame  # noqa: E402
+from blaueis.core.query import read_field  # noqa: E402
+from blaueis.core.status import build_status  # noqa: E402
 
 passed = failed = 0
 

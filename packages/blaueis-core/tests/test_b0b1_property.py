@@ -18,8 +18,8 @@ from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parents[1]
 
-from blaueis.core.command import build_b0_command_body  # noqa: E402
 from blaueis.core.codec import decode_frame_fields, load_glossary, parse_b0b1_tlv  # noqa: E402
+from blaueis.core.command import build_b0_command_body  # noqa: E402
 
 passed = failed = 0
 

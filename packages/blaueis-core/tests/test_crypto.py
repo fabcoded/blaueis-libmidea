@@ -6,8 +6,6 @@ Usage:
 """
 
 import sys
-from pathlib import Path
-
 
 from blaueis.core.crypto import (
     HandshakeError,

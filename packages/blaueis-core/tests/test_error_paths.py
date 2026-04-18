@@ -6,10 +6,8 @@ Usage:  python -m pytest packages/blaueis-core/tests/test_error_paths.py -v
 """
 
 import pytest
-
-from blaueis.core.frame import FrameError, build_frame, parse_frame, validate_frame
 from blaueis.core.codec import load_glossary
-
+from blaueis.core.frame import FrameError, build_frame, parse_frame, validate_frame
 
 # ── parse_frame error paths ─────────────────────────────────────────────
 

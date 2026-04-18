@@ -10,8 +10,6 @@ Usage:
 
 import asyncio
 import sys
-from pathlib import Path
-
 
 from blaueis.core.frame import build_frame, parse_frame
 from blaueis.gateway.uart_protocol import DISCOVER, RUNNING, UartProtocol

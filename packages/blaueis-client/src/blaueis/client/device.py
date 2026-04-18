@@ -22,35 +22,29 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 
+from blaueis.client.status_db import StatusDB
 from blaueis.client.ws_client import HvacClient
 from blaueis.core.codec import (
-    build_cap_index,
-    build_field_map,
     identify_frame,
-    load_glossary,
     walk_fields,
 )
-from blaueis.core.command import build_command_body, build_b0_command_body
 from blaueis.core.crypto import psk_to_bytes
 from blaueis.core.frame import (
     build_cap_query_extended,
     build_cap_query_simple,
-    build_frame,
     build_status_query,
     parse_frame,
 )
 from blaueis.core.process import (
     finalize_capabilities,
     process_b5,
-    process_data_frame,
-    process_raw_frame,
 )
-from blaueis.core.query import read_field, write_field
-from blaueis.core.status import build_status
+from blaueis.core.query import read_field
 
 log = logging.getLogger("blaueis.device")
 
@@ -115,8 +109,9 @@ class Device:
         self.poll_interval = poll_interval
 
         # ── Status database (persists across reconnects) ───
-        self._glossary = load_glossary()
-        self._status: dict = build_status(glossary=self._glossary)
+        self._db = StatusDB()
+        self._glossary = self._db.glossary
+        self._status = self._db.status
 
         # ── Gateway info (populated from version/pi_status) ─
         self.gateway_info: dict = {
@@ -131,7 +126,7 @@ class Device:
         self._psk_bytes: bytes | None = None  # computed once in start()
 
         # ── Callbacks ──────────────────────────────────────
-        self.on_state_change: Callable[[str, object, object], None] | None = None
+        # on_state_change is delegated to StatusDB — see property below
         self.on_connected: Callable[[], None] | None = None
         self.on_disconnected: Callable[[], None] | None = None
         self.on_gateway_stats: Callable[[dict], None] | None = None
@@ -142,6 +137,9 @@ class Device:
         self._b5_page: int = 0  # current page being queried
         self._b5_response_event: asyncio.Event | None = None
 
+        # ── Follow Me shadow register ─────────────────────
+        self._follow_me_shadow: dict | None = None  # {"celsius": float}
+
         # ── Task management ────────────────────────────────
         self._running = False
         self._supervisor_task: asyncio.Task | None = None
@@ -149,6 +147,14 @@ class Device:
         self._poll_task: asyncio.Task | None = None
 
     # ── Properties ──────────────────────────────────────────
+
+    @property
+    def on_state_change(self):
+        return self._db.on_state_change
+
+    @on_state_change.setter
+    def on_state_change(self, callback):
+        self._db.on_state_change = callback
 
     @property
     def status(self) -> dict:
@@ -164,9 +170,7 @@ class Device:
         """True if WebSocket is alive and listen loop is running."""
         if not self._client or not self._client._ws:
             return False
-        if not self._listen_task or self._listen_task.done():
-            return False
-        return True
+        return bool(self._listen_task and not self._listen_task.done())
 
     @property
     def capabilities_received(self) -> bool:
@@ -201,6 +205,23 @@ class Device:
                 "active_constraints": fdata.get("active_constraints"),
             }
         return result
+
+    # ── Follow Me shadow register API ─────────────────────
+
+    def set_follow_me_shadow(self, celsius: float) -> None:
+        """Arm Follow Me shadow — all subsequent cmd_0x41 polls carry the temp."""
+        celsius = max(0.0, min(50.0, float(celsius)))
+        self._follow_me_shadow = {"celsius": celsius}
+        log.debug("Follow Me shadow armed: %.1f°C", celsius)
+
+    def clear_follow_me_shadow(self) -> None:
+        """Disarm — cmd_0x41 reverts to standard status query."""
+        self._follow_me_shadow = None
+        log.debug("Follow Me shadow cleared")
+
+    @property
+    def follow_me_shadow_active(self) -> bool:
+        return self._follow_me_shadow is not None
 
     @property
     def required_queries(self) -> frozenset[str]:
@@ -311,10 +332,8 @@ class Device:
         for task in [self._supervisor_task, self._poll_task, self._listen_task]:
             if task and not task.done():
                 task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await task
-                except asyncio.CancelledError:
-                    pass
 
         self._supervisor_task = None
         self._poll_task = None
@@ -361,10 +380,8 @@ class Device:
 
             try:
                 if self._client:
-                    try:
+                    with contextlib.suppress(Exception):
                         await self._client.close()
-                    except Exception:
-                        pass
                 await self._connect()
                 log.info("Reconnected to %s:%d", self.host, self.port)
                 return
@@ -589,7 +606,12 @@ class Device:
                     log.exception("on_gateway_stats callback error")
 
     def _process_frame(self, hex_str: str):
-        """Decode a received frame and update the status database."""
+        """Decode a received frame and route to the status database.
+
+        B5 capability frames are processed synchronously (one-time
+        bootstrap). Data frames (C0/C1/B1) are routed through StatusDB's
+        async ingest for lock-protected processing.
+        """
         try:
             raw = bytes.fromhex(hex_str.replace(" ", ""))
             parsed = parse_frame(raw)
@@ -602,47 +624,37 @@ class Device:
 
             if protocol_key == "rsp_0xb5":
                 next_frame = process_b5(self._status, body, self._glossary, timestamp=ts)
-                # Drive B5 state machine
                 if self._b5_state == "waiting":
                     self._b5_next_frame = next_frame
                     if self._b5_response_event:
                         self._b5_response_event.set()
             else:
-                old_values = self._snapshot_fields()
-                process_data_frame(
-                    self._status, body, protocol_key, self._glossary, timestamp=ts
+                asyncio.create_task(
+                    self._db.ingest(
+                        body, protocol_key,
+                        timestamp=ts,
+                        available_fields=self.available_fields,
+                    )
                 )
-                self._detect_changes(old_values)
+                if protocol_key == "rsp_0xc0" and self._follow_me_shadow is not None:
+                    fm = read_field(self._status, "follow_me")
+                    fm_val = fm["value"] if fm else None
+                    log.debug("TRACE rsp_0xc0 follow_me=%s (shadow active)", fm_val)
 
         except Exception as e:
             log.debug("Frame decode error: %s", e)
-
-    def _snapshot_fields(self) -> dict[str, object]:
-        """Snapshot current values of all available fields."""
-        snap = {}
-        for fname in self.available_fields:
-            r = read_field(self._status, fname)
-            snap[fname] = r["value"] if r else None
-        return snap
-
-    def _detect_changes(self, old_values: dict[str, object]):
-        """Compare current values with snapshot and fire callbacks."""
-        if not self.on_state_change:
-            return
-        for fname in self.available_fields:
-            r = read_field(self._status, fname)
-            new_val = r["value"] if r else None
-            old_val = old_values.get(fname)
-            if new_val != old_val:
-                try:
-                    self.on_state_change(fname, new_val, old_val)
-                except Exception:
-                    log.exception("on_state_change callback error for %s", fname)
 
     # ── Query frame builder ────────────────────────────────
 
     def _build_query_frame(self, query_key: str) -> bytes | None:
         if query_key == "cmd_0x41":
+            if self._follow_me_shadow is not None:
+                frame = self._build_follow_me_query(self._follow_me_shadow["celsius"])
+                log.debug(
+                    "TRACE cmd_0x41 → Follow Me frame (%dB): %s",
+                    len(frame), frame.hex(" "),
+                )
+                return frame
             return build_status_query()
         if query_key == "cmd_0xb5":
             return build_cap_query_extended()
@@ -671,77 +683,42 @@ class Device:
         log.debug("Unknown query key: %s", query_key)
         return None
 
+    def _build_follow_me_query(self, celsius: float) -> bytes:
+        """Build a Follow Me poll frame by patching the standard status query.
+
+        Takes the glossary-spec cmd_0x41 frame (body[1]=0x81, body[3]=0xFF)
+        and overwrites body[4]=0x01 (optCommand) and body[5]=T*2+50.
+        """
+        base = build_status_query()
+        frame = bytearray(base)
+        celsius = max(0.0, min(50.0, float(celsius)))
+        raw = int(round(celsius * 2 + 50))
+        frame[14] = 0x01  # body[4] = optCommand Follow Me
+        frame[15] = raw   # body[5] = temperature
+        from blaueis.core.frame import crc8, frame_checksum
+        body_end = len(frame) - 2
+        frame[-2] = crc8(frame[10:body_end])
+        frame[-1] = frame_checksum(frame)
+        return bytes(frame)
+
     # ── Commands ────────────────────────────────────────────
 
     async def set(self, **changes) -> dict:
         """Send a set command to the AC.
+
+        Mode-gates fields via visible_in_modes, expands mutual_exclusion
+        forces, builds frames, sends atomically, and optimistic-writes.
+        See docs/status_db.md for the full protocol.
 
         Raises RuntimeError if not connected.
         """
         if not self._client or not self._client._ws:
             raise RuntimeError("Device not connected")
 
-        all_fields = walk_fields(self._glossary)
-        b0_changes = {}
-        x40_changes = {}
-
-        for fname, value in changes.items():
-            gdef = all_fields.get(fname, {})
-            protocols = gdef.get("protocols", {})
-            if "cmd_0xb0" in protocols:
-                b0_changes[fname] = value
-            else:
-                x40_changes[fname] = value
-
-        results = {}
-
-        if x40_changes:
-            result = build_command_body(self._status, x40_changes, self._glossary)
-            if result["body"] is not None:
-                frame = build_frame(result["body"], msg_type=0x02)
-                await self._client.send_frame(frame.hex(" "))
-                self._apply_optimistic(x40_changes)
-                log.info("Sent 0x40 command: %s", x40_changes)
-            elif result["preflight"]:
-                log.warning("Command blocked by preflight: %s", result["preflight"])
-            results["cmd_0x40"] = result
-
-        if b0_changes:
-            result = build_b0_command_body(self._status, b0_changes, self._glossary)
-            if result["body"] is not None:
-                frame = build_frame(result["body"], msg_type=0x02)
-                await self._client.send_frame(frame.hex(" "))
-                self._apply_optimistic(b0_changes)
-                log.info("Sent 0xB0 command: %s", b0_changes)
-            results["cmd_0xb0"] = result
-
-        return results
-
-    def _apply_optimistic(self, changes: dict) -> None:
-        """Write sent changes into the status DB and fire state_change
-        callbacks immediately.
-
-        Invoked AFTER a successful WS send — if the send failed, we must
-        not lie to HA about the state. The AC's next poll response is
-        authoritative: it either agrees (no second event) or overrides
-        (state_change fires with the correction). Drift window is bounded
-        by the poll interval (~15 s).
-        """
-        for fname, new_val in changes.items():
-            old = read_field(self._status, fname)
-            old_val = old["value"] if old else None
-            if old_val == new_val:
-                continue
-            try:
-                write_field(self._status, fname, new_val)
-            except Exception:
-                log.exception("optimistic write failed for %s", fname)
-                continue
-            if self.on_state_change:
-                try:
-                    self.on_state_change(fname, new_val, old_val)
-                except Exception:
-                    log.exception("on_state_change optimistic callback error for %s", fname)
+        return await self._db.command(
+            changes,
+            send_fn=self._client.send_frame,
+        )
 
     # ── Field reading (convenience) ─────────────────────────
 

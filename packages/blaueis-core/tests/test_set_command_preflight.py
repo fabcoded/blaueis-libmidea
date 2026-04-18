@@ -17,17 +17,16 @@ import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-
 import yaml
+from blaueis.core.codec import build_field_map, decode_frame_fields, load_glossary
 from blaueis.core.command import (
     _group_cmd_fields_by_byte,
     _group_cmd_fields_by_property,
     build_b0_command_body,
     build_command_body,
 )
-from blaueis.core.status import build_status
-from blaueis.core.codec import build_field_map, decode_frame_fields, load_glossary
 from blaueis.core.process import finalize_capabilities, process_raw_frame
+from blaueis.core.status import build_status
 
 TESTS_DIR = Path(__file__).resolve().parent
 

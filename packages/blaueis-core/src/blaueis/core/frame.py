@@ -332,6 +332,37 @@ def build_b1_property_query(
     )
 
 
+# ── Follow Me temperature frame ───────────────────────────────────────
+
+
+def build_follow_me_frame(
+    celsius: float,
+    appliance: int = 0xAC,
+    proto: int = 0x00,
+    sub: int = 0x00,
+) -> bytes:
+    """CMD 0x41 optCommand=0x01 — Send Follow Me temperature.
+
+    The AC uses this value instead of its built-in thermistor.
+    Must be re-sent periodically or the AC reverts (~60s timeout).
+    Encoding: body[5] = T*2+50. Clamps to [0.0, 50.0]°C.
+    """
+    celsius = max(0.0, min(50.0, float(celsius)))
+    raw = int(round(celsius * 2 + 50))
+    raw = max(0, min(255, raw))
+    body = bytearray(24)
+    body[0] = 0x41
+    body[4] = 0x01
+    body[5] = raw
+    return build_frame(
+        body=bytes(body),
+        msg_type=0x03,
+        appliance=appliance,
+        proto=proto,
+        sub=sub,
+    )
+
+
 # ── Gateway handshake frame builders ───────────────────────────────────
 #
 # These build the UART-level handshake frames the gateway sends to the AC

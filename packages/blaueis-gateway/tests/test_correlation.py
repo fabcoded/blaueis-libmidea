@@ -1,12 +1,9 @@
 """Tests for UART TX/RX correlation and provenance threading."""
 from __future__ import annotations
 
-import asyncio
-import json
 import time
 
 import pytest
-
 from blaueis.gateway.uart_protocol import (
     HEURISTIC_WINDOW,
     UartProtocol,

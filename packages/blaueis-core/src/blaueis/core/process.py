@@ -62,7 +62,8 @@ def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict) -> 
                     status_field["feature_available"] = cap_fa
 
                 ac = {}
-                for k in ("valid_range", "valid_set", "step", "correction"):
+                for k in ("valid_range", "valid_set", "step", "correction",
+                          "slider", "values", "custom_value"):
                     if k in decoded:
                         ac[k] = decoded[k]
                 if ac:

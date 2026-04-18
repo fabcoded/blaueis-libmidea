@@ -28,8 +28,6 @@ Usage:
 """
 
 import sys
-from pathlib import Path
-
 
 from blaueis.core.codec import (
     build_frame_body_from_spec,

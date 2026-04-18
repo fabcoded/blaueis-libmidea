@@ -26,12 +26,10 @@ import sys
 from pathlib import Path
 
 import yaml
-
-
-from blaueis.core.status import build_status
-from blaueis.core.query import read_field
 from blaueis.core.codec import load_glossary
 from blaueis.core.process import process_raw_frame
+from blaueis.core.query import read_field
+from blaueis.core.status import build_status
 
 
 def _value(status, name):

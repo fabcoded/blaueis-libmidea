@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import pytest
-
 from blaueis.client.device import Device, _parse_b1_property_id
 from blaueis.core.frame import parse_frame
-
 
 # ── _parse_b1_property_id ────────────────────────────────────────────────
 

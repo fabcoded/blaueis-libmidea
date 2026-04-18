@@ -13,11 +13,9 @@ import json
 import logging
 
 import pytest
-
 from blaueis.core.debug_ring import DebugRing
 from blaueis.gateway.server import GatewayServer
 from blaueis.gateway.uart_protocol import VERBOSE
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────
 
