@@ -18,6 +18,7 @@ Exit 0 = clean, 1 = violations printed.
 from __future__ import annotations
 
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 try:
@@ -214,6 +215,122 @@ def lint(glossary: dict) -> list[str]:
     return errors
 
 
+def _forces_of(fdef: dict) -> dict:
+    return ((fdef.get("mutual_exclusion") or {}).get("when_on") or {}).get("forces") or {}
+
+
+def _is_falsy_force(v: object) -> bool:
+    return v == 0 or v is False
+
+
+def build_mutex_report(glossary: dict) -> dict:
+    """Heuristic completeness report for the mutex graph.
+
+    Two findings, both informational — not build-breaking:
+
+    - ``asymmetric``: A→B=0 exists but B→A=0 is missing, and B has a mutex
+      block of its own (so it's not a pure "victim" field like swing_vertical).
+
+    - ``missing_siblings``: pairs (A, B) with no edge in either direction whose
+      bidirectional-neighbor sets overlap heavily — they look like siblings in
+      the same exclusion clique that forgot to point at each other.
+    """
+    mex_fields = {}
+    for name, fdef in glossary.items():
+        if isinstance(fdef, dict) and _forces_of(fdef):
+            mex_fields[name] = _forces_of(fdef)
+
+    bidir: dict[str, set[str]] = defaultdict(set)
+    for a, fa in mex_fields.items():
+        for b, v in fa.items():
+            if not _is_falsy_force(v):
+                continue
+            if b not in mex_fields:
+                continue
+            if _is_falsy_force(mex_fields[b].get(a, "MISS")):
+                bidir[a].add(b)
+                bidir[b].add(a)
+
+    asymmetric = []
+    for a, fa in mex_fields.items():
+        for b, v in fa.items():
+            if not _is_falsy_force(v):
+                continue
+            if b not in mex_fields:
+                continue  # victim field — no mutex block, cannot reciprocate
+            if a not in mex_fields[b]:
+                asymmetric.append({"from": a, "to": b, "value": v})
+
+    missing_siblings = []
+    names = sorted(mex_fields)
+    seen = set()
+    for a in names:
+        for b in names:
+            if a >= b or (a, b) in seen:
+                continue
+            seen.add((a, b))
+            if b in bidir[a]:
+                continue  # already bidirectionally connected
+            if a in mex_fields[b] or b in mex_fields[a]:
+                continue  # asymmetric case — reported separately
+            na, nb = bidir[a], bidir[b]
+            if len(na) < 2 or len(nb) < 2:
+                continue
+            common = na & nb
+            if len(common) < 2:
+                continue
+            ratio = len(common) / min(len(na), len(nb))
+            if ratio >= 0.67:
+                missing_siblings.append({
+                    "a": a, "b": b,
+                    "common": sorted(common),
+                    "overlap": round(ratio, 2),
+                })
+
+    return {"asymmetric": asymmetric, "missing_siblings": missing_siblings}
+
+
+def format_mutex_report(report: dict) -> str:
+    asym = report.get("asymmetric") or []
+    sibs = report.get("missing_siblings") or []
+
+    if not asym and not sibs:
+        return "No uncovered mutex edges detected."
+
+    lines: list[str] = []
+
+    if asym:
+        lines.append(f"Asymmetric falsy forces ({len(asym)}):")
+        lines.append(
+            "  A→B=0 exists but B→A=0 is missing. Add the reverse edge unless "
+            "the asymmetry is intentional (e.g. a supervisor/worker pair where "
+            "only the supervisor turns off the worker)."
+        )
+        for f in asym:
+            lines.append(
+                f"  • {f['from']} → {f['to']}={f['value']}  "
+                f"(suggest: {f['to']}.mutual_exclusion.when_on.forces."
+                f"{f['from']}: 0)"
+            )
+        lines.append("")
+
+    if sibs:
+        lines.append(f"Candidate missing-pair edges ({len(sibs)}):")
+        lines.append(
+            "  Neither field excludes the other, but their exclusion neighbors "
+            "overlap heavily — they look like clique-mates. Consider adding a "
+            "symmetric force=0 pair. Safe to ignore if the AC firmware already "
+            "enforces the mutex, but documenting it helps the overlay and UI."
+        )
+        for f in sibs:
+            lines.append(
+                f"  • {f['a']} ↔ {f['b']}: overlap={f['overlap']}, "
+                f"common=[{', '.join(f['common'])}]"
+            )
+
+    return "\n".join(lines)
+
+
 def main() -> int:
     if len(sys.argv) > 1:
         path = Path(sys.argv[1])
@@ -247,6 +364,12 @@ def main() -> int:
         if isinstance(f, dict) and (f.get("ux") or {}).get("visible_in_modes")
     )
     print(f"clean: {len(glossary)} fields, {ux_count} with ux, {mex_count} with mex — {path.name}")
+
+    report = build_mutex_report(glossary)
+    if report["asymmetric"] or report["missing_siblings"]:
+        print()
+        print(format_mutex_report(report))
+
     return 0
 
 

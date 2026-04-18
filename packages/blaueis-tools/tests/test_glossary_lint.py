@@ -10,7 +10,11 @@ safe because turning a sibling off is universally valid.
 """
 from __future__ import annotations
 
-from blaueis.tools.glossary_lint import lint
+from blaueis.tools.glossary_lint import (
+    build_mutex_report,
+    format_mutex_report,
+    lint,
+)
 
 
 def _field(
@@ -151,6 +155,146 @@ class TestEnumForces:
         }
         errs = [e for e in lint(g) if "mode subset" in e]
         assert errs == []
+
+
+class TestMutexReportAsymmetric:
+    def test_asymmetric_detected(self):
+        """A→B=0 without B→A=0 (both mex fields) — flagged."""
+        g = {
+            "a": _field(visible_in_modes=["cool"], forces={"b": 0, "c": 0}),
+            "b": _field(visible_in_modes=["cool"], forces={"a": 0}),
+            "c": _field(visible_in_modes=["cool"], forces={"a": 0}),  # placeholder so c has mex
+        }
+        # Break reverse: c forces a, but not b
+        g["c"]["mutual_exclusion"]["when_on"]["forces"] = {"a": 0}
+        # Now a→c=0 exists, c→a=0 exists (symmetric). Add asymmetry:
+        g["a"]["mutual_exclusion"]["when_on"]["forces"]["c"] = 0  # already there
+        # Create a clean asymmetric: remove c→a
+        del g["c"]["mutual_exclusion"]["when_on"]["forces"]["a"]
+        # Give c some other mex so it qualifies as a mex field
+        g["c"]["mutual_exclusion"]["when_on"]["forces"]["b"] = 0
+
+        r = build_mutex_report(g)
+        asym = [(x["from"], x["to"]) for x in r["asymmetric"]]
+        assert ("a", "c") in asym, asym
+
+    def test_victim_not_flagged(self):
+        """B has no mutex block (victim) — asymmetry is normal, don't flag."""
+        g = {
+            "a": _field(visible_in_modes=["cool"], forces={"swing": 0}),
+            "swing": _field(visible_in_modes=["cool"]),  # no mutex
+        }
+        r = build_mutex_report(g)
+        assert r["asymmetric"] == []
+
+    def test_reciprocated_not_flagged(self):
+        g = {
+            "a": _field(visible_in_modes=["cool"], forces={"b": 0}),
+            "b": _field(visible_in_modes=["cool"], forces={"a": 0}),
+        }
+        r = build_mutex_report(g)
+        assert r["asymmetric"] == []
+
+    def test_truthy_forces_ignored(self):
+        """no_wind_sense→breezeless=1 is not a candidate for symmetric-off report."""
+        g = {
+            "nws": _field(visible_in_modes=["cool"], forces={"bl": 1}),
+            "bl": _field(visible_in_modes=["cool", "heat", "fan_only", "dry", "auto"]),
+        }
+        r = build_mutex_report(g)
+        assert r["asymmetric"] == []
+
+
+class TestMutexReportSiblings:
+    def test_clique_missing_edge(self):
+        """Three fields pairwise excluding each other, fourth partially missing."""
+        g = {
+            "a": _field(forces={"x": 0, "y": 0}, visible_in_modes=["cool"]),
+            "b": _field(forces={"x": 0, "y": 0}, visible_in_modes=["cool"]),
+            "x": _field(forces={"a": 0, "b": 0, "y": 0}, visible_in_modes=["cool"]),
+            "y": _field(forces={"a": 0, "b": 0, "x": 0}, visible_in_modes=["cool"]),
+        }
+        # a and b share {x, y} as common bidir neighbors but don't exclude each other.
+        r = build_mutex_report(g)
+        pairs = [tuple(sorted([f["a"], f["b"]])) for f in r["missing_siblings"]]
+        assert ("a", "b") in pairs, pairs
+
+    def test_low_overlap_not_flagged(self):
+        """Pair shares only 1 common neighbor — below threshold."""
+        g = {
+            "a": _field(forces={"x": 0}, visible_in_modes=["cool"]),
+            "b": _field(forces={"x": 0, "y": 0, "z": 0}, visible_in_modes=["cool"]),
+            "x": _field(forces={"a": 0, "b": 0}, visible_in_modes=["cool"]),
+            "y": _field(forces={"b": 0}, visible_in_modes=["cool"]),
+            "z": _field(forces={"b": 0}, visible_in_modes=["cool"]),
+        }
+        r = build_mutex_report(g)
+        assert r["missing_siblings"] == []
+
+    def test_asymmetric_case_not_in_siblings(self):
+        """If one-way edge exists, it's 'asymmetric' not 'missing_siblings'."""
+        g = {
+            "a": _field(forces={"b": 0, "x": 0, "y": 0}, visible_in_modes=["cool"]),
+            "b": _field(forces={"x": 0, "y": 0}, visible_in_modes=["cool"]),  # no a→
+            "x": _field(forces={"a": 0, "b": 0}, visible_in_modes=["cool"]),
+            "y": _field(forces={"a": 0, "b": 0}, visible_in_modes=["cool"]),
+        }
+        r = build_mutex_report(g)
+        pairs = [tuple(sorted([f["a"], f["b"]])) for f in r["missing_siblings"]]
+        assert ("a", "b") not in pairs  # already reported as asymmetric
+
+
+class TestMutexReportFormat:
+    def test_empty_report(self):
+        out = format_mutex_report({"asymmetric": [], "missing_siblings": []})
+        assert "No uncovered" in out
+
+    def test_rendered_includes_suggestion(self):
+        out = format_mutex_report({
+            "asymmetric": [{"from": "a", "to": "b", "value": 0}],
+            "missing_siblings": [],
+        })
+        assert "b.mutual_exclusion.when_on.forces.a: 0" in out
+
+    def test_rendered_includes_overlap(self):
+        out = format_mutex_report({
+            "asymmetric": [],
+            "missing_siblings": [
+                {"a": "eco", "b": "sleep", "common": ["turbo"], "overlap": 1.0},
+            ],
+        })
+        assert "eco" in out and "sleep" in out
+        assert "turbo" in out
+
+
+class TestRealGlossaryReport:
+    def test_real_glossary_matches_expectations(self):
+        """Baseline: the real glossary has the expected known gaps.
+
+        Update these if the glossary changes; they document what the
+        report currently tells us.
+        """
+        from pathlib import Path
+
+        from blaueis.tools.glossary_lint import load_glossary
+
+        here = Path(__file__).resolve()
+        root = next(
+            p for p in here.parents if (p / "packages" / "blaueis-core").exists()
+        )
+        path = root / "packages" / "blaueis-core" / "src" / "blaueis" / "core" / "data" / "glossary.yaml"
+        r = build_mutex_report(load_glossary(path))
+
+        asym = {(x["from"], x["to"]) for x in r["asymmetric"]}
+        # Preset gap: frost→sleep exists, reverse missing
+        assert ("frost_protection", "sleep_mode") in asym
+        # Wind/breeze: strong_wind is "victim" side of three pairs
+        assert ("breeze_mild", "strong_wind") in asym
+        assert ("breezeless", "strong_wind") in asym
+
+        sibs = {tuple(sorted([x["a"], x["b"]])) for x in r["missing_siblings"]}
+        # eco and sleep are both presets but don't exclude each other
+        assert ("eco_mode", "sleep_mode") in sibs
 
 
 class TestRealGlossaryClean:
