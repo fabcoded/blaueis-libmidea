@@ -226,7 +226,7 @@ def _is_falsy_force(v: object) -> bool:
 def build_mutex_report(glossary: dict) -> dict:
     """Heuristic completeness report for the mutex graph.
 
-    Two findings, both informational — not build-breaking:
+    Three findings, all informational — not build-breaking:
 
     - ``asymmetric``: A→B=0 exists but B→A=0 is missing, and B has a mutex
       block of its own (so it's not a pure "victim" field like swing_vertical).
@@ -234,6 +234,11 @@ def build_mutex_report(glossary: dict) -> dict:
     - ``missing_siblings``: pairs (A, B) with no edge in either direction whose
       bidirectional-neighbor sets overlap heavily — they look like siblings in
       the same exclusion clique that forgot to point at each other.
+
+    - ``activators``: truthy force edges (A→B=v with v truthy & non-default).
+      Classified by what the reverse edge does: supervisor (B→A=0 disables the
+      supervisor), pure_activator (no reverse edge), mutual_activator (B→A also
+      truthy — redundant with cycle lint but surfaced here too).
     """
     mex_fields = {}
     for name, fdef in glossary.items():
@@ -287,14 +292,59 @@ def build_mutex_report(glossary: dict) -> dict:
                     "overlap": round(ratio, 2),
                 })
 
-    return {"asymmetric": asymmetric, "missing_siblings": missing_siblings}
+    activators = []
+    for a, fdef in glossary.items():
+        if not isinstance(fdef, dict):
+            continue
+        fa = _forces_of(fdef)
+        for b, v in fa.items():
+            if _is_falsy_force(v):
+                continue
+            b_def = glossary.get(b)
+            if not isinstance(b_def, dict):
+                continue
+            b_default = field_default(b_def)
+            if v == b_default:
+                continue
+            fb = _forces_of(b_def)
+            reverse = fb.get(a, "__missing__")
+            if reverse == "__missing__":
+                kind = "pure_activator"
+                desc = (
+                    f"{a} auto-engages {b}={v!r}; {b} has no reverse edge, "
+                    f"so it stays on when {a} is disabled"
+                )
+            elif _is_falsy_force(reverse):
+                kind = "supervisor"
+                desc = (
+                    f"{a} auto-engages {b}={v!r} as its mechanism; directly "
+                    f"enabling {b} disables {a} (supervisor released)"
+                )
+            else:
+                kind = "mutual_activator"
+                desc = (
+                    f"{a} forces {b}={v!r} and {b} forces {a}={reverse!r} — "
+                    f"mutual activation (also flagged by cycle lint if both "
+                    f"non-default)"
+                )
+            activators.append({
+                "from": a, "to": b, "value": v,
+                "kind": kind, "reverse": reverse, "description": desc,
+            })
+
+    return {
+        "asymmetric": asymmetric,
+        "missing_siblings": missing_siblings,
+        "activators": activators,
+    }
 
 
 def format_mutex_report(report: dict) -> str:
     asym = report.get("asymmetric") or []
     sibs = report.get("missing_siblings") or []
+    acts = report.get("activators") or []
 
-    if not asym and not sibs:
+    if not asym and not sibs and not acts:
         return "No uncovered mutex edges detected."
 
     lines: list[str] = []
@@ -327,6 +377,20 @@ def format_mutex_report(report: dict) -> str:
                 f"  • {f['a']} ↔ {f['b']}: overlap={f['overlap']}, "
                 f"common=[{', '.join(f['common'])}]"
             )
+        lines.append("")
+
+    if acts:
+        lines.append(f"Functional activator relationships ({len(acts)}):")
+        lines.append(
+            "  Truthy forces describe composition (A auto-engages B), not "
+            "exclusion. These are not gaps — they document how features "
+            "layer on top of each other."
+        )
+        for f in acts:
+            lines.append(
+                f"  • [{f['kind']}] {f['from']} → {f['to']}={f['value']!r}"
+            )
+            lines.append(f"      {f['description']}")
 
     return "\n".join(lines)
 

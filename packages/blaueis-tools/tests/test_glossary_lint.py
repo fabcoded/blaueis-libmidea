@@ -244,10 +244,81 @@ class TestMutexReportSiblings:
         assert ("a", "b") not in pairs  # already reported as asymmetric
 
 
+class TestMutexReportActivators:
+    def test_supervisor_pattern(self):
+        """A→B=1, B→A=0 — classic supervisor/worker."""
+        g = {
+            "super": _field(visible_in_modes=["cool"], forces={"work": 1}),
+            "work": _field(
+                visible_in_modes=["cool", "heat", "fan_only", "dry", "auto"],
+                forces={"super": 0},
+            ),
+        }
+        r = build_mutex_report(g)
+        kinds = [(x["from"], x["to"], x["kind"]) for x in r["activators"]]
+        assert ("super", "work", "supervisor") in kinds
+
+    def test_pure_activator(self):
+        """A→B=1, B has no reverse edge — pure activator."""
+        g = {
+            "trigger": _field(visible_in_modes=["cool"], forces={"helper": 1}),
+            "helper": _field(
+                visible_in_modes=["cool", "heat", "fan_only", "dry", "auto"],
+            ),
+        }
+        r = build_mutex_report(g)
+        kinds = [(x["from"], x["to"], x["kind"]) for x in r["activators"]]
+        assert ("trigger", "helper", "pure_activator") in kinds
+
+    def test_falsy_forces_not_listed(self):
+        g = {
+            "a": _field(forces={"b": 0}, visible_in_modes=["cool"]),
+            "b": _field(forces={"a": 0}, visible_in_modes=["cool"]),
+        }
+        r = build_mutex_report(g)
+        assert r["activators"] == []
+
+    def test_real_glossary_supervisor(self):
+        """no_wind_sense → breezeless=1 is the known supervisor pair."""
+        from pathlib import Path
+
+        from blaueis.tools.glossary_lint import load_glossary
+
+        here = Path(__file__).resolve()
+        root = next(
+            p for p in here.parents if (p / "packages" / "blaueis-core").exists()
+        )
+        path = (
+            root / "packages" / "blaueis-core" / "src" / "blaueis" / "core"
+            / "data" / "glossary.yaml"
+        )
+        r = build_mutex_report(load_glossary(path))
+        assert any(
+            x["from"] == "no_wind_sense"
+            and x["to"] == "breezeless"
+            and x["kind"] == "supervisor"
+            for x in r["activators"]
+        )
+
+
 class TestMutexReportFormat:
     def test_empty_report(self):
-        out = format_mutex_report({"asymmetric": [], "missing_siblings": []})
+        out = format_mutex_report(
+            {"asymmetric": [], "missing_siblings": [], "activators": []},
+        )
         assert "No uncovered" in out
+
+    def test_rendered_includes_activator(self):
+        out = format_mutex_report({
+            "asymmetric": [], "missing_siblings": [],
+            "activators": [{
+                "from": "nws", "to": "bl", "value": 1,
+                "kind": "supervisor", "reverse": 0,
+                "description": "nws auto-engages bl",
+            }],
+        })
+        assert "[supervisor]" in out
+        assert "nws" in out and "bl" in out
 
     def test_rendered_includes_suggestion(self):
         out = format_mutex_report({
