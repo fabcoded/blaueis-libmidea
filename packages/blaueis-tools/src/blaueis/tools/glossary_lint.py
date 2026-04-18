@@ -8,6 +8,10 @@ Checks per field:
 - visible_in_modes entries come from the accepted HVAC mode vocabulary
 - no conflicting non-zero forces between two fields (A→B=x AND B→A=y where
   both x,y are non-default is a mutual-hard-on cycle)
+- truthy forces satisfy the mode subset rule: if A forces B to a non-default
+  truthy value, every mode A is visible in must also be a mode B is visible in
+  (otherwise turning A on in a mode where B is mode-hidden would try to force
+  B truthy in a mode it cannot occupy)
 
 Exit 0 = clean, 1 = violations printed.
 """
@@ -75,6 +79,50 @@ def field_value_domain(fdef: dict) -> set | None:
     return domain or None
 
 
+def _is_truthy_force(forced_value: object, target_default: object) -> bool:
+    """Force is truthy if it's bool-True / numeric-nonzero AND not the target's default."""
+    if forced_value == target_default:
+        return False
+    if isinstance(forced_value, bool):
+        return forced_value
+    if isinstance(forced_value, int):
+        return forced_value != 0
+    return bool(forced_value)
+
+
+def _mode_subset_error(
+    source: str,
+    source_visible: list | None,
+    target: str,
+    target_visible: list | None,
+    forced_value: object,
+) -> str | None:
+    """Return an error string if source.visible_in_modes ⊄ target.visible_in_modes.
+
+    None means "visible everywhere"; an empty list would mean "nowhere" (treated
+    as a trivially-satisfied subset).
+    """
+    if target_visible is None:
+        return None
+    if source_visible is None:
+        return (
+            f"{source}: truthy force {target}={forced_value!r} fails mode subset — "
+            f"{source} is visible in all modes but {target} only in "
+            f"{sorted(set(target_visible))}"
+        )
+    if not isinstance(source_visible, list) or not isinstance(target_visible, list):
+        return None
+    a_set = set(source_visible)
+    b_set = set(target_visible)
+    if a_set.issubset(b_set):
+        return None
+    missing = a_set - b_set
+    return (
+        f"{source}: truthy force {target}={forced_value!r} fails mode subset — "
+        f"{target} is not visible in {sorted(missing)} (where {source} is)"
+    )
+
+
 def lint(glossary: dict) -> list[str]:
     errors: list[str] = []
     names = set(glossary.keys())
@@ -133,6 +181,18 @@ def lint(glossary: dict) -> list[str]:
                     f"{name}: forces {target}={forced_value!r} not in domain "
                     f"{sorted(domain)} and not the default {default!r}"
                 )
+
+            # Mode-subset check for truthy forces.
+            # A falsy force (=0/False) is always safe — turning a sibling off
+            # is universally valid. A truthy force injects a value that must
+            # itself be valid in every mode where A can fire.
+            if _is_truthy_force(forced_value, default):
+                target_visible = (target_def.get("ux") or {}).get("visible_in_modes")
+                subset_error = _mode_subset_error(
+                    name, visible_modes, target, target_visible, forced_value,
+                )
+                if subset_error:
+                    errors.append(subset_error)
 
     # Cycle: A→B=x (x≠default_B) AND B→A=y (y≠default_A)
     for a, a_forces in mex_edges.items():
