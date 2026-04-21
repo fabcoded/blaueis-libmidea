@@ -4990,6 +4990,30 @@ fields:
             - 0
             - 0
           section: §3.5
+      capability:
+        cap_id: '0x98'
+        cap_id_16: '0x0098'
+        cap_type: simple
+        description: B5 advertisement of the cvp capability.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x98, type 0x00, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: always
+            description: Available
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
       confidence: hypothesis
     new_wind_sense:
       description: Newer-generation no-wind-sense variant.
@@ -5025,6 +5049,30 @@ fields:
             - 0
             - 0
           section: §3.5
+      capability:
+        cap_id: '0xAA'
+        cap_id_16: '0x00AA'
+        cap_type: simple
+        description: B5 advertisement of the new_wind_sense capability.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0xAA, type 0x00, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: always
+            description: Available
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
       confidence: hypothesis
     comfort:
       description: Comfort mode toggle.
@@ -5057,6 +5105,30 @@ fields:
             - 0
             - 0
           section: §3.5
+      capability:
+        cap_id: '0xAD'
+        cap_id_16: '0x00AD'
+        cap_type: simple
+        description: B5 advertisement of the comfort capability.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0xAD, type 0x00, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: always
+            description: Available
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
       confidence: hypothesis
     pre_cool_hot:
       description: Pre-cool/pre-heat scheduling mode.
@@ -5121,6 +5193,30 @@ fields:
             - 0
             - 0
           section: §3.5
+      capability:
+        cap_id: '0x34'
+        cap_id_16: '0x0234'
+        cap_type: extended
+        description: B5 advertisement of the body_check capability.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x34, type 0x02, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: always
+            description: Available
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
       confidence: hypothesis
     mito_cool_temp:
       description: Mito-cool target temperature. Encoding (raw - 50) / 2 °C.
@@ -5383,6 +5479,44 @@ fields:
             - 0
             - 0
           section: §3.5
+      capability:
+        cap_id: '0xE3'
+        cap_id_16: '0x00E3'
+        cap_type: simple
+        description: Whether the intelligent-eco capability is advertised; uint8 enum whose value selects mode applicability.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0xE3, type 0x00, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported_cool:
+            raw: 1
+            feature_available: conditional
+            ux:
+              visible_in_modes: [cool]
+            description: Available; applies when operating_mode is cool.
+          supported_variant_2:
+            raw: 2
+            feature_available: conditional
+            description: |
+              Advertised variant; mode applicability unverified on
+              this project.
+          supported_cool_heat:
+            raw: 3
+            feature_available: conditional
+            ux:
+              visible_in_modes: [cool, heat]
+            description: Available; applies when operating_mode is cool or heat.
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
       confidence: hypothesis
     remote_control_lock:
       description: Remote control lock state byte.
@@ -8396,6 +8530,30 @@ fields:
             - 0
             - 0
           section: §3.5
+      capability:
+        cap_id: '0x91'
+        cap_id_16: '0x0091'
+        cap_type: simple
+        description: B5 advertisement of the has_icheck capability.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x91, type 0x00, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: always
+            description: Available
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
       confidence: hypothesis
     dr_time_minutes:
       description: DR (demand response) time minutes byte.
@@ -8505,3 +8663,397 @@ fields:
             encoding: uint24_le
           section: §3.5
       confidence: hypothesis
+    fresh_air:
+      description: Whether the unit has a fresh-air intake module.
+      field_class: sensor
+      data_type: bool
+      device_context: indoor_unit
+      feature_available: capability
+      alt_names: {}
+      protocols: {}
+      capability:
+        cap_id: '0x4B'
+        cap_id_16: '0x004B'
+        cap_type: simple
+        description: Whether a fresh-air intake capability is advertised.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x4B, type 0x00, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: always
+            description: Available
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
+      confidence: hypothesis
+      sources:
+      - serial_protocol.md §3.4
+    parent_control:
+      description: Whether the parental-lock feature is available.
+      field_class: sensor
+      data_type: bool
+      device_context: indoor_unit
+      feature_available: capability
+      alt_names: {}
+      protocols: {}
+      capability:
+        cap_id: '0x51'
+        cap_id_16: '0x0051'
+        cap_type: simple
+        description: Whether a parental-lock capability is advertised.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x51, type 0x00, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: always
+            description: Available
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
+      confidence: hypothesis
+      sources:
+      - serial_protocol.md §3.4
+    prevent_straight_wind_select:
+      description: Whether the unit offers a selector between anti-direct-wind variants. Distinct from 0x42/simple breezeless and B1 property 0x58,0x00 prevent_straight_wind_lr.
+      field_class: sensor
+      data_type: bool
+      device_context: indoor_unit
+      feature_available: capability
+      alt_names: {}
+      protocols: {}
+      capability:
+        cap_id: '0x58'
+        cap_id_16: '0x0058'
+        cap_type: simple
+        description: Whether a prevent-straight-wind-select capability is advertised.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x58, type 0x00, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: always
+            description: Available
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
+      confidence: hypothesis
+      sources:
+      - serial_protocol.md §3.4
+    wind_around:
+      description: Whether a wrap-around wind-diffusion mode is available.
+      field_class: sensor
+      data_type: bool
+      device_context: indoor_unit
+      feature_available: capability
+      alt_names: {}
+      protocols: {}
+      capability:
+        cap_id: '0x59'
+        cap_id_16: '0x0059'
+        cap_type: simple
+        description: Whether a wrap-around wind-diffusion capability is advertised.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x59, type 0x00, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: always
+            description: Available
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
+      confidence: hypothesis
+      sources:
+      - serial_protocol.md §3.4
+    aux_mode_fan_speed_adjustable:
+      description: Whether fan speed is user-adjustable while the unit runs in auxiliary-heat mode. Sibling to 0x94/simple aux_heat_mode_fan_speed_adjustable.
+      field_class: sensor
+      data_type: bool
+      device_context: indoor_unit
+      feature_available: capability
+      alt_names: {}
+      protocols: {}
+      capability:
+        cap_id: '0x93'
+        cap_id_16: '0x0093'
+        cap_type: simple
+        description: Whether an auxiliary-heat fan-speed-adjustable capability is advertised.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x93, type 0x00, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: always
+            description: Available
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
+      confidence: hypothesis
+      sources:
+      - serial_protocol.md §3.4
+    aux_heat_mode_fan_speed_adjustable:
+      description: Whether fan speed is user-adjustable while the unit runs in the combined auxiliary-heat + heat mode. Sibling to 0x93/simple aux_mode_fan_speed_adjustable.
+      field_class: sensor
+      data_type: bool
+      device_context: indoor_unit
+      feature_available: capability
+      alt_names: {}
+      protocols: {}
+      capability:
+        cap_id: '0x94'
+        cap_id_16: '0x0094'
+        cap_type: simple
+        description: Whether a combined auxiliary-heat + heat fan-speed-adjustable capability is advertised.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x94, type 0x00, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: always
+            description: Available
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
+      confidence: hypothesis
+      sources:
+      - serial_protocol.md §3.4
+    filter_check:
+      description: Whether the unit reports a filter-inspection indicator distinct from the filter-change reminder at 0x17/extended nest_filter_check.
+      field_class: sensor
+      data_type: bool
+      device_context: indoor_unit
+      feature_available: capability
+      alt_names: {}
+      protocols: {}
+      capability:
+        cap_id: '0x21'
+        cap_id_16: '0x0221'
+        cap_type: extended
+        description: Whether a filter-inspection capability is advertised.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x21, type 0x02, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: always
+            description: Available
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
+      confidence: hypothesis
+      sources:
+      - serial_protocol.md §3.4
+    main_horizontal_guide_strip_1:
+      description: Primary horizontal louver variant identifier. Non-zero values select the installed upper-band louver hardware variant.
+      field_class: stateful_enum
+      data_type: uint8
+      device_context: indoor_unit
+      feature_available: capability
+      alt_names: {}
+      protocols: {}
+      capability:
+        cap_id: '0x30'
+        cap_id_16: '0x0230'
+        cap_type: extended
+        description: Advertised primary horizontal louver variant; uint8 enum identifying the installed hardware.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x30, type 0x02, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: conditional
+            description: |
+              Advertised variant. Any non-zero value indicates the
+              capability is present; the concrete value-to-variant
+              mapping is unverified on this project.
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
+      confidence: hypothesis
+      sources:
+      - serial_protocol.md §3.4
+    sup_horizontal_guide_strip_1:
+      description: Supplementary horizontal louver variant identifier. When non-zero, the unit has a second independently addressable horizontal louver.
+      field_class: stateful_enum
+      data_type: uint8
+      device_context: indoor_unit
+      feature_available: capability
+      alt_names: {}
+      protocols: {}
+      capability:
+        cap_id: '0x31'
+        cap_id_16: '0x0231'
+        cap_type: extended
+        description: Advertised supplementary horizontal louver variant; uint8 enum identifying the second installed hardware.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x31, type 0x02, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: conditional
+            description: |
+              Advertised variant. Any non-zero value indicates the
+              capability is present; the concrete value-to-variant
+              mapping is unverified on this project.
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
+      confidence: hypothesis
+      sources:
+      - serial_protocol.md §3.4
+    twins_machine:
+      description: Whether the unit advertises a twin-machine (paired indoor unit) configuration.
+      field_class: sensor
+      data_type: bool
+      device_context: indoor_unit
+      feature_available: capability
+      alt_names: {}
+      protocols: {}
+      capability:
+        cap_id: '0x32'
+        cap_id_16: '0x0232'
+        cap_type: extended
+        description: Whether a twin-machine configuration capability is advertised.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x32, type 0x02, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: always
+            description: Available
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
+      confidence: hypothesis
+      sources:
+      - serial_protocol.md §3.4
+    guide_strip_type:
+      description: Horizontal-louver geometry identifier. Non-zero values select the installed louver configuration; the concrete mapping from value to hardware is out of scope of this project until observed on a live unit.
+      field_class: stateful_enum
+      data_type: uint8
+      device_context: indoor_unit
+      feature_available: capability
+      alt_names: {}
+      protocols: {}
+      capability:
+        cap_id: '0x33'
+        cap_id_16: '0x0233'
+        cap_type: extended
+        description: Advertised horizontal-louver geometry; uint8 enum.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x33, type 0x02, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          not_supported:
+            raw: 0
+            feature_available: never
+            description: Not available
+            correction: ignore
+          supported:
+            raw: 1
+            feature_available: conditional
+            description: |
+              Advertised variant. Any non-zero value indicates the
+              capability is present; the concrete value-to-variant
+              mapping is unverified on this project.
+        confidence: hypothesis
+        sources:
+        - serial_protocol.md §3.4
+      confidence: hypothesis
+      sources:
+      - serial_protocol.md §3.4

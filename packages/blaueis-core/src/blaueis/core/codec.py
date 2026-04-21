@@ -89,17 +89,24 @@ def _check_field(result, name, fdef, protocol_key):
     )
 
 
-def build_cap_index(fields: dict[str, dict]) -> dict[str, list[str]]:
-    """Map cap_id (e.g. '0x10') -> [field_names] for fields with inline capability.
+def build_cap_index(
+    fields: dict[str, dict],
+) -> dict[tuple[str, str], list[str]]:
+    """Map (cap_id, cap_type) -> [field_names] for fields with inline capability.
 
-    Multiple fields can share the same cap_id (e.g. 4 power/energy fields
-    all use cap 0x16). Returns a list of field names per cap_id.
+    Keyed by the full TLV identity — simple (cap_type 0) and extended
+    (cap_type 2) variants of the same cap_id are distinct capabilities
+    on the wire and must not be conflated. Multiple fields can share the
+    same (cap_id, cap_type) pair (e.g. 4 power/energy fields all use
+    0x16/extended). Returns a list of field names per (cap_id, cap_type).
     """
-    index: dict[str, list[str]] = {}
+    index: dict[tuple[str, str], list[str]] = {}
     for name, fdef in fields.items():
         cap = fdef.get("capability")
-        if cap and "cap_id" in cap:
-            index.setdefault(cap["cap_id"].lower(), []).append(name)
+        if not (cap and "cap_id" in cap and "cap_type" in cap):
+            continue
+        key = (cap["cap_id"].lower(), cap["cap_type"])
+        index.setdefault(key, []).append(name)
     return index
 
 

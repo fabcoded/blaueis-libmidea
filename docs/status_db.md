@@ -1000,59 +1000,11 @@ flowchart LR
 
 ---
 
-## 9. Migration from current Device
-
-### 9.1 What moves into StatusDB
-
-| Current location | StatusDB method |
-|---|---|
-| `Device._status` | `StatusDB._status` |
-| `Device._apply_optimistic()` | `StatusDB._apply_optimistic()` |
-| `Device._snapshot_fields()` | `StatusDB._snapshot_fields()` |
-| `Device._detect_changes()` | `StatusDB._detect_changes()` |
-| Frame building + send in `Device.set()` | `StatusDB.command()` |
-| Frame processing in `Device._process_frame()` | `StatusDB.ingest()` |
-| `Device.read()` / `read_field()` / `read_all_available()` | `StatusDB.read()` / `read_field()` |
-
-### 9.2 What stays on Device
-
-| Responsibility | Why |
-|---|---|
-| WebSocket connection (`_client`) | I/O — StatusDB is I/O-agnostic (receives `send_fn`) |
-| Poll loop + supervisor | Scheduling — reads status lock-free, sends queries directly |
-| Follow Me shadow | Separate register, not part of status dict |
-| B5 capability discovery | One-time bootstrap, runs before normal operations |
-| Gateway info / stats | Metadata, not field state |
-| `on_connected` / `on_disconnected` | Connection lifecycle, not state |
-
-### 9.3 API changes
-
-```python
-# Before
-device = Device(host, port, psk=psk)
-device.on_state_change = callback
-await device.set(power=True)
-val = device.read("power")
-
-# After — identical external API
-device = Device(host, port, psk=psk)
-device.on_state_change = callback       # delegates to device._db.on_state_change
-await device.set(power=True)            # delegates to device._db.command()
-val = device.read("power")              # delegates to device._db.read()
-```
-
-The Device public API does not change. StatusDB is an internal
-refactoring — all external callers (HA coordinator, FM manager, CLI
-tools) continue using `Device.set()`, `Device.read()`, and
-`Device.on_state_change`.
-
----
-
-## 10. Glossary dependency
+## 9. Glossary dependency
 
 StatusDB reads two glossary constructs at runtime:
 
-### 10.1 `ux.visible_in_modes` — mode gate
+### 9.1 `ux.visible_in_modes` — mode gate
 
 ```yaml
 frost_protection:
@@ -1079,7 +1031,7 @@ Fields with `visible_in_modes`:
 | breeze_mild | cool, heat, fan_only, dry, auto |
 | breezeless | cool, heat, fan_only, dry, auto |
 
-### 10.2 `mutual_exclusion.when_on.forces` — sibling forces
+### 9.2 `mutual_exclusion.when_on.forces` — sibling forces
 
 ```yaml
 frost_protection:
@@ -1100,7 +1052,7 @@ Note: `operating_mode` is intentionally NOT in frost_protection's forces.
 Mode switching is handled by the mode gate — frost_protection requires
 heat mode as a prerequisite, it does not auto-switch to heat.
 
-### 10.3 No hardcoded field names
+### 9.3 No hardcoded field names
 
 The enforcement algorithm contains **no hardcoded field names**. It reads
 the glossary generically:

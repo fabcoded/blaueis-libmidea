@@ -44,8 +44,9 @@ Pure, synchronous. Target: Python 3.11+.
 | `quirks.py` | Device-specific quirks (e.g. Q11 hi-byte stripping) |
 | `crypto.py` | PSK → key, AES-256-GCM handshake (`create_hello`, `complete_handshake_*`) |
 | `debug_ring.py` | `logging.Handler` with byte-sized deque + `log_event` helper (flight recorder) |
+| `ux_gating.py` | Advisory UX-layer visibility / mode-mask evaluator (consumed by HA entity `available`, and by `command.build_command_body` to zero stale bits in C3 frames) |
 
-**Glossary source of truth:** `blaueis-hvacshark/protocols/midea/spec/serial_glossary.yaml` (loaded by `load_glossary`).
+**Glossary source of truth:** `blaueis-core/src/blaueis/core/data/glossary.yaml` — the only maintained copy today; loaded at runtime via `load_glossary` (no path outside the package). Downstream consumers typically vendor the package rather than read the YAML directly. A future reorg may move the human-maintained source into a separate protocol-research repo with a synced in-package copy; until then, edits happen here.
 
 **Logger names:** modules don't install handlers; loggers created via
 `logging.getLogger(__name__)` (`blaueis.core.*`). `debug_ring` exports
@@ -66,6 +67,7 @@ multiple WebSocket clients concurrently.
 | `server.py` | `GatewayServer` — WS server, client lifecycle, broadcast, debug dump. Entry: `python -m blaueis.gateway.server` |
 | `uart_protocol.py` | `UartProtocol` — dongle state machine (DISCOVER → MODEL → ANNOUNCE → RUNNING), outstanding-TX correlation (§4.5), frame mirroring |
 | `slot_pool.py` | Fixed-size pool of client slot ids; lowest-free allocation, reuse on release (flight_recorder.md §4.6) |
+| `configure.py` | Interactive setup wizard — creates/updates `/etc/blaueis-gw/gateway.yaml` and `instances/<name>.yaml`. Entry: `blaueis-gw configure` |
 
 **Startup path:** `main()` parses config → `logging.basicConfig` is replaced
 with explicit root setup (stream handler at user level, `DebugRing` at VERBOSE)
@@ -179,4 +181,3 @@ See `docs/flight_recorder.md` §4 for the ring record schema.
 - **Wire protocol over WS:** `docs/ws_protocol.md`.
 - **Flight recorder (debug buffer):** `docs/flight_recorder.md`.
 - **Operations / install / config / update:** `docs/operations.md`.
-- **HA integration (consumer of this library):** `../blaueis-ha-midea/docs/integration.md`.

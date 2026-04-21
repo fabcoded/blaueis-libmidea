@@ -39,9 +39,9 @@ pip install -e packages/blaueis-core -e packages/blaueis-client
 Each package has its own pytest root — cd in before running:
 
 ```sh
-cd packages/blaueis-core    && python3 -m pytest      # 27
+cd packages/blaueis-core    && python3 -m pytest      # 61
 cd packages/blaueis-gateway && python3 -m pytest      # 43
-cd packages/blaueis-client  && python3 -m pytest      # 50
+cd packages/blaueis-client  && python3 -m pytest      # 147
 ```
 
 ## Documentation
@@ -50,9 +50,6 @@ cd packages/blaueis-client  && python3 -m pytest      # 50
 - [docs/ws_protocol.md](docs/ws_protocol.md) — WebSocket wire reference (every frame type).
 - [docs/operations.md](docs/operations.md) — install, systemd, config, update, debug, troubleshoot.
 - [docs/flight_recorder.md](docs/flight_recorder.md) — rolling in-memory debug buffer (design + rationale).
-
-Home Assistant integration: [blaueis-ha-midea](../blaueis-ha-midea/) — see its
-[integration guide](../blaueis-ha-midea/docs/integration.md).
 
 > **A note on the name.** Blaueis is a small glacier in the Bavarian Alps,
 > retreating year by year. Use energy responsibly — climate change is real.

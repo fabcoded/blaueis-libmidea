@@ -363,6 +363,52 @@ def build_follow_me_frame(
     )
 
 
+# ── Display-LED toggle frame ───────────────────────────────────────────
+
+
+def build_display_toggle_frame(
+    appliance: int = 0xAC,
+    proto: int = 0x00,
+    sub: int = 0x00,
+) -> bytes:
+    """CMD 0x41 body[1]=0x61 — relative toggle of the indoor-unit display LED.
+
+    Flips the firmware's display-on/off latch exposed at rsp_0xC0 body[14]
+    bits[6:4]. On this SKU the latch also gates the buzzer globally —
+    writing cmd_0xb0 property SETs while the latch is OFF produces no chime.
+
+    Body signature (BLE / Lua-plugin shape, the only shape observed
+    from every tested sender):
+
+        body[0]    = 0x41   cmd tag
+        body[1]    = 0x61   bits {6, 5, 0}: toggle-mode + emit-UX-feedback + kind-marker
+        body[3..7] = FF 02 00 02 00
+
+    Wire frame is msg_type=0x03 (QUERY-shape; per Finding 07 §4.8 this
+    cmd_0x41 variant is a state-changer masquerading as a query).
+
+    Toggle reliability on this SKU is imperfect — the firmware may ignore
+    a toggle frame; callers should re-read rsp_0xC0 body[14] after send
+    and retry if the latch did not flip.
+    """
+    body = bytearray(21)
+    body[0] = 0x41
+    body[1] = 0x61
+    body[2] = 0x00
+    body[3] = 0xFF
+    body[4] = 0x02
+    body[5] = 0x00
+    body[6] = 0x02
+    body[7] = 0x00
+    return build_frame(
+        body=bytes(body),
+        msg_type=0x03,
+        appliance=appliance,
+        proto=proto,
+        sub=sub,
+    )
+
+
 # ── Gateway handshake frame builders ───────────────────────────────────
 #
 # These build the UART-level handshake frames the gateway sends to the AC

@@ -13,6 +13,7 @@ import sys
 from blaueis.core.frame import (
     CRC8_TABLE,
     FrameError,
+    build_display_toggle_frame,
     build_frame,
     build_network_init,
     build_network_status_response,
@@ -111,6 +112,28 @@ def main():
     check("custom proto=3", cp["proto"] == 0x03)
     check("custom sub=2", cp["sub"] == 0x02)
     check("custom seq=5", cp["seq"] == 0x05)
+
+    # ── Display-toggle frame (cmd_0x41 body[1]=0x61) ─────────────
+    dt = build_display_toggle_frame()
+    dt_parsed = validate_frame(dt)
+    check("display-toggle msg_type=0x03", dt_parsed["msg_type"] == 0x03)
+    check("display-toggle appliance=0xAC", dt_parsed["appliance"] == 0xAC)
+    dt_body = dt_parsed["body"]
+    check("display-toggle body[0]=0x41", dt_body[0] == 0x41)
+    check("display-toggle body[1]=0x61", dt_body[1] == 0x61)
+    check("display-toggle body[2]=0x00", dt_body[2] == 0x00)
+    check("display-toggle body[3]=0xFF", dt_body[3] == 0xFF)
+    check("display-toggle body[4]=0x02", dt_body[4] == 0x02)
+    check("display-toggle body[5]=0x00", dt_body[5] == 0x00)
+    check("display-toggle body[6]=0x02", dt_body[6] == 0x02)
+    check("display-toggle body[7]=0x00", dt_body[7] == 0x00)
+    check("display-toggle body length 21", len(dt_body) == 21)
+    # bit-level decode of body[1]
+    check("display-toggle body[1] bit 6 set", (dt_body[1] & 0x40) != 0)
+    check("display-toggle body[1] bit 5 set", (dt_body[1] & 0x20) != 0)
+    check("display-toggle body[1] bit 7 clear", (dt_body[1] & 0x80) == 0)
+    check("display-toggle body[1] bit 0 set", (dt_body[1] & 0x01) != 0)
+    # CRC + checksum already covered by validate_frame
 
     # ── Summary ──────────────────────────────────────────────────
     total = passed + failed

@@ -1,12 +1,20 @@
 # Flight Recorder — Rolling In-Memory Debug Buffer
 
-> **Status: Design, not yet implemented.** This document specifies the mechanism
-> so it is discoverable and not reinvented. Numbers marked **[Hypothesis]** are
-> from desktop-scale benchmarks extrapolated to Pi; confirm on target before
-> relying on them. When built, code lives in `blaueis-core` (handler), wired
-> from `blaueis-gateway` (server-side) and `blaueis-ha-midea` (HA-side).
+> **Status: Implemented** (built 2026-04-14, running in production on the
+> gateway). Numbers marked **[Hypothesis]** are from desktop-scale benchmarks
+> extrapolated to Pi and have **not** been remeasured on target since deployment;
+> confirm on-device before relying on them.
 
-Cross-refs: `blaueis-gateway/src/blaueis/gateway/uart_protocol.py` (`_forward_to_client`, `set_on_frame`) · `blaueis-gateway/src/blaueis/gateway/server.py:320-337` (existing `frame` WS broadcast, dir-tagged) · HA diagnostics platform (`async_get_config_entry_diagnostics`).
+Code locations:
+
+- `blaueis-core/src/blaueis/core/debug_ring.py` — `DebugRing` handler, `log_event` helper, record schema.
+- `blaueis-gateway/src/blaueis/gateway/server.py` — ring construction, subscribe/annotate handler, slot pool, `debug_dump` WS command.
+- `blaueis-gateway/src/blaueis/gateway/uart_protocol.py` — `_on_uart_frame` UART tap emitting structured events into the ring.
+- `blaueis-client/src/blaueis/client/ws_client.py` — `GatewaySession`, `request_debug_dump`.
+
+External consumers (e.g. a Home Assistant integration shipped as a separate project) can pull the ring via `debug_dump` and merge it with their own local ring for a combined diagnostics bundle. The WS command is documented in `docs/ws_protocol.md` §2.7.
+
+Tests: `blaueis-core/tests/test_debug_ring.py`, `blaueis-gateway/tests/test_debug_ring_integration.py`, `blaueis-gateway/tests/test_subscribe_filter.py`.
 
 ---
 
@@ -86,7 +94,7 @@ At 10 Hz UART + ~5 Hz loop ticks = ~15 records/s → **5 MB ≈ 35 min of histor
 
 ### 4.1 Gateway → subscribers (existing, reused)
 
-The `"type":"frame"` WS message already carries `"dir":"rx"|"tx"` (server.py:322). TX mirroring is gated by `mirror_tx_gateway` (handshake) and `mirror_tx_all` (normal) in `uart_protocol.py`. **The existing seam is reused; no new frame type is introduced.**
+The `"type":"frame"` WS message already carries `"dir":"rx"|"tx"`. TX mirroring is gated by `mirror_tx_gateway` (handshake) and `mirror_tx_all` (normal) in `uart_protocol.py`. **The existing seam is reused; no new frame type is introduced.**
 
 Change: per-subscriber filter on **event kind only**, never on provenance (§1.1). On connect, client may send:
 
@@ -101,7 +109,7 @@ Change: per-subscriber filter on **event kind only**, never on provenance (§1.1
 
 ### 4.2 Internal tap — always on
 
-Currently `set_on_frame` is attached only while ≥1 WS client is connected (server.py:327/337). **Change for ring buffer**: the `DebugRing` subscribes to the same internal hook unconditionally, so the recorder captures even when no WS client is listening. WS broadcast remains client-gated.
+The UART tap (`_on_uart_frame` in `server.py`) is attached unconditionally at startup, not per-client. It emits a structured event into the ring for every TX/RX, and additionally broadcasts the frame to any connected WS clients that have opted in via `subscribe`. The ring always receives the full record regardless of subscriber state.
 
 ### 4.3 Ring record schema (both sides, identical)
 
@@ -141,6 +149,7 @@ Field roles:
 | `tx_seq` | gateway-local monotonic transmit counter — disambiguates ordering when two records share a timestamp | uart_tx |
 | `reply_to` | best-effort correlation back to a stimulus TX; `null` for unsolicited / broadcast / status pushes | uart_rx |
 | `reply_to.confidence` | `confirmed` (msg_id match) \| `heuristic` (time-window nearest) \| `unknown` (no match) | when reply_to ≠ null |
+| `exc` | formatted traceback text, when the log call carried `exc_info` | any record with an exception attached |
 
 Closed `origin` vocabulary: `ac`, `gw:handshake`, `gw:polling`, `gw:followme`, `gw:keepalive`, `ws:<slot>`. Any new gateway-internal TX source must be added here explicitly so dumps have a complete enumeration.
 
@@ -232,14 +241,15 @@ HA's Platinum quality scale *requires* `async_get_config_entry_diagnostics`. Thi
 
 ## 7. Configuration
 
-Gateway `gateway.yaml`:
+Gateway instance YAML (e.g. `/etc/blaueis-gw/instances/atelier.yaml`) — flat top-level keys:
 
 ```yaml
-debug_ring:
-  enabled: true       # default true; cost is negligible
-  size_mb: 5          # byte-sized cap, not line count
-  level: VERBOSE      # VERBOSE | DEBUG | INFO
+debug_ring_enabled: true   # default true; cost is negligible
+debug_ring_size_mb: 5      # byte-sized cap, not line count
+slot_pool_size: 8          # see §4.6; reject-on-full
 ```
+
+Level is fixed at VERBOSE (level 5, below DEBUG) when the ring is enabled — no per-instance knob. The root logger is lowered to VERBOSE at startup so the ring receives every structured event; other handlers stay at their usual levels and are unaffected.
 
 HA integration: no user-visible config; ring always on, size from `const.py`. Dump is manual via diagnostics download.
 
@@ -255,12 +265,17 @@ HA integration: no user-visible config; ring always on, size from `const.py`. Du
 
 ---
 
-## 9. Open questions — resolve before implementation
+## 9. Open questions
 
-1. **Window size default.** 35 min at 10 Hz is ample for post-mortem but useless for drift. Keep 5 MB, or make it larger by default?
-2. **Auto-dump on error.** Silent pull-on-demand is the current plan. Worth an opt-in "on reconnect storm, write ring to `/var/log/blaueis-gw/dump-{ts}.jsonl`"?
-3. **Subscribe-filter wire format.** `include` list, or explicit flags (`rx:true,tx:true,ignored:false`)? Latter is easier to extend.
-4. **Slot pool cap.** Default 8 — enough? Exhaustion policy is **reject with error** (not evict-oldest; evict-oldest hides bugs). Revisit if multi-consumer patterns emerge.
+### Resolved in v1 (shipped decisions)
+
+1. **Window size default** — kept at **5 MB** (≈35 min at 10 Hz). No pressure to enlarge; if drift hunting is needed, on-disk rotation is the right tool, not a larger ring.
+3. **Subscribe-filter wire format** — chose the **`include` list + `annotate` list** form. Explicit, rejects unknown values up front (`_VALID_ANNOTATE_FIELDS`), and the list form composes naturally with the subscribe reply.
+4. **Slot pool cap** — default **8**, configurable via `slot_pool_size`. Exhaustion policy is **reject with error** (`{"type":"error","code":"slot_pool_full"}`); evict-oldest was rejected because it hides bugs.
+
+### Still open
+
+2. **Auto-dump on error.** Silent pull-on-demand is still the only path. Worth an opt-in "on reconnect storm, write ring to `/var/log/blaueis-gw/dump-{ts}.jsonl`"?
 5. **Does the AC echo `msg_id` in replies?** **[Unknown]** — must be verified against Session captures before §4.5 confidence=`confirmed` path is trusted. Catalogue per message type; the rest stay on heuristic.
 6. **Unsolicited-frame whitelist.** Which message types does the AC push unprompted (status, FollowMe echoes, etc.)? Needed so §4.5 layer 2 does not heuristic-correlate them to whatever TX happened to precede.
 7. **Gateway-side `sid` verification.** Tech debt per §4.7 — prioritise when we add any frame-relay or multi-process topology.

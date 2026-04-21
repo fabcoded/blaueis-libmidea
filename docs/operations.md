@@ -49,10 +49,10 @@ Minimum Python: **3.11**.
 Start / stop / status:
 
 ```sh
-sudo systemctl start blaueis-gateway@atelier
-sudo systemctl enable blaueis-gateway@atelier      # start at boot
-sudo systemctl status blaueis-gateway@atelier
-sudo systemctl restart blaueis-gateway@atelier
+sudo systemctl start blaueis-gateway@<instance>
+sudo systemctl enable blaueis-gateway@<instance>      # start at boot
+sudo systemctl status blaueis-gateway@<instance>
+sudo systemctl restart blaueis-gateway@<instance>
 ```
 
 Or move all instances together:
@@ -87,7 +87,7 @@ Two YAML files merged at startup; instance overrides global. Values apply to `Ua
 | `device_name` | str | `Midea AC` | Human name surfaced in `pi_status` / `version`. |
 | `allow_remote_update` | bool | `true` | Gate on `{"type":"update"}` WS command. |
 
-### 3.2 Flight-recorder keys (§3.2 in `flight_recorder.md`)
+### 3.2 Flight-recorder keys (`flight_recorder.md` §7)
 
 | Key | Type | Default | Purpose |
 |---|---|---|---|
@@ -107,11 +107,11 @@ Both ignored when a client uses `subscribe` with `"include":["tx",...]` — the 
 ### 3.4 Example instance file
 
 ```yaml
-# /etc/blaueis-gw/instances/atelier.yaml
+# /etc/blaueis-gw/instances/<instance>.yaml
 psk: "xxxxxxxxxxxxxxxx"
 uart_port: /dev/serial0
 ws_port: 8765
-device_name: "Atelier Midea"
+device_name: "My Midea AC"
 log_level: INFO
 debug_ring_size_mb: 5
 slot_pool_size: 8
@@ -129,7 +129,7 @@ Deploys committed code that is pushed to the remote.
 
 ```python
 from blaueis.client.ws_client import HvacClient
-c = HvacClient("192.168.210.30", 8765, psk=b"...")
+c = HvacClient("<gateway-host>", 8765, psk=b"...")
 await c.connect()
 await c._send({"type": "update", "ref": 1})
 # gateway git pulls, reinstalls, exits 1; systemd restarts it
@@ -139,25 +139,33 @@ Blocked by `allow_remote_update: false`. Requires remote commit to exist — the
 
 ### 4.2 Local update (SSH, for WIP code)
 
+SSH access to the Pi uses whatever key your install provisioned (PuTTY
+`.ppk` keys convert to OpenSSH with `puttygen <key>.ppk -O
+private-openssh -o <key>`). The default service user is `hvac`; host is
+whatever you configured (e.g. `gateway.local` via mDNS, or a static IP).
+`sudo` is required for anything touching `/etc/blaueis-gw/`, the
+`blaueis-gw` service user's files, or `systemctl`.
+
 For uncommitted changes:
 
 ```sh
-scp -i hvacpi.key -r packages/blaueis-gateway hvac@192.168.210.30:/tmp/
-ssh -i hvacpi.key hvac@192.168.210.30 '
+scp -i <ssh-key> -r packages/blaueis-gateway hvac@<gateway-host>:/tmp/
+ssh -i <ssh-key> hvac@<gateway-host> '
   sudo cp -r /tmp/blaueis-gateway/* /opt/blaueis-gw/packages/blaueis-gateway/
-  sudo systemctl restart blaueis-gateway@atelier
+  sudo systemctl restart blaueis-gateway@<instance>
 '
 ```
 
-Do NOT edit files directly under `/opt/blaueis-gw/` — the next `git pull` will clobber or conflict.
+Do NOT edit files directly under `/opt/blaueis-gw/` as root — the update
+path (`git pull`) assumes a clean checkout.
 
 ### 4.3 Manual full reinstall
 
 ```sh
-ssh -i hvacpi.key hvac@192.168.210.30
+ssh -i <ssh-key> hvac@<gateway-host>
 cd /opt/blaueis-gw && sudo git pull
 sudo -u blaueis-gw /opt/blaueis-gw/venv/bin/pip install -e packages/blaueis-core -e packages/blaueis-gateway
-sudo systemctl restart blaueis-gateway@atelier
+sudo systemctl restart blaueis-gateway@<instance>
 ```
 
 ---
@@ -167,9 +175,9 @@ sudo systemctl restart blaueis-gateway@atelier
 ### 5.1 Journal
 
 ```sh
-sudo journalctl -t blaueis-gw-atelier -f          # live
-sudo journalctl -t blaueis-gw-atelier -n 200      # last 200 lines
-sudo journalctl -t blaueis-gw-atelier --since "10 minutes ago"
+sudo journalctl -t blaueis-gw-<instance> -f          # live
+sudo journalctl -t blaueis-gw-<instance> -n 200      # last 200 lines
+sudo journalctl -t blaueis-gw-<instance> --since "10 minutes ago"
 ```
 
 Default `log_level: INFO` keeps the journal clean. Packet-level detail lives in the flight recorder (§5.3), not in the journal.
@@ -179,7 +187,7 @@ Default `log_level: INFO` keeps the journal clean. Packet-level detail lives in 
 For short-lived deep-dive:
 
 ```sh
-sudo systemctl edit blaueis-gateway@atelier
+sudo systemctl edit blaueis-gateway@<instance>
 # add:
 #   [Service]
 #   Environment="BLAUEIS_LOG_LEVEL=VERBOSE"    # or restart with --verbose
@@ -202,7 +210,7 @@ dump = await client.request_debug_dump()
 #         "jsonl": "{ts, event, hex, ...}\n{...}\n"}
 ```
 
-Or via HA: **Settings → Devices & Services → Blaueis Midea → ⋮ → Download Diagnostics** — bundles HA ring + gateway ring + session info, one JSON file. Details: `../blaueis-ha-midea/docs/integration.md`.
+External consumers (e.g. a Home Assistant integration, a CLI client) can pull the ring by sending `{"type":"debug_dump"}` over the WS connection and attaching the returned JSONL to a bug report. See `docs/ws_protocol.md` §2.7.
 
 ---
 
@@ -212,8 +220,8 @@ Symptoms → where to look, in order.
 
 ### Gateway won't start
 
-1. `sudo systemctl status blaueis-gateway@atelier` — systemd reason.
-2. `sudo journalctl -t blaueis-gw-atelier -n 100` — startup error.
+1. `sudo systemctl status blaueis-gateway@<instance>` — systemd reason.
+2. `sudo journalctl -t blaueis-gw-<instance> -n 100` — startup error.
 3. Check config file permissions: `ls -la /etc/blaueis-gw/instances/atelier.yaml` → must be `blaueis-gw:blaueis-gw 640`.
 4. Check UART access: `sudo -u blaueis-gw ls -l /dev/serial0` → group `dialout` readable.
 5. Check port free: `sudo ss -tlnp | grep 8765`.

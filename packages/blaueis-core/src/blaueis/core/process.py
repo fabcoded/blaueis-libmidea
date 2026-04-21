@@ -41,7 +41,8 @@ def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict) -> 
 
     for rec in records:
         cap_id = rec["cap_id"].lower()
-        field_names = cap_index.get(cap_id, [])
+        cap_type = "simple" if rec["cap_type"] == 0 else "extended"
+        field_names = cap_index.get((cap_id, cap_type), [])
 
         for field_name in field_names:
             field_def = fields.get(field_name)
@@ -52,13 +53,21 @@ def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict) -> 
             if not status_field:
                 continue
 
+            # Glossary-level "never" is sticky: B5 cap processing must
+            # not escalate a field that the glossary has pinned as
+            # never available. This matches how glossary-override users
+            # (see glossary_override.py) flip feature_available to
+            # "never" to simulate the cap-absent path — the override
+            # must survive every ingress, not just the first.
+            glossary_pinned_never = field_def.get("feature_available") == "never"
+
             # Decode the capability value using THIS field's cap definition
             if cap_def.get("values"):
                 raw_val = rec["data"][0] if rec["data"] else None
                 decoded = decode_enum_cap(cap_def, raw_val)
 
                 cap_fa = decoded.get("feature_available")
-                if cap_fa:
+                if cap_fa and not glossary_pinned_never:
                     status_field["feature_available"] = cap_fa
 
                 ac = {}
@@ -93,7 +102,8 @@ def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict) -> 
                         }
                     }
 
-                status_field["feature_available"] = "always"
+                if not glossary_pinned_never:
+                    status_field["feature_available"] = "always"
 
 
 def process_b5(status: dict, body: bytes, glossary: dict, timestamp: str | None = None) -> bool:

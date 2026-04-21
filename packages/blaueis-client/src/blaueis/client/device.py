@@ -31,6 +31,7 @@ from blaueis.client.status_db import StatusDB
 from blaueis.client.ws_client import HvacClient
 from blaueis.core.codec import (
     identify_frame,
+    load_glossary,
     walk_fields,
 )
 from blaueis.core.crypto import psk_to_bytes
@@ -40,6 +41,7 @@ from blaueis.core.frame import (
     build_status_query,
     parse_frame,
 )
+from blaueis.core.glossary_override import apply_override
 from blaueis.core.process import (
     finalize_capabilities,
     process_b5,
@@ -101,6 +103,7 @@ class Device:
         psk: str | bytes | None = None,
         no_encrypt: bool = False,
         poll_interval: float = DEFAULT_POLL_INTERVAL,
+        glossary_overrides: dict | None = None,
     ):
         self.host = host
         self.port = port
@@ -108,8 +111,31 @@ class Device:
         self._no_encrypt = no_encrypt
         self.poll_interval = poll_interval
 
+        # ── Glossary (optionally patched via overrides) ────
+        # If overrides are supplied, build a per-instance patched view
+        # of the glossary before constructing StatusDB. Protected keys
+        # (``meta``) are stripped silently; the caller is expected to
+        # have schema-validated the merged result already (for HA that
+        # happens in config_flow on save). See ``glossary_override``.
+        if glossary_overrides:
+            base = load_glossary()
+            patched, affected, warnings = apply_override(base, glossary_overrides)
+            if warnings:
+                for w in warnings:
+                    log.warning("glossary override: %s", w)
+            if affected:
+                log.info(
+                    "glossary override applied: %d leaf paths changed (%s)",
+                    len(affected),
+                    ", ".join(affected[:5]) + ("…" if len(affected) > 5 else ""),
+                )
+            self._glossary_override_affected: list[str] = affected
+        else:
+            patched = None  # StatusDB will load_glossary() itself
+            self._glossary_override_affected = []
+
         # ── Status database (persists across reconnects) ───
-        self._db = StatusDB()
+        self._db = StatusDB(glossary=patched)
         self._glossary = self._db.glossary
         self._status = self._db.status
 
@@ -144,6 +170,15 @@ class Device:
         self._running = False
         self._supervisor_task: asyncio.Task | None = None
         self._listen_task: asyncio.Task | None = None
+
+        # ── Write serializer ───────────────────────────────
+        # Per-device lock taken by all outbound-write methods on Device
+        # (set, toggle_display, etc.). Prevents integration-originated
+        # frames from interleaving when multiple callers (user actions,
+        # Follow Me, ingress-hook enforcers) race to emit. The gateway
+        # has its own TX queue downstream; this lock guarantees the
+        # integration's own intent-level ordering.
+        self._write_lock = asyncio.Lock()
         self._poll_task: asyncio.Task | None = None
 
     # ── Properties ──────────────────────────────────────────
@@ -164,6 +199,17 @@ class Device:
     @property
     def glossary(self) -> dict:
         return self._glossary
+
+    @property
+    def glossary_override_affected(self) -> list[str]:
+        """Dotted leaf-paths changed by the glossary override, if any.
+
+        Empty list if no override was supplied. Used by consumers that
+        render a "what was overridden" view (HA's G9 merged view + G10
+        diagnostics). Paths are in the form
+        ``fields.screen_display.capability.values.supported.feature_available``.
+        """
+        return list(self._glossary_override_affected)
 
     @property
     def connected(self) -> bool:
@@ -703,6 +749,14 @@ class Device:
 
     # ── Commands ────────────────────────────────────────────
 
+    @property
+    def write_lock(self) -> asyncio.Lock:
+        """Per-device write serializer. Public so HA integration or
+        external callers can take it to bundle a multi-frame sequence
+        (e.g. toggle display → wait → cmd_0xb0 write → toggle back)
+        atomically with respect to other integration-originated writes."""
+        return self._write_lock
+
     async def set(self, **changes) -> dict:
         """Send a set command to the AC.
 
@@ -710,15 +764,60 @@ class Device:
         forces, builds frames, sends atomically, and optimistic-writes.
         See docs/status_db.md for the full protocol.
 
+        Acquires self._write_lock to serialise against concurrent
+        outbound writes from ingress-hook enforcers or other call sites.
+
         Raises RuntimeError if not connected.
         """
         if not self._client or not self._client._ws:
             raise RuntimeError("Device not connected")
 
-        return await self._db.command(
-            changes,
-            send_fn=self._client.send_frame,
-        )
+        async with self._write_lock:
+            return await self._db.command(
+                changes,
+                send_fn=self._client.send_frame,
+            )
+
+    async def toggle_display(self) -> None:
+        """Emit one cmd_0x41 relative-toggle frame to flip the display-LED latch.
+
+        The AC's display-LED latch is exposed at rsp_0xC0 body[14] bits[6:4].
+        On this SKU the latch also gates the buzzer globally (see
+        research finding 07 §4.8): cmd_0xb0 property SETs produce no chime
+        while the latch is OFF.
+
+        This method sends exactly one toggle frame. It does NOT:
+          - verify the latch actually flipped (callers must re-read status
+            via a silent poll; firmware occasionally ignores the toggle and
+            multiple retries may be needed),
+          - retry on no-op,
+          - restore the latch to a previous state.
+
+        Acquires self._write_lock. Raises RuntimeError if not connected.
+        """
+        if not self._client or not self._client._ws:
+            raise RuntimeError("Device not connected")
+        from blaueis.core.frame import build_display_toggle_frame
+        frame = build_display_toggle_frame()
+        async with self._write_lock:
+            await self._client.send_frame(frame.hex(" "))
+
+    async def send_silent_poll(self) -> None:
+        """Emit one cmd_0x41 body[1]=0x81 silent status poll.
+
+        Forces the AC to emit an rsp_0xC0, which in turn re-populates the
+        status database via the normal ingress path. Used by the
+        display-buzzer enforcer's safety timer to provoke an ingress when
+        the AC has gone quiet (no keepalive observed for several seconds).
+
+        Acquires self._write_lock. Raises RuntimeError if not connected.
+        """
+        if not self._client or not self._client._ws:
+            raise RuntimeError("Device not connected")
+        from blaueis.core.frame import build_status_query
+        frame = build_status_query()
+        async with self._write_lock:
+            await self._client.send_frame(frame.hex(" "))
 
     # ── Field reading (convenience) ─────────────────────────
 
