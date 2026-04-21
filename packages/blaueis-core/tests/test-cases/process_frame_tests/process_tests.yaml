@@ -40,10 +40,10 @@ tests:
       feature_available: "never"
       active_constraints: null
 
-  - name: "total_power_kwh becomes never (cap 0x16=0 -> none)"
+  - name: "power_total_kwh becomes never (cap 0x16=0 -> none)"
     action: b5
     source: "../xtremesaveblue_s1/b5_frames.yaml"
-    check_field: total_power_kwh
+    check_field: power_total_kwh
     assert:
       feature_available: "never"
 

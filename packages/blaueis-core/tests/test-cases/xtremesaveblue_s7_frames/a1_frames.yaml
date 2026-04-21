@@ -25,22 +25,22 @@ frames:
     timestamp: 7.0
     body_hex: "A1 00 01 0D 03 00 00 00 00 00 00 00 00 62 3A 00 00 00 10 00 00 00 00 00 00 00 00 00 00 00 00 00"
     ground_truth:
-      total_power_kwh: 688.67
-      total_run_power_kwh: 0.0
+      power_total_kwh: 688.67
+      power_total_run_kwh: 0.0
     notes: "body[1..4]=00 01 0D 03 -> linear: 0x00010D03 = 68867 / 100 = 688.67 kWh. Confirmed against external power meter."
 
   - name: "mid-session — cool mode active"
     timestamp: 402.2
     body_hex: "A1 00 01 0D 05 00 00 00 00 00 00 00 00 62 3A 00 00 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00"
     ground_truth:
-      total_power_kwh: 688.69
-      total_run_power_kwh: 0.0
+      power_total_kwh: 688.69
+      power_total_run_kwh: 0.0
     notes: "Slight increase from t=7s (0.02 kWh in ~400s)."
 
   - name: "end of session — after extended operation"
     timestamp: 763.3
     body_hex: "A1 00 01 0D 06 00 00 00 00 00 00 00 00 5B 3B 00 00 00 99 00 00 00 00 00 00 00 00 00 00 00 00 00"
     ground_truth:
-      total_power_kwh: 688.70
-      total_run_power_kwh: 0.0
+      power_total_kwh: 688.70
+      power_total_run_kwh: 0.0
     notes: "End of session. Total energy 688.70 kWh (linear)."

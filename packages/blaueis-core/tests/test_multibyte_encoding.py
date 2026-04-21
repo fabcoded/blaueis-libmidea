@@ -253,7 +253,7 @@ def test_existing_bcd_linear_paths_unchanged():
     print("\n17. Existing power_bcd_4 / power_linear_4 paths unaffected")
     glossary = load_glossary()
     encs = glossary["encodings"]
-    # Real S15 c1g4 bytes for total_power_kwh: 00 01 19 DD
+    # Real S15 c1g4 bytes for power_total_kwh: 00 01 19 DD
     body = b"\x00\x01\x19\xdd"
     linear = apply_encoding(0, "power_linear_4", encs, body=body, offset=0)
     check("power_linear_4 = 721.57", abs(linear - 721.57) < 0.01, f"got {linear}")

@@ -352,26 +352,26 @@ def test_q11_power_quirks_real_decode():
         cap_records=status.get("capabilities_raw"),
     )
 
-    total = decoded.get("total_power_kwh", {}).get("value")
-    realtime = decoded.get("realtime_power_kw", {}).get("value")
+    total = decoded.get("power_total_kwh", {}).get("value")
+    realtime = decoded.get("power_realtime_kw", {}).get("value")
 
     check(
-        "total_power_kwh decoded with linear encoding",
+        "power_total_kwh decoded with linear encoding",
         total is not None,
         f"got {total}",
     )
     check(
-        "total_power_kwh ~= 721.57 kWh",
+        "power_total_kwh ~= 721.57 kWh",
         total is not None and abs(total - 721.57) < 0.01,
         f"got {total}",
     )
     check(
-        "realtime_power_kw decoded",
+        "power_realtime_kw decoded",
         realtime is not None,
         f"got {realtime}",
     )
     check(
-        "realtime_power_kw ~= 0.191 kW",
+        "power_realtime_kw ~= 0.191 kW",
         realtime is not None and abs(realtime - 0.191) < 0.001,
         f"got {realtime}",
     )

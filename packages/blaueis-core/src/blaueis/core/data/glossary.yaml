@@ -5768,7 +5768,7 @@ fields:
       confidence: hypothesis
       sources:
       - serial_protocol.md §4.1
-    current_run_power_kwh:
+    power_current_run_kwh:
       description: Energy consumed in the current run cycle in kWh. Resets on power cycle.
       field_class: sensor
       feature_available: capability
@@ -5777,6 +5777,7 @@ fields:
       unit: kWh
       alt_names:
         midea_lua: curRunPower
+        legacy: current_run_power_kwh
       protocols:
         rsp_0xc1_group4:
           frame: 0xC1 Group 4
@@ -6886,7 +6887,7 @@ fields:
       sources:
       - node-mideahvac
       - serial_protocol.md §4.1
-    realtime_power_kw:
+    power_realtime_kw:
       description: Instantaneous power draw in kW.
       field_class: sensor
       feature_available: capability
@@ -6895,6 +6896,7 @@ fields:
       unit: kW
       alt_names:
         midea_lua: curRealTimePower
+        legacy: realtime_power_kw
       protocols:
         rsp_0xc1_group4:
           frame: 0xC1 Group 4
@@ -7083,7 +7085,7 @@ fields:
       sources:
       - Session 11 (raw=57->3.5C, service menu T4=3)
       - Session 6
-    total_power_kwh:
+    power_total_kwh:
       description: Cumulative lifetime energy consumption in kWh. Monotonically increasing counter.
       field_class: sensor
       feature_available: capability
@@ -7093,6 +7095,7 @@ fields:
       alt_names:
         midea_lua: totalPowerConsume
         dudanov: totalPowerConsumption
+        legacy: total_power_kwh
       protocols:
         rsp_0xc1_group4:
           frame: 0xC1 Group 4
@@ -7167,8 +7170,8 @@ fields:
       confidence: confirmed
       sources:
       - Sessions 1+8 cross-validation
-    total_run_power_kwh:
-      description: Cumulative run-mode energy in kWh. Separate from total_power_kwh (which includes standby).
+    power_total_run_kwh:
+      description: Cumulative run-mode energy in kWh. Separate from power_total_kwh (which includes standby).
       field_class: sensor
       feature_available: capability
       data_type: float
@@ -7176,6 +7179,7 @@ fields:
       unit: kWh
       alt_names:
         midea_lua: totalRunPower
+        legacy: total_run_power_kwh
       protocols:
         rsp_0xc1_group4:
           frame: 0xC1 Group 4

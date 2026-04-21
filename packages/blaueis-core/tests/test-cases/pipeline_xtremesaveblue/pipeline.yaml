@@ -22,7 +22,7 @@ steps:
       fields.operating_mode.feature_available: "always"
       # Caps NOT in B5 -> 'never' (device doesn't support)
       fields.buzzer.feature_available: "never"
-      fields.total_power_kwh.feature_available: "never"
+      fields.power_total_kwh.feature_available: "never"
       # Per-mode temperature constraints from cap 0x25
       fields.target_temperature.active_constraints.by_mode.cool.valid_range: [16.0, 30.0]
       fields.target_temperature.active_constraints.by_mode.heat.valid_range: [16.0, 30.0]

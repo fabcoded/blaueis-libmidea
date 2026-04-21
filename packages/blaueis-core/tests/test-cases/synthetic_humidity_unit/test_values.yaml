@@ -92,7 +92,7 @@ tests:
       expected_supported: true
     note: "cap 0x1F=2 → auto+manual humidity"
 
-  - field: total_power_kwh
+  - field: power_total_kwh
     cap_check:
       cap_id: "0x16"
       expected_supported: true

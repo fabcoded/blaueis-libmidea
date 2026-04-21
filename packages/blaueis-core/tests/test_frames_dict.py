@@ -343,13 +343,13 @@ def main():
         detail=f"got {p1}",
     )
 
-    # ── Planner test 2: realtime_power_kw on UART picks group4_power ──
+    # ── Planner test 2: power_realtime_kw on UART picks group4_power ──
     # The field decodes from rsp_0xc1_group4 and rsp_0xb5_tlv. The planner
     # picks the first matching frame in YAML order — cmd_0x41_group4_power
     # comes before cmd_0xb5_extended in serial_glossary.yaml.
-    p2 = plan_query_cycle(["realtime_power_kw"], glossary, bus="uart")
+    p2 = plan_query_cycle(["power_realtime_kw"], glossary, bus="uart")
     check(
-        "plan({realtime_power_kw}, uart) includes cmd_0x41_group4_power",
+        "plan({power_realtime_kw}, uart) includes cmd_0x41_group4_power",
         "cmd_0x41_group4_power" in p2,
         detail=f"got {p2}",
     )
@@ -374,7 +374,7 @@ def main():
 
     # ── Planner test 4: multi-field dedup + ordering ────────────────
     p5 = plan_query_cycle(
-        ["indoor_temperature", "realtime_power_kw", "total_power_kwh"],
+        ["indoor_temperature", "power_realtime_kw", "power_total_kwh"],
         glossary,
         bus="uart",
     )
@@ -404,8 +404,8 @@ def main():
     key_telemetry = [
         "indoor_temperature",
         "outdoor_temperature",
-        "realtime_power_kw",
-        "total_power_kwh",
+        "power_realtime_kw",
+        "power_total_kwh",
         "t1_indoor_coil",  # forces group1 path on R/T
     ]
     p_uart = plan_query_cycle(all_control + key_telemetry, glossary, bus="uart")
@@ -461,7 +461,7 @@ def main():
             detail=f"got {p_rt}",
         )
     # All group frames are now bus-agnostic. R/T plan should include
-    # group4_power because realtime_power_kw is in key_telemetry.
+    # group4_power because power_realtime_kw is in key_telemetry.
     check(
         "R/T plan includes cmd_0x41_group4_power (bus-agnostic after Session 15)",
         "cmd_0x41_group4_power" in p_rt,

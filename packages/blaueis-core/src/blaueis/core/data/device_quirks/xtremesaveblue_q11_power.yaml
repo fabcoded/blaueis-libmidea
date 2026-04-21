@@ -32,10 +32,10 @@ description: |
   marketing tier, not a hardware capability.
 
 feature_available:
-  total_power_kwh: readable
-  total_run_power_kwh: readable
-  current_run_power_kwh: readable
-  realtime_power_kw: readable
+  power_total_kwh: readable
+  power_total_run_kwh: readable
+  power_current_run_kwh: readable
+  power_realtime_kw: readable
 
 synthesize_capabilities:
   - cap_id: "0x16"
