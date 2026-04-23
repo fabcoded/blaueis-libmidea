@@ -1,3 +1,121 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#   Midea HVAC serial-protocol field glossary
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# This file is the canonical, declarative source of truth for every field the
+# library can read from a Midea indoor AC unit or write to it. Read it as a
+# reference — it is self-documenting. Each field's `description:` tells you
+# what the field means; `note:` / `disambiguation:` capture edge cases.
+#
+# Audience: library consumers — anyone building against `blaueis-client`,
+# `blaueis-core`, or the gateway's WebSocket protocol, whether for a Home
+# Assistant integration, a control script, or a data-logging job.
+#
+# This is NOT a wire-level protocol spec. Frame layouts, byte offsets, decode
+# formulas, and capability-TLV encodings live in the companion HVAC-shark
+# repository. Wire details appear here only insofar as the codec needs them to
+# round-trip values (see `protocols:` / `decode:` / `encoding:` blocks on each
+# field) — but they are implementation mechanics, not the contract.
+#
+# ── File structure ────────────────────────────────────────────────────────────
+#
+#   meta:                  — version, date, protocol focus.
+#   encodings:             — reusable decode/encode templates (scale, offset,
+#                            unit, byte-order). Referenced by per-field
+#                            `decode[].encoding:` keys.
+#   frames:                — canonical query-frame specs. One entry per
+#                            outbound frame the planner can send; consumed by
+#                            the codec to build wire bytes.
+#   protocol_generations:  — which frames belong to which protocol generation
+#                            (`legacy` = C0/C1/B1/0x40 family; `new` = B0/B5
+#                            property family). Drives source-priority logic.
+#   fields:
+#     control:             — writable fields (setpoints, mode toggles, etc.).
+#     sensor:              — read-only fields (telemetry, diagnostics, timers).
+#
+# ── How to read a field entry ─────────────────────────────────────────────────
+#
+#   description:       One-line human summary of what this field represents.
+#   data_type:         bool | uint8 | uint16 | int8 | float | enum | bitmask | bcd
+#   field_class:       semantic shape:
+#                        sensor              — decode-only, no write path.
+#                        trigger             — fire-and-forget action.
+#                        stateful_bool       — bidirectional on/off toggle.
+#                        stateful_enum       — bidirectional discrete selector.
+#                        stateful_numeric    — bidirectional continuous setpoint.
+#                        complex_function    — multi-key composite.
+#   device_context:    indoor_unit | outdoor_unit | controller | extension_board
+#   unit:              physical unit, if any (°C, %, kWh, Hz, …).
+#   range:             [min, max] in decoded physical units.
+#   values:            for enums: map of symbolic name → {raw, description}.
+#   feature_available: access level — this is LOAD-BEARING for consumers:
+#                        always       — read + write, no prerequisites.
+#                        readable     — decode-only until a capability upgrades
+#                                       the field to writable.
+#                        capability   — hidden until the device's B5 capability
+#                                       scan confirms support; writes before
+#                                       confirmation are rejected.
+#                        never        — disabled (service-only / disputed).
+#   power_independent: true if the control is writable while the unit is off.
+#                      Default false (requires `power = on`).
+#   capability:        full B5 capability block — cap_id, per-value constraints.
+#                      If present, `feature_available: capability` is implied.
+#   ux.visible_in_modes:
+#                      operating modes in which the field is visible and
+#                      writable. Writes outside these modes are masked.
+#                      Mode names: auto, cool, dry, heat, fan, smart_dry.
+#   mutual_exclusion:  when this field is toggled, which siblings get forced to
+#                      which values (and why). Encodes hardware constraints the
+#                      user would otherwise trip into.
+#   confidence:        confirmed > consistent > hypothesis > disputed > unknown.
+#                      Be cautious about `hypothesis` / `disputed` in production.
+#
+# ── Canonical API pattern ─────────────────────────────────────────────────────
+#
+#   from blaueis.client.device import Device
+#
+#   device = Device("192.168.1.50", 8765, psk="your-gateway-passphrase")
+#   await device.start()
+#
+#   # Reading
+#   temperature = device.read("indoor_temperature")
+#   state       = device.read_all_available()       # {field_name: value}
+#   gdef        = device.field_gdef("target_temperature")  # glossary entry
+#   fields      = device.available_fields           # all readable/writable now
+#
+#   # Writing (coroutine; serialised against other writers)
+#   await device.set(power=True, target_temperature=24, operating_mode="cool")
+#
+#   await device.stop()
+#
+# `device.set()` applies mode-gating, mutual-exclusion expansion, and frame
+# building atomically — callers pass user-visible field names and values, not
+# wire bytes.
+#
+# ── Citation / provenance rules (see workspace AGENTS.md) ─────────────────────
+#
+# `alt_names:` and `sources:` blocks carry structured provenance metadata —
+# external project tags alongside the identifier-level term that project uses
+# for the same concept, and evidence-trail markers in `project/file::symbol`
+# form. This is concept provenance for reviewers and cross-reference tooling.
+#
+# Tags of the form `revN` (rev0, rev1, …) in `alt_names` / `sources` are
+# codenames for sensitive sources. Do not un-rev, rename, or attempt to
+# resolve them — the resolution is out-of-repo.
+#
+# Any human-facing rendering of this glossary (generated docs, README snippets,
+# spec extracts) must filter `alt_names`, `sources`, and `revN` tokens out.
+#
+# ── Related documentation ─────────────────────────────────────────────────────
+#
+#   docs/architecture.md     — package map, how core / gateway / client fit.
+#   docs/ws_protocol.md      — gateway WebSocket frame types.
+#   docs/operations.md       — gateway install, systemd, update, debug.
+#   docs/status_db.md        — status-dictionary schema and merge logic.
+#   docs/flight_recorder.md  — rolling in-memory debug buffer.
+#
+# ══════════════════════════════════════════════════════════════════════════════
+
 meta:
   version: 0.1.0
   protocol_focus: serial
@@ -10,6 +128,15 @@ meta:
   - ir
   last_updated: '2026-04-05'
   schema: serial_glossary_schema.json
+
+
+# ── Encodings ─────────────────────────────────────────────────────────────────
+# Reusable decode/encode templates. Each entry defines a `formula:` (e.g.
+# `(raw - 50) / 2.0`), a physical `unit:`, and optional `scale:` / `offset:` /
+# `range:` / `byte_count:` / `byte_order:`. Field-level decode steps reference
+# these templates by key — a field's `decode[].encoding: temp_offset50_half`
+# applies `temp_offset50_half` here to the extracted byte.
+# ─────────────────────────────────────────────────────────────────────────────
 encodings:
   temp_offset50_half:
     formula: (raw - 50) / 2.0
@@ -118,6 +245,17 @@ encodings:
     byte_count: 3
     byte_order: be
     note: Generic 24-bit big-endian unsigned integer.
+# ── Frames ────────────────────────────────────────────────────────────────────
+# Canonical query-frame specifications. One entry per outbound frame the
+# planner can send. The codec reads `body:` (plus any `msg_type:` override)
+# via `build_frame_from_spec()` to produce wire bytes; the planner reads
+# `triggers:` to match fields (which reference `rsp_*` keys in their
+# `protocols:` blocks) to the right query frame.
+#
+# `bus:` lists the buses the frame is valid on (omit for both). Some queries
+# are bus-specific: C1 group queries with `body[1]=0x81` only work on R/T
+# (extension board); `body[1]=0x21` variants only work on UART (WiFi dongle).
+# ─────────────────────────────────────────────────────────────────────────────
 frames:
   cmd_0x41:
     purpose: Standard status query (triggers 0xC0 response)
@@ -141,7 +279,7 @@ frames:
     section: §3.1.1
     confidence: confirmed
     sources:
-    - tools-serial/midea_frame.py::build_status_query
+    - rev86::build_status_query
     - serial_protocol.md §3.1.1
     note: 'Our code uses body[4..7] = 03 FF 00 02. The OEM WiFi dongle
 
@@ -445,9 +583,9 @@ frames:
     sources:
     - serial_protocol.md §3.1.4 documentation
     - TODO_glossary.md §6 design sketch
-    note: 'Not currently built by any function in tools-serial/. Not
+    note: 'Not currently built by our codec. Not
 
-      observed in captures either — the OEM dongle and extension
+      observed in captures — the OEM WiFi dongle and extension
 
       board we have don''t issue this query, but the AC''s response
 
@@ -479,7 +617,7 @@ frames:
     confidence: confirmed
     sources:
     - own captures Sessions 1-11 (wifiBrown + bidirectionalExtensionBoard)
-    - tools-serial/midea_frame.py::build_cap_query_extended
+    - rev87::build_cap_query_extended
     note: 'Returns extended-type (0x02) capability records: encoding-rich
 
       features like fan modes, operating modes, target temperature
@@ -507,7 +645,7 @@ frames:
     confidence: confirmed
     sources:
     - own captures Sessions 1-11
-    - tools-serial/midea_frame.py::build_cap_query_simple
+    - rev88::build_cap_query_simple
     note: 'Returns simple-type (0x00) capability records: boolean features
 
       like swing axes, frost protection, anion ionizer, breeze,
@@ -527,7 +665,7 @@ frames:
     section: §3.2
     confidence: confirmed
     sources:
-    - tools-serial/build_command.py::build_command_body
+    - rev89::build_command_body
     note: 'Variable-content body assembled at call time by walking every
 
       field whose protocols.cmd_0x40.decode is populated. body[0]
@@ -567,6 +705,19 @@ frames:
       target_temperature range values via cap 0x25).
 
       '
+# ── Protocol generations ──────────────────────────────────────────────────────
+# Protocol-key → generation map. Three values:
+#   legacy  — C0 / C1* / B1 / 0x40 family (fixed-body frames, older protocol).
+#   new     — B0 / B5 property family (property-TLV, newer protocol).
+#   null    — generation deliberately unknown (heartbeats and frames whose
+#             role is not yet decided). Keys absent from this dict resolve
+#             to null at lookup time.
+#
+# Drives `infer_generation()` and the source-priority semantics in
+# `field_query.read_field()` — when a field has values available from both
+# legacy and new frames, consumers pick per-field priority. Edit this dict
+# to add a new frame; no Python change is needed.
+# ─────────────────────────────────────────────────────────────────────────────
 protocol_generations:
   cmd_0x40: legacy
   cmd_0x41_display: legacy
@@ -587,7 +738,33 @@ protocol_generations:
   rsp_0xc1_group12: legacy
   rsp_0xc1_sub02: legacy
   rsp_0xa1: null
+# ══════════════════════════════════════════════════════════════════════════════
+#   Fields
+# ══════════════════════════════════════════════════════════════════════════════
+# Every field the library can observe or set on an indoor AC unit. Two groups:
+#
+#   fields.control  — writable fields (this section).
+#   fields.sensor   — read-only fields (further down).
+#
+# Field ordering is alphabetical within each group. Use your editor's outline
+# view, or `grep -n '^    [a-z]' glossary.yaml`, to jump to a field by name.
+#
+# Read the schema-summary comment at the top of this file to decode the
+# per-field keys (description, data_type, feature_available, capability, ux,
+# mutual_exclusion, confidence, …).
+# ══════════════════════════════════════════════════════════════════════════════
 fields:
+
+  # ── Control fields (writable) ───────────────────────────────────────────────
+  # Setpoints, mode toggles, bidirectional state. Each carries a `field_class:`
+  # that shapes how the codec handles writes:
+  #   stateful_bool     — single on/off flag.
+  #   stateful_enum     — discrete selector (mode, fan speed, …).
+  #   stateful_numeric  — continuous scalar (temperature, humidity setpoint).
+  #   trigger           — fire-and-forget action (no read-back).
+  #   complex_function  — multi-field composite; see `composite:` /
+  #                       `derived_from:` / `state_machine:`.
+  # ────────────────────────────────────────────────────────────────────────────
   control:
     alarm_sleep:
       description: Alarm sleep / wake-up timer function.
@@ -2124,7 +2301,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: jetCool
+        rev1: jetCool
       ux:
         visible_in_modes: [cool]
         sources: community protocol research
@@ -3321,7 +3498,7 @@ fields:
       device_context: indoor_unit
       feature_available: capability
       alt_names:
-        midea_app: nobodyEnergySave
+        rev2: nobodyEnergySave
         dudanov: SMART_EYE
         handbook: Smart Eye, Presence Detection
       protocols:
@@ -4550,7 +4727,7 @@ fields:
             off: eco, strong_wind, turbo (overlapping/incompatible airflow
             shapes) and vertical swing (defeats diffusion geometry).
       alt_names:
-        midea_app: noWindSense
+        rev3: noWindSense
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4582,7 +4759,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: coolHotSense
+        rev4: coolHotSense
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4614,7 +4791,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: autoPreventStraightWind
+        rev5: autoPreventStraightWind
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4646,7 +4823,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: intelligentWind
+        rev6: intelligentWind
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4678,7 +4855,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: childPreventColdWind
+        rev7: childPreventColdWind
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4710,7 +4887,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: highTemperatureMonitor
+        rev8: highTemperatureMonitor
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4742,7 +4919,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: littleAngel
+        rev9: littleAngel
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4774,7 +4951,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: security
+        rev10: security
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4806,7 +4983,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: intelligentControl
+        rev11: intelligentControl
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4838,7 +5015,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: faceRegister
+        rev12: faceRegister
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4870,7 +5047,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: evenWind
+        rev13: evenWind
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4902,7 +5079,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: singleTuyere
+        rev14: singleTuyere
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4934,7 +5111,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: preventStraightWindLr
+        rev15: preventStraightWindLr
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4966,7 +5143,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: cvp
+        rev16: cvp
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5025,7 +5202,7 @@ fields:
         visible_in_modes: [cool, heat]
         sources: community protocol research
       alt_names:
-        midea_app: newWindSense
+        rev17: newWindSense
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5081,7 +5258,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: comfort
+        rev18: comfort
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5137,7 +5314,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: preCoolHot
+        rev19: preCoolHot
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5169,7 +5346,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: bodyCheck
+        rev20: bodyCheck
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5226,7 +5403,7 @@ fields:
       device_context: indoor_unit
       unit: °C
       alt_names:
-        midea_app: mitoCool
+        rev21: mitoCool
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5261,7 +5438,7 @@ fields:
       device_context: indoor_unit
       unit: °C
       alt_names:
-        midea_app: mitoHeat
+        rev22: mitoHeat
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5295,7 +5472,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: extremeWindValue
+        rev23: extremeWindValue
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5327,7 +5504,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: extremeWindLevel
+        rev24: extremeWindLevel
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5359,7 +5536,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: windAroundValue
+        rev25: windAroundValue
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5391,7 +5568,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: windAroundUdMode
+        rev26: windAroundUdMode
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5423,7 +5600,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: iEcoNumber
+        rev27: iEcoNumber
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5455,7 +5632,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: iEcoSwitch
+        rev28: iEcoSwitch
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5525,7 +5702,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: remoteControlLock
+        rev29: remoteControlLock
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5557,7 +5734,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: preventSuperCool
+        rev30: preventSuperCool
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -5582,6 +5759,12 @@ fields:
             - 0
           section: §3.5
       confidence: hypothesis
+  # ── Sensor fields (read-only) ───────────────────────────────────────────────
+  # Telemetry, diagnostics, runtime counters, and capability readouts. All
+  # have `field_class: sensor` — decode-only, no encode path. Availability
+  # still matters: many sensors are `capability`-gated and only populate on
+  # devices that expose the corresponding B5 cap.
+  # ────────────────────────────────────────────────────────────────────────────
   sensor:
     clean_fan_time:
       description: 'Post-run fan / cool fan: keeps fan running after compressor stops to dry evaporator.'
@@ -5639,7 +5822,7 @@ fields:
         raw=75 → 22.5 °C (steady-state, slightly above user target 21 °C).'
       confidence: consistent
     compressor_idle:
-      description: Compressor idle flag. 1 = idle, 0 = running. OEM app mislabels this as compressor current (压缩机电流).
+      description: Compressor idle flag. 1 = idle, 0 = running.
       field_class: binary_sensor
       feature_available: readable
       data_type: bool
@@ -5661,10 +5844,11 @@ fields:
             - 0
           direction: response
           section: §4.2.1
-      note: 'OEM weex.js labels body[6] as 压缩机电流 (compressor current) but live
-        data shows 0/1 binary: Atelier Midea Q14 reads 1=idle 0=running;
-        XtremeSaveBlue Q11 reads 0 always. Not current — no community impl
-        ever decoded this field independently.'
+      note: 'body[6] is a binary idle/running flag — 1 = idle, 0 = running.
+        Initially suspected to encode compressor current, but live data shows
+        only 0/1 values: Atelier Midea Q14 reads 1=idle 0=running; XtremeSaveBlue
+        Q11 reads 0 always. No community impl ever decoded this field
+        independently.'
       confidence: confirmed
     compressor_frequency:
       description: Compressor running frequency (FR). 0 Hz when compressor is off.
@@ -6419,7 +6603,7 @@ fields:
       device_context: indoor_unit
       unit: min
       alt_names:
-        midea_app: indoorFanRuntime
+        rev31: indoorFanRuntime
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6443,7 +6627,7 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
-        midea_app: defrostingStep
+        rev32: defrostingStep
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6466,7 +6650,7 @@ fields:
       device_context: outdoor_unit
       unit: h
       alt_names:
-        midea_app: engineTotalWorkedTime
+        rev33: engineTotalWorkedTime
       ha:
         device_class: duration
         state_class: total_increasing
@@ -7311,7 +7495,7 @@ fields:
       device_context: outdoor_unit
       unit: A
       alt_names:
-        midea_app: devMaxCurrent
+        rev34: devMaxCurrent
       protocols:
         rsp_0xc1_group6:
           frame: 0xC1 Group 6
@@ -7333,7 +7517,7 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
-        midea_app: devMaxTemp4
+        rev35: devMaxTemp4
       protocols:
         rsp_0xc1_group6:
           frame: 0xC1 Group 6
@@ -7355,7 +7539,7 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
-        midea_app: devMinTemp4
+        rev36: devMinTemp4
       protocols:
         rsp_0xc1_group6:
           frame: 0xC1 Group 6
@@ -7377,7 +7561,7 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
-        midea_app: totalErrCnt
+        rev37: totalErrCnt
       protocols:
         rsp_0xc1_group6:
           frame: 0xC1 Group 6
@@ -7401,7 +7585,7 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        midea_app: engineFlux
+        rev38: engineFlux
       protocols:
         rsp_0xc1_group6:
           frame: 0xC1 Group 6
@@ -7423,7 +7607,7 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
-        midea_app: fanFlux
+        rev39: fanFlux
       protocols:
         rsp_0xc1_group6:
           frame: 0xC1 Group 6
@@ -7445,7 +7629,7 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
-        midea_app: dSpinCurrent
+        rev40: dSpinCurrent
       protocols:
         rsp_0xc1_group6:
           frame: 0xC1 Group 6
@@ -7467,7 +7651,7 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
-        midea_app: qSpinCurrent
+        rev41: qSpinCurrent
       protocols:
         rsp_0xc1_group6:
           frame: 0xC1 Group 6
@@ -7490,7 +7674,7 @@ fields:
       device_context: outdoor_unit
       unit: A
       alt_names:
-        midea_app: enginePeakCurrent
+        rev42: enginePeakCurrent
       protocols:
         rsp_0xc1_group6:
           frame: 0xC1 Group 6
@@ -7513,7 +7697,7 @@ fields:
       device_context: outdoor_unit
       unit: A
       alt_names:
-        midea_app: pfcPeakCurrent
+        rev43: pfcPeakCurrent
       protocols:
         rsp_0xc1_group6:
           frame: 0xC1 Group 6
@@ -7536,7 +7720,7 @@ fields:
       device_context: outdoor_unit
       unit: A
       alt_names:
-        midea_app: fanPeakCurrent
+        rev44: fanPeakCurrent
       protocols:
         rsp_0xc1_group6:
           frame: 0xC1 Group 6
@@ -7558,7 +7742,7 @@ fields:
       data_type: uint16
       device_context: outdoor_unit
       alt_names:
-        midea_app: torqueAdjustAngle
+        rev45: torqueAdjustAngle
       protocols:
         rsp_0xc1_group6:
           frame: 0xC1 Group 6
@@ -7582,7 +7766,7 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
-        midea_app: torqueAdjustValue
+        rev46: torqueAdjustValue
       protocols:
         rsp_0xc1_group6:
           frame: 0xC1 Group 6
@@ -7604,7 +7788,7 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
-        midea_app: adAdjustVoltage1
+        rev47: adAdjustVoltage1
       protocols:
         rsp_0xc1_group6:
           frame: 0xC1 Group 6
@@ -7626,7 +7810,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: upDnDaoFengTiaoStat
+        rev48: upDnDaoFengTiaoStat
       protocols:
         rsp_0xc1_group11:
           frame: 0xC1 Group 11
@@ -7648,7 +7832,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: ltRtDaoFengTiaoStat
+        rev49: ltRtDaoFengTiaoStat
       protocols:
         rsp_0xc1_group11:
           frame: 0xC1 Group 11
@@ -7670,7 +7854,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: TopDaoFengTiaoStat
+        rev50: TopDaoFengTiaoStat
       protocols:
         rsp_0xc1_group11:
           frame: 0xC1 Group 11
@@ -7692,7 +7876,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: upDnDaoFengTiaoCoolUpperLimit
+        rev51: upDnDaoFengTiaoCoolUpperLimit
       protocols:
         rsp_0xc1_group11:
           frame: 0xC1 Group 11
@@ -7714,7 +7898,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: upDnDaoFengTiaoCoolLowerLimit
+        rev52: upDnDaoFengTiaoCoolLowerLimit
       protocols:
         rsp_0xc1_group11:
           frame: 0xC1 Group 11
@@ -7736,7 +7920,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: upDnDaoFengTiaoHeatUpperLimit
+        rev53: upDnDaoFengTiaoHeatUpperLimit
       protocols:
         rsp_0xc1_group11:
           frame: 0xC1 Group 11
@@ -7758,7 +7942,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: upDnDaoFengTiaoHeatLowerLimit
+        rev54: upDnDaoFengTiaoHeatLowerLimit
       protocols:
         rsp_0xc1_group11:
           frame: 0xC1 Group 11
@@ -7780,7 +7964,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: upDnDaoFengTiaoCurAngle
+        rev55: upDnDaoFengTiaoCurAngle
       protocols:
         rsp_0xc1_group11:
           frame: 0xC1 Group 11
@@ -7802,7 +7986,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: ltRtDaoFengTiaoUpperLimit
+        rev56: ltRtDaoFengTiaoUpperLimit
       protocols:
         rsp_0xc1_group11:
           frame: 0xC1 Group 11
@@ -7824,7 +8008,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: ltRtDaoFengTiaoLowerLimit
+        rev57: ltRtDaoFengTiaoLowerLimit
       protocols:
         rsp_0xc1_group11:
           frame: 0xC1 Group 11
@@ -7846,7 +8030,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: ltRtDaoFengTiaoCurAngle
+        rev58: ltRtDaoFengTiaoCurAngle
       protocols:
         rsp_0xc1_group11:
           frame: 0xC1 Group 11
@@ -7869,7 +8053,7 @@ fields:
       device_context: indoor_unit
       unit: raw (x8 = RPM)
       alt_names:
-        midea_app: setRoomIWindSpeed
+        rev59: setRoomIWindSpeed
       protocols:
         rsp_0xc1_group2:
           frame: 0xC1 Group 2
@@ -7892,7 +8076,7 @@ fields:
       device_context: indoor_unit
       unit: raw (x8 = RPM)
       alt_names:
-        midea_app: roomIFengjiSpeed
+        rev60: roomIFengjiSpeed
       protocols:
         rsp_0xc1_group2:
           frame: 0xC1 Group 2
@@ -7914,7 +8098,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: roomIFaultState1
+        rev61: roomIFaultState1
       protocols:
         rsp_0xc1_group2:
           frame: 0xC1 Group 2
@@ -7936,7 +8120,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: roomIFaultState2
+        rev62: roomIFaultState2
       protocols:
         rsp_0xc1_group2:
           frame: 0xC1 Group 2
@@ -7958,7 +8142,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: roomIFaultState3
+        rev63: roomIFaultState3
       protocols:
         rsp_0xc1_group2:
           frame: 0xC1 Group 2
@@ -7980,7 +8164,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: roomILoadState1
+        rev64: roomILoadState1
       protocols:
         rsp_0xc1_group2:
           frame: 0xC1 Group 2
@@ -8002,7 +8186,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: roomILoadState2
+        rev65: roomILoadState2
       protocols:
         rsp_0xc1_group2:
           frame: 0xC1 Group 2
@@ -8025,7 +8209,7 @@ fields:
       device_context: indoor_unit
       unit: d
       alt_names:
-        midea_app: powerOnDay
+        rev66: powerOnDay
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
@@ -8049,7 +8233,7 @@ fields:
       device_context: indoor_unit
       unit: h
       alt_names:
-        midea_app: powerOnHour
+        rev67: powerOnHour
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
@@ -8072,7 +8256,7 @@ fields:
       device_context: indoor_unit
       unit: min
       alt_names:
-        midea_app: powerOnMin
+        rev68: powerOnMin
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
@@ -8095,7 +8279,7 @@ fields:
       device_context: indoor_unit
       unit: s
       alt_names:
-        midea_app: powerOnSec
+        rev69: powerOnSec
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
@@ -8120,7 +8304,7 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        midea_app: totalWorkedDay
+        rev70: totalWorkedDay
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
@@ -8146,7 +8330,7 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        midea_app: totalWorkedHour
+        rev71: totalWorkedHour
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
@@ -8171,7 +8355,7 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        midea_app: totalWorkedMin
+        rev72: totalWorkedMin
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
@@ -8196,7 +8380,7 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        midea_app: totalWorkedSec
+        rev73: totalWorkedSec
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
@@ -8221,7 +8405,7 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        midea_app: curWorkedDay
+        rev74: curWorkedDay
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
@@ -8247,7 +8431,7 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        midea_app: curWorkedHour
+        rev75: curWorkedHour
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
@@ -8272,7 +8456,7 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        midea_app: curWorkedMin
+        rev76: curWorkedMin
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
@@ -8297,7 +8481,7 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        midea_app: curWorkedSec
+        rev77: curWorkedSec
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
@@ -8479,7 +8663,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: modeQuery
+        rev78: modeQuery
       protocols:
         rsp_0xb1:
           frame: 0xB1 Property Response
@@ -8500,7 +8684,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: indoorHumidity
+        rev79: indoorHumidity
       protocols:
         rsp_0xb1:
           frame: 0xB1 Property Response
@@ -8521,7 +8705,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_app: hasICheck
+        rev80: hasICheck
       protocols:
         rsp_0xb1:
           frame: 0xB1 Property Response
@@ -8566,7 +8750,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: drTimeMinutes
+        rev81: drTimeMinutes
       protocols:
         rsp_0xb1:
           frame: 0xB1 Property Response
@@ -8587,7 +8771,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: drTimeHours
+        rev82: drTimeHours
       protocols:
         rsp_0xb1:
           frame: 0xB1 Property Response
@@ -8608,7 +8792,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_app: remoteControlValue
+        rev83: remoteControlValue
       protocols:
         rsp_0xb1:
           frame: 0xB1 Property Response
@@ -8630,7 +8814,7 @@ fields:
       device_context: indoor_unit
       unit: µg/m³
       alt_names:
-        midea_app: pm25Value
+        rev84: pm25Value
       protocols:
         rsp_0xb1:
           frame: 0xB1 Property Response
@@ -8652,7 +8836,7 @@ fields:
       data_type: uint16
       device_context: indoor_unit
       alt_names:
-        midea_app: operatingTime
+        rev85: operatingTime
       protocols:
         rsp_0xb1:
           frame: 0xB1 Property Response

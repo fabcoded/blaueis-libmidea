@@ -20,6 +20,7 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 SPEC = Path(__file__).resolve().parent.parent / "src" / "blaueis" / "core" / "data"
@@ -29,6 +30,10 @@ TESTS = Path(__file__).resolve().parent / "test-cases"
 # subtree. We add it to sys.path so we can import the clean public API
 # without referencing any upstream file names or function names.
 _ORACLE_DIR = Path(__file__).resolve().parents[5] / "blaueis-research" / "internal-tests" / "lua"
+
+# This module is an opt-in developer harness: the reference oracle it
+# cross-checks against is not bundled in the public repo. Skip when absent.
+pytestmark = pytest.mark.skipif(not _ORACLE_DIR.exists(), reason="oracle data unavailable (private)")
 
 
 def _load_oracle():

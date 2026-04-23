@@ -46,10 +46,12 @@ cd packages/blaueis-client  && python3 -m pytest      # 147
 
 ## Documentation
 
+- [`packages/blaueis-core/src/blaueis/core/data/glossary.yaml`](packages/blaueis-core/src/blaueis/core/data/glossary.yaml) — field glossary: every field the library reads or writes, with units, ranges, availability, and capability gating. Self-documenting — read it directly; the file header explains the schema.
 - [docs/architecture.md](docs/architecture.md) — package map, dependencies, logger names.
 - [docs/ws_protocol.md](docs/ws_protocol.md) — WebSocket wire reference (every frame type).
 - [docs/operations.md](docs/operations.md) — install, systemd, config, update, debug, troubleshoot.
 - [docs/flight_recorder.md](docs/flight_recorder.md) — rolling in-memory debug buffer (design + rationale).
+- [docs/status_db.md](docs/status_db.md) — status dictionary schema and merge logic.
 
 > **A note on the name.** Blaueis is a small glacier in the Bavarian Alps,
 > retreating year by year. Use energy responsibly — climate change is real.
@@ -57,9 +59,33 @@ cd packages/blaueis-client  && python3 -m pytest      # 147
 Not affiliated with any commercial entity or the Berchtesgaden National
 Park administration.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) — covers setup, test expectations, the citation rule, and what good PRs look like.
+
+## Related projects in this ecosystem
+
+Blaueis is an umbrella of open-protocol HVAC tooling. Sibling repos:
+
+- [blaueis-ha-midea](https://github.com/fabcoded/blaueis-ha-midea) — Home Assistant custom integration that consumes this library via a gateway.
+- [blaueis-esphome](https://github.com/fabcoded/blaueis-esphome) — ESPHome external component porting the gateway protocol to ESP32 (placeholder, not yet implemented).
+- [blaueis-hvacshark](https://github.com/fabcoded/blaueis-hvacshark) — Wireshark Lua dissector, live-capture dongle, and protocol specifications.
+- [blaueis-hvacshark-traces](https://github.com/fabcoded/blaueis-hvacshark-traces) — capture sessions and offline-analysis scripts used to derive the protocol.
+
 ## Acknowledgments
 
-Protocol knowledge in this library builds on community research, own hardware captures, and publicly available documentation.
+Protocol knowledge in this library builds on community research, own hardware captures, and publicly available documentation. A deep thank you to the open-source and home-automation community — especially the contributors around **Home Assistant** and the broader maker community — for their tireless research work and for publishing their findings openly.
+
+Community projects that materially informed this work:
+
+- [dudanov/MideaUART](https://github.com/dudanov/MideaUART) — ESP/Arduino library for Midea UART, especially thorough on 0xC0 / 0x40 frame decoding.
+- [chemelli74/midea-local](https://github.com/chemelli74/midea-local) — Python client for the Midea LAN protocol; deep capability (B5) reference.
+- [reneklootwijk/node-mideahvac](https://github.com/reneklootwijk/node-mideahvac) — Node.js driver covering multiple Midea product families.
+- [NeoAcheron/midea-ac-py](https://github.com/NeoAcheron/midea-ac-py) — early Python Midea AC implementation and historical reference.
+- [wuwentao/midea_ac_lan](https://github.com/wuwentao/midea_ac_lan) — HA integration covering broad Midea device coverage.
+- Countless forum threads, GitHub issues, and pull requests in the HA and ESPHome communities.
+
+If you believe your work is referenced here without proper attribution, or you have licensing concerns, please open an issue — we will respond promptly.
 
 ## License
 
