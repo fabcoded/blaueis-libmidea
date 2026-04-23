@@ -348,6 +348,10 @@
           "$ref": "#/$defs/ux_block",
           "description": "UX-layer metadata: mode visibility fencing, hardware capability gating, provenance. Consumed by the mode gate (StatusDB), command builder UX masking, and HA entity visibility."
         },
+        "ha": {
+          "$ref": "#/$defs/ha_block",
+          "description": "Home Assistant entity metadata: device_class, state_class, unit, precision, entity_category, enabled_default, off_behavior. Consumed by the HA integration's per-platform entity classes (sensor, binary_sensor, switch, select, number)."
+        },
         "mutual_exclusion": {
           "$ref": "#/$defs/mutual_exclusion",
           "description": "Cross-field validity constraints: 'when this field is on, force these other fields to these values' (and inverse for when_off). Sourced from the gating analyzer's forced-state cascades. See serial_glossary_guide.md Part 3 — mutual_exclusion."
@@ -819,6 +823,45 @@
         "_inferred_reason": { "type": "string" },
         "_needs_review": { "type": "boolean" },
         "_source": { "type": "string" }
+      }
+    },
+    "ha_block": {
+      "type": "object",
+      "description": "Home Assistant entity metadata. All keys optional; consumed by the HA integration when present.",
+      "additionalProperties": false,
+      "properties": {
+        "device_class": {
+          "type": "string",
+          "description": "HA SensorDeviceClass / BinarySensorDeviceClass string (e.g. 'energy', 'power', 'temperature', 'running')."
+        },
+        "state_class": {
+          "type": "string",
+          "enum": ["measurement", "total", "total_increasing"],
+          "description": "HA SensorStateClass. 'total_increasing' is the Energy Dashboard contract for cumulative counters."
+        },
+        "unit_of_measurement": {
+          "type": "string",
+          "description": "HA-facing display unit. May differ from the protocol `unit` field."
+        },
+        "suggested_display_precision": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of decimal digits to show in the UI."
+        },
+        "entity_category": {
+          "type": "string",
+          "enum": ["config", "diagnostic"],
+          "description": "HA entity category; places the entity under Configuration or Diagnostics."
+        },
+        "enabled_default": {
+          "type": "boolean",
+          "description": "When false, the entity is created but disabled by default in the HA registry."
+        },
+        "off_behavior": {
+          "type": "string",
+          "enum": ["hide", "available"],
+          "description": "Read policy when AC power=off. 'hide' masks the value to None (default); 'available' returns the device's reported value unchanged — used for always-valid thermistors, error codes, and cumulative counters."
+        }
       }
     },
     "category_group": {
