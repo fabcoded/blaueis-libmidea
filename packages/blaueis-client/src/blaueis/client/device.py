@@ -157,6 +157,24 @@ class Device:
         self.on_disconnected: Callable[[], None] | None = None
         self.on_gateway_stats: Callable[[dict], None] | None = None
 
+        # ── Frame observers ────────────────────────────────
+        # Low-level hook surface: each observer is called synchronously
+        # from ``_process_frame`` with (protocol_key, body_bytes) for
+        # every non-malformed frame the WS delivers, *before* the normal
+        # decode-and-ingest path runs. Use-case: cap-agnostic "shadow"
+        # decoders (see blaueis.core.inventory.ShadowDecoder).
+        #
+        # Contract:
+        #   - Observers must not block — they run on the ingress path.
+        #   - Exceptions are logged and swallowed; one observer's crash
+        #     never suppresses the others or the normal ingest path.
+        #   - Observers may not mutate the body bytes (we pass a copy).
+        #
+        # The coordinator-level ``IngressHook`` (HA integration) is a
+        # *different* surface that fires post-decode, post-status-update;
+        # these two exist side-by-side for different audiences.
+        self._frame_observers: list[Callable[[str, bytes], None]] = []
+
         # ── B5 state machine ───────────────────────────────
         self._b5_state: str = "idle"  # idle | waiting | done
         self._b5_next_frame: bool = False  # set by frame handler
@@ -651,6 +669,22 @@ class Device:
                 except Exception:
                     log.exception("on_gateway_stats callback error")
 
+    def register_frame_observer(self, cb: Callable[[str, bytes], None]) -> None:
+        """Attach a synchronous observer that receives every decoded
+        frame as ``(protocol_key, body_bytes)``. See ``_frame_observers``
+        in ``__init__`` for the full contract.
+
+        Idempotent — an observer already registered is not added twice.
+        """
+        if cb not in self._frame_observers:
+            self._frame_observers.append(cb)
+
+    def unregister_frame_observer(self, cb: Callable[[str, bytes], None]) -> None:
+        """Remove a previously-registered frame observer. Safe to call
+        with an observer that was never registered (no-op)."""
+        if cb in self._frame_observers:
+            self._frame_observers.remove(cb)
+
     def _process_frame(self, hex_str: str):
         """Decode a received frame and route to the status database.
 
@@ -667,6 +701,19 @@ class Device:
             protocol_key = identify_frame(body)
 
             log.debug("RX %s (%dB)", protocol_key, len(body))
+
+            # Fan out to frame observers BEFORE the normal ingest path.
+            # Observers see raw body + protocol_key with no cap-gating
+            # or status-layer filtering applied. Exceptions are caught
+            # so one observer's crash never affects the others or the
+            # normal ingest.
+            if self._frame_observers:
+                body_copy = bytes(body)
+                for obs in list(self._frame_observers):
+                    try:
+                        obs(protocol_key, body_copy)
+                    except Exception as e:
+                        log.debug("frame observer %r raised: %s", obs, e)
 
             if protocol_key == "rsp_0xb5":
                 next_frame = process_b5(self._status, body, self._glossary, timestamp=ts)

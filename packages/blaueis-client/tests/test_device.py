@@ -275,3 +275,75 @@ def test_available_fields_structure():
     assert "writable" in power
     assert "feature_available" in power
     assert power["data_type"] == "bool"
+
+
+# ── Frame observer hook ────────────────────────────────────
+
+
+def test_frame_observer_receives_protocol_key_and_body():
+    """Observer is called synchronously with the decoded body bytes."""
+    d = _make_device()
+    seen: list[tuple[str, bytes]] = []
+    d.register_frame_observer(lambda pk, body: seen.append((pk, body)))
+    d._process_frame(C0_STATUS_HEX)
+    assert len(seen) == 1
+    protocol_key, body = seen[0]
+    assert protocol_key == "rsp_0xc0"
+    assert body[0] == 0xC0
+
+
+def test_frame_observer_register_is_idempotent():
+    d = _make_device()
+    cb = lambda pk, body: None  # noqa: E731
+    d.register_frame_observer(cb)
+    d.register_frame_observer(cb)  # second registration is a no-op
+    assert d._frame_observers.count(cb) == 1
+
+
+def test_frame_observer_unregister_works_and_is_safe_for_unknown():
+    d = _make_device()
+    calls = []
+    cb = lambda pk, body: calls.append(pk)  # noqa: E731
+    d.register_frame_observer(cb)
+    d._process_frame(C0_STATUS_HEX)
+    assert len(calls) == 1
+    d.unregister_frame_observer(cb)
+    d._process_frame(C0_STATUS_HEX)
+    assert len(calls) == 1  # unchanged
+    # Unregistering an unknown observer is a no-op, not an error.
+    d.unregister_frame_observer(cb)
+
+
+def test_frame_observer_exception_does_not_break_ingest():
+    """One observer crashing must not suppress other observers or the
+    normal ingest path."""
+    d = _make_device()
+    other = []
+
+    def bad(pk, body):
+        raise RuntimeError("boom")
+
+    def good(pk, body):
+        other.append(pk)
+
+    d.register_frame_observer(bad)
+    d.register_frame_observer(good)
+    # Should not raise:
+    d._process_frame(C0_STATUS_HEX)
+    assert other == ["rsp_0xc0"]
+
+
+def test_frame_observer_receives_bytes_copy():
+    """Observer receives an immutable bytes copy — can't accidentally
+    mutate the ingress body."""
+    d = _make_device()
+    captures = []
+
+    def capture(pk, body):
+        captures.append(body)
+
+    d.register_frame_observer(capture)
+    d._process_frame(C0_STATUS_HEX)
+    assert captures and isinstance(captures[0], bytes)
+    with pytest.raises(TypeError):
+        captures[0][0] = 0  # type: ignore[index]
