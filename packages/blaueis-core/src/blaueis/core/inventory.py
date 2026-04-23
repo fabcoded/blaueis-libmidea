@@ -438,6 +438,7 @@ class OverrideSnippet:
     reason: str  # human-readable "why this is hidden today"
     picked_variant: Variant | None
     is_guessed: bool  # True when the encoding choice wasn't firmly discriminated
+    picked_value: Any  # effective value being claimed: variant value for cap-fields, direct value otherwise
     ha_metadata: dict[str, Any]
     override_dict: dict  # the override as a nested dict, schema-validatable
     yaml_text: str  # the same override rendered as YAML, ready to paste
@@ -450,17 +451,25 @@ def synthesize_override_snippet(
     body: bytes,
     glossary: dict,
     cap_records: list[dict] | None,
+    current_value: Any = None,
 ) -> OverrideSnippet | None:
     """Build a copy-paste-ready glossary-override snippet for a single
     populated-but-hidden field, or ``None`` if no snippet is warranted.
 
+    ``current_value`` is the caller's decoded value for the field in
+    the current scan (from :class:`FieldState.value`). For non-cap
+    fields, this is the effective value the override unlocks; if it
+    is ``None`` or zero the snippet is skipped (nothing meaningful
+    to unlock). For cap-dependent fields, the value is taken from
+    the picked variant instead.
+
     Returns ``None`` when:
       - field's ``feature_available`` is already ``always`` / ``readable``
         (nothing to unlock);
-      - no cap-value entry matches the device's reported cap byte AND the
-        field is cap-gated (fallback field-level override would be guessed
-        territory);
-      - the multi-variant decoder produced no usable variant;
+      - field is cap-dependent and the multi-variant decoder produced
+        no usable variant;
+      - field is *not* cap-dependent and ``current_value`` is ``None``
+        or zero (no real data to unlock);
       - the generated YAML fails schema validation (caller logs + drops).
 
     Callers should pair this with :func:`classify`-based filtering so
@@ -484,10 +493,18 @@ def synthesize_override_snippet(
     variants: list[Variant] = []
     picked: Variant | None = None
     is_guessed = False
+    effective_value: Any = current_value
     if is_cap_dependent:
         variants = decode_variants(field_name, field_def, protocol_key, body, glossary)
         picked, is_guessed = pick_variant(variants, field_def)
         if picked is None or picked.encoding is None:
+            return None
+        effective_value = picked.value
+    else:
+        # Non-cap-dependent field: skip if there's no meaningful current
+        # value. Stops us from emitting snippets that would unlock a
+        # field the device never populates anyway.
+        if effective_value in (None, 0, 0.0, False, ""):
             return None
 
     matched_name = _matched_cap_value_name(cap_def, cap_records)
@@ -566,6 +583,7 @@ def synthesize_override_snippet(
         reason=reason,
         picked_variant=picked,
         is_guessed=is_guessed,
+        picked_value=effective_value,
         ha_metadata=ha_meta,
         override_dict=override,
         yaml_text=yaml_text,
@@ -822,7 +840,7 @@ def generate_json_sidecar(
                 "category": s.category,
                 "reason": s.reason,
                 "picked_encoding": s.picked_variant.encoding if s.picked_variant else None,
-                "picked_value": _serialise_value(s.picked_variant.value) if s.picked_variant else None,
+                "picked_value": _serialise_value(s.picked_value),
                 "is_guessed": s.is_guessed,
                 "ha_metadata": s.ha_metadata,
                 "yaml_snippet": s.yaml_text,
@@ -905,6 +923,8 @@ def generate_markdown_report(
                     f"via `{snip.picked_variant.encoding}` encoding"
                     + (" (guessed — verify against a physical meter)" if snip.is_guessed else "")
                 )
+            elif snip.picked_value is not None:
+                lines.append(f"- **Live-decoded value:** `{_serialise_value(snip.picked_value)}`")
             lines.append(f"- **Reason:** {snip.reason}")
             lines.append("")
             lines.append("```yaml")

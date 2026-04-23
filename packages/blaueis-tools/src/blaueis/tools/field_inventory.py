@@ -258,7 +258,15 @@ async def run_scan(args) -> int:
             field_def = walk.get(fname)
             if field_def is None or state.frame is None or state.body is None:
                 continue
-            snip = synthesize_override_snippet(fname, field_def, state.frame, state.body, glossary, cap_records)
+            snip = synthesize_override_snippet(
+                fname,
+                field_def,
+                state.frame,
+                state.body,
+                glossary,
+                cap_records,
+                current_value=state.value,
+            )
             if snip is not None:
                 suggested.append(snip)
 
