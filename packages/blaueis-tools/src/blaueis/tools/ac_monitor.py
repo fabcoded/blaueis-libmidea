@@ -524,7 +524,7 @@ async def run_monitor(args):
     status = build_status(device=args.host, glossary=glossary)
 
     session_ts = time.strftime("%Y-%m-%d_%H-%M-%S")
-    db_path = Path(__file__).resolve().parent / f"{session_ts}_out.json"
+    db_path = Path.cwd() / f"{session_ts}_out.json"
     save_status(status, db_path)
 
     print("=== HVAC Live Monitor ===")

@@ -7,3 +7,11 @@ build/
 *.egg
 .pytest_cache/
 .ruff_cache/
+
+# Output artefacts from the research / live-scan CLI tools.
+# ac_probe.py writes {timestamp}_probe.json, ac_monitor.py writes
+# {timestamp}_out.json; both default to cwd, so users running from
+# the repo root will leak these files. Belt-and-braces ignore so a
+# stray run never gets committed.
+*_probe.json
+*_out.json

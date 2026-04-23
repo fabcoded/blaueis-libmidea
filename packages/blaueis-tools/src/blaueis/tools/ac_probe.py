@@ -174,7 +174,7 @@ async def probe(args):
     glossary = load_glossary()
 
     session_ts = time.strftime("%Y-%m-%d_%H-%M-%S")
-    db_path = Path(__file__).resolve().parent / f"{session_ts}_probe.json"
+    db_path = Path.cwd() / f"{session_ts}_probe.json"
 
     # Build the ordered list of (label, frame_bytes) probes.
     probes: list[tuple[str, bytes]] = []
