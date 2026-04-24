@@ -864,12 +864,25 @@ def generate_markdown_report(
         counts[state.classification] += 1
 
     meta_version = glossary.get("meta", {}).get("version", "unknown")
-    now = datetime.now(UTC).isoformat()
+    now_dt = datetime.now(UTC)
+    now = now_dt.isoformat()
+    # Human-readable timestamp line for the top-of-file comment:
+    # "2026-04-24 01:05:00 UTC" — obvious at a glance, unambiguous about
+    # timezone, no ISO confusion for readers who don't think in ISO.
+    now_human = now_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
     n_queries = len({obs.protocol_key for obs in result.observations})
     n_responses = len(result.observations)
     n_ff = sum(1 for obs in result.observations if obs.ff_flood)
 
     lines: list[str] = []
+    # Leading HTML comment — survives as plain text in any markdown
+    # viewer; users can see when the report was generated without
+    # parsing the JSON sidecar or opening diagnostics.
+    lines.append(
+        f"<!-- Field inventory generated {now_human} "
+        f'(label: "{label}") -->'
+    )
+    lines.append("")
     lines.append(f"# Field inventory — {label}")
     lines.append("")
     if host:

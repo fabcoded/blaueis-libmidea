@@ -398,8 +398,10 @@ def test_generate_markdown_report_shape(glossary):
     result = sd.snapshot(cap_records=Q11_CAP_0x16_0)
     md = generate_markdown_report(result, glossary, label="test", host="192.168.210.30")
 
-    # Structural sanity.
-    assert md.startswith("# Field inventory — test")
+    # Structural sanity — starts with an HTML timestamp comment, then
+    # the H1 heading follows.
+    assert md.startswith("<!-- Field inventory generated ")
+    assert "# Field inventory — test" in md
     assert "## Summary by classification" in md
     assert "## Populated fields" in md
     assert "## Zero-valued fields" in md
