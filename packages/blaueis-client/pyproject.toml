@@ -21,3 +21,12 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# ``pytest-homeassistant-custom-component`` is installed in this dev env
+# to support ha-midea integration tests. Pytest auto-discovers any
+# installed plugin, and phcc's ``pytest_runtest_setup`` hook calls
+# ``pytest_socket.disable_socket()`` unconditionally — correct for an
+# HA integration test, but blocks our own ``test_device_live.py`` which
+# legitimately opens a socket to talk to the gateway. libmidea is not
+# an HA test suite, so we drop both plugins at the runner level. They
+# stay installed; they're just not active when running libmidea tests.
+addopts = "-p no:homeassistant -p no:socket"

@@ -3,6 +3,15 @@
 Requires gateway at 192.168.210.30:8765. Skipped in CI.
 
 Usage:  python -m pytest packages/blaueis-client/tests/test_device_live.py -v -s
+
+Note on pytest-socket: ``pytest-homeassistant-custom-component`` is
+installed in this dev env to support ha-midea integration tests, and
+pytest auto-loads its plugin, which calls ``pytest_socket.disable_socket()``
+on every test. That's correct for an HA integration test, but blocks
+this file. We disable both plugins via the package's ``pyproject.toml``
+``addopts``: ``-p no:homeassistant -p no:socket``. libmidea is not an
+HA test suite, so dropping them at the runner level is the right
+boundary.
 """
 
 import asyncio
@@ -34,7 +43,7 @@ async def _can_reach_gateway() -> bool:
 
 @pytest.fixture(scope="module")
 def gateway_available():
-    reachable = asyncio.get_event_loop().run_until_complete(_can_reach_gateway())
+    reachable = asyncio.run(_can_reach_gateway())
     if not reachable:
         pytest.skip(f"Gateway not reachable at {GATEWAY_HOST}:{GATEWAY_PORT}")
 
