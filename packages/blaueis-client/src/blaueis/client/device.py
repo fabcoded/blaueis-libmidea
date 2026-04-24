@@ -32,7 +32,6 @@ from blaueis.client.ws_client import HvacClient
 from blaueis.core.codec import (
     identify_frame,
     load_glossary,
-    walk_fields,
 )
 from blaueis.core.crypto import psk_to_bytes
 from blaueis.core.frame import (
@@ -241,8 +240,12 @@ class Device:
         return self._status["meta"].get("b5_received", False)
 
     def field_gdef(self, name: str) -> dict | None:
-        """Return the full glossary definition for a field (or None)."""
-        return walk_fields(self._glossary).get(name)
+        """Return the full glossary definition for a field (or None).
+
+        Reads from the StatusDB's cached flat view (built once at init,
+        lifetime-bound to the glossary). No O(fields) walk per call.
+        """
+        return self._db.field_flat.get(name)
 
     def caps_bitmap(self) -> dict:
         """B5-derived capability flags, keyed by name. Stub today — returns
@@ -255,7 +258,7 @@ class Device:
     def available_fields(self) -> dict[str, dict]:
         """Fields confirmed available by B5 or marked 'always'/'readable'."""
         result = {}
-        all_fields = walk_fields(self._glossary)
+        all_fields = self._db.field_flat
         for name, fdata in self._status["fields"].items():
             fa = fdata.get("feature_available", "never")
             if fa in ("never", "capability"):
@@ -305,7 +308,7 @@ class Device:
         This is the single source of truth — no external registration needed.
         """
         needed: set[str] = set()
-        all_fields = walk_fields(self._glossary)
+        all_fields = self._db.field_flat
         b1_prop_ids: list[tuple[int, int]] = []
         b1_seen: set[tuple[int, int]] = set()
 

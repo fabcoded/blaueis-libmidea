@@ -30,21 +30,14 @@ def test_parse_junk_returns_none() -> None:
 
 # ── Device._compute_required_queries emits B1 batch keys ────────────────
 
-@pytest.fixture(autouse=True)
-def _restore_walk_fields():
-    """Each B1 test patches walk_fields in the device module — restore after."""
-    import blaueis.client.device as mod
-    orig = mod.walk_fields
-    yield
-    mod.walk_fields = orig
-
 
 def _patch_device_with_b1_fields(dev: Device, prop_ids: list[tuple[int, int]]) -> None:
     """Install enough fake state so _compute_required_queries sees B1 fields.
 
-    Stubs the status DB and patches `walk_fields` in the device module so
-    every prop_id becomes a distinct field with a readable B1 decode entry.
-    The autouse fixture above restores `walk_fields` after each test.
+    Stubs the status DB and installs a minimal ``_db`` double that
+    exposes a ``field_flat`` dict. ``_compute_required_queries`` reads
+    from ``self._db.field_flat``, which is the cached flat view
+    StatusDB builds once at __init__. Here we inject the fake directly.
     """
     dev._status = {"fields": {}, "meta": {}}
     fake_glossary: dict[str, dict] = {}
@@ -65,8 +58,9 @@ def _patch_device_with_b1_fields(dev: Device, prop_ids: list[tuple[int, int]]) -
             },
         }
 
-    import blaueis.client.device as mod
-    mod.walk_fields = lambda _glossary: fake_glossary
+    from types import SimpleNamespace
+
+    dev._db = SimpleNamespace(field_flat=fake_glossary)
     dev._glossary = {"_stub": True}
 
 

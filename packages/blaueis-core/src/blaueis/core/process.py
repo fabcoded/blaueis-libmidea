@@ -159,7 +159,14 @@ def finalize_capabilities(status: dict, glossary: dict):
 # ── Data frame processing (C0, C1, A1) ───────────────────────────────────
 
 
-def process_data_frame(status: dict, body: bytes, protocol_key: str, glossary: dict, timestamp: str | None = None):
+def process_data_frame(
+    status: dict,
+    body: bytes,
+    protocol_key: str,
+    glossary: dict,
+    timestamp: str | None = None,
+    field_map: list[dict] | None = None,
+):
     """Process a data frame (C0/C1/A1) and update field values in the status.
 
     Each decoded field gets a slot under `field["sources"][protocol_key]`
@@ -167,9 +174,16 @@ def process_data_frame(status: dict, body: bytes, protocol_key: str, glossary: d
     keys keep distinct slots — rsp_0xc1_group4 and rsp_0xc1_sub02 do not
     share storage. Reads go through field_query.read_field(), which
     walks the slots via a priority list of scopes.
+
+    ``field_map`` is forwarded to :func:`decode_frame_fields`. Supply it
+    from a caller-owned cache (e.g. ``StatusDB._field_map_cache``) to
+    skip the O(fields) ``build_field_map`` walk on every frame. Omit it
+    for one-shot / CLI callers — the decode path rebuilds automatically.
     """
     cap_records = status.get("capabilities_raw")
-    decoded = decode_frame_fields(body, protocol_key, glossary, cap_records=cap_records)
+    decoded = decode_frame_fields(
+        body, protocol_key, glossary, cap_records=cap_records, field_map=field_map
+    )
 
     ts = timestamp or datetime.now(UTC).isoformat()
     generation = infer_generation(protocol_key, glossary)

@@ -545,7 +545,11 @@ def identify_frame(body: bytes) -> str:
 
 
 def decode_frame_fields(
-    body: bytes, protocol_key: str, glossary: dict, cap_records: list | None = None
+    body: bytes,
+    protocol_key: str,
+    glossary: dict,
+    cap_records: list | None = None,
+    field_map: list[dict] | None = None,
 ) -> dict[str, dict]:
     """Decode all fields from a frame body for the given protocol key.
 
@@ -554,10 +558,25 @@ def decode_frame_fields(
     TLV record; ``offset``/``bits`` then apply relative to the record's
     data bytes rather than the frame body.
 
+    ``field_map`` (optional): pre-built output of
+    :func:`build_field_map`. Callers decoding many frames for the same
+    ``(glossary, protocol_key)`` can amortise the ``build_field_map``
+    O(fields) walk by computing it once and passing it in. If omitted
+    we rebuild on every call (the CLI / one-shot path).
+
+    Cache-invalidation contract: the caller owns ``field_map``
+    lifetime. When the glossary is replaced (HA config-entry reload)
+    the caller must drop its cache and rebuild. Binding to an owning
+    object (``StatusDB`` in this codebase) is the safe pattern.
+    Module-level caches keyed by ``id(glossary)`` are NOT safe — Python
+    can recycle ids after GC of the old glossary, and a stale cache
+    entry would silently apply the old map to the new glossary.
+
     Returns {field_name: {"value": decoded_value, "raw": raw_value}}.
     """
     encodings = glossary.get("encodings", {})
-    field_map = build_field_map(glossary, protocol_key)
+    if field_map is None:
+        field_map = build_field_map(glossary, protocol_key)
 
     # Pre-parse TLV for property-protocol frames
     record_by_prop: dict[str, bytes] | None = None

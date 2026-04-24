@@ -14,7 +14,7 @@ import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from blaueis.core.codec import load_glossary, walk_fields
+from blaueis.core.codec import build_field_map, load_glossary, walk_fields
 from blaueis.core.command import build_b0_command_body, build_command_body
 from blaueis.core.frame import build_frame
 from blaueis.core.process import process_data_frame
@@ -46,6 +46,18 @@ class StatusDB:
         self._pending_events: list[tuple[str, object, object]] = []
         self.on_state_change: Callable[[str, object, object], None] | None = None
 
+        # ── Decode caches (bound to glossary lifetime) ──────
+        # ``_field_flat`` is the flat {name: field_def} view of the
+        # glossary — immutable for the lifetime of this StatusDB since
+        # the glossary dict never mutates in place. Built once eagerly
+        # to keep later Device-level getters O(1).
+        # ``_field_map_cache`` is populated lazily on first decode of
+        # each protocol_key. Bound to this object; dies with it on
+        # config-entry reload, so stale cache can never cross into a
+        # freshly-loaded glossary. That's the invalidation story.
+        self._field_flat: dict[str, dict] = walk_fields(glossary)
+        self._field_map_cache: dict[str, list[dict]] = {}
+
     @property
     def status(self) -> dict:
         return self._status
@@ -53,6 +65,14 @@ class StatusDB:
     @property
     def glossary(self) -> dict:
         return self._glossary
+
+    @property
+    def field_flat(self) -> dict[str, dict]:
+        """Flat {name: field_def} view of the glossary. Built once at
+        ``__init__`` time; stable for the StatusDB's lifetime. Safe for
+        read-only iteration by hot-path callers that would otherwise
+        call ``walk_fields(self._glossary)`` repeatedly."""
+        return self._field_flat
 
     # ── READ (lock-free) ──────────────────────────────────
 
@@ -82,9 +102,16 @@ class StatusDB:
             timestamp = datetime.now(UTC).isoformat()
         async with self._lock:
             snapshot = self._snapshot(available_fields)
+            # Fetch or populate the cached field_map for this protocol.
+            # First frame of a given protocol pays the build_field_map
+            # cost; every subsequent frame is a dict lookup.
+            fm = self._field_map_cache.get(protocol_key)
+            if fm is None:
+                fm = build_field_map(self._glossary, protocol_key)
+                self._field_map_cache[protocol_key] = fm
             process_data_frame(
                 self._status, body, protocol_key, self._glossary,
-                timestamp=timestamp,
+                timestamp=timestamp, field_map=fm,
             )
             self._detect_changes(snapshot, available_fields)
         self._flush_events()
