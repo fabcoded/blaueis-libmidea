@@ -22,9 +22,9 @@ from blaueis.client.device import Device
 
 GATEWAY_HOST = os.environ.get("BLAUEIS_GW_HOST", "192.168.210.30")
 GATEWAY_PORT = int(os.environ.get("BLAUEIS_GW_PORT", "8765"))
-GATEWAY_PSK = os.environ.get(
-    "BLAUEIS_GW_PSK", "YG23aC3EWkdmabs2Pc5eWL7vR77fUtY2mzyiwJqglVsB"
-)
+# PSK has no default — pass via env var to keep credentials out of source.
+# Tests skip cleanly when the env var isn't set (handshake fails fast).
+GATEWAY_PSK = os.environ.get("BLAUEIS_GW_PSK", "")
 
 pytestmark = pytest.mark.asyncio
 
@@ -43,6 +43,13 @@ async def _can_reach_gateway() -> bool:
 
 @pytest.fixture(scope="module")
 def gateway_available():
+    if not GATEWAY_PSK:
+        pytest.skip(
+            "BLAUEIS_GW_PSK env var not set — live tests skipped. "
+            "Export it from your local credentials store (e.g. "
+            "``source gateway.local`` then ``export BLAUEIS_GW_PSK=$PSK``) "
+            "to enable."
+        )
     reachable = asyncio.run(_can_reach_gateway())
     if not reachable:
         pytest.skip(f"Gateway not reachable at {GATEWAY_HOST}:{GATEWAY_PORT}")
