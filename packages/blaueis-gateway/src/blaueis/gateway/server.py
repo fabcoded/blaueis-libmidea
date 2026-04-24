@@ -71,6 +71,14 @@ def _get_version() -> str:
 # Resolved once at startup
 GW_VERSION = _get_version()
 
+# Capture process start time at module import. Distinguishes a gateway-
+# service restart (this value jumps forward) from a Pi reboot (the
+# kernel-level ``uptime_s`` resets too). Subscribers reading
+# ``pi_status`` can spot mid-life service restarts that wouldn't show
+# in system uptime — e.g. ``systemctl restart blaueis-gw`` or an OOM
+# kill.
+_PROCESS_START_EPOCH: float = time.time()
+
 
 # ── Configuration ─────────────────────────────────────────────────────────
 
@@ -170,7 +178,16 @@ def load_config(global_path: str = None, instance_path: str = None, legacy_path:
 
 
 def get_pi_stats() -> dict:
-    """Collect Raspberry Pi system stats."""
+    """Collect Raspberry Pi system stats.
+
+    ``uptime_s`` is the *kernel* uptime — resets only on Pi reboot.
+    ``process_uptime_s`` / ``process_started_at`` track the *gateway
+    process* — they reset on every service restart, OOM-kill, deploy,
+    etc. The pair lets a subscriber tell those two cases apart, which
+    matters for diagnosing "did the user lose connectivity because the
+    Pi rebooted, or because the gateway crashed?".
+    """
+    now = time.time()
     stats = {
         "type": "pi_status",
         "uptime_s": 0,
@@ -179,6 +196,12 @@ def get_pi_stats() -> dict:
         "ram_used_mb": 0,
         "temp_c": 0,
         "platform": platform.machine(),
+        # Unix epoch seconds. Subscribers that want a human-readable
+        # form convert with ``datetime.fromtimestamp(..., UTC)``. Float
+        # rather than int so sub-second start times survive round-trip
+        # through JSON for clients that care.
+        "process_started_at": _PROCESS_START_EPOCH,
+        "process_uptime_s": int(now - _PROCESS_START_EPOCH),
     }
     try:
         with open("/proc/uptime") as f:

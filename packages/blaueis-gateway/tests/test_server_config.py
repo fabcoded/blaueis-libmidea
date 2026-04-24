@@ -10,6 +10,7 @@ import configparser
 import os
 import platform
 import tempfile
+import time
 from pathlib import Path
 
 
@@ -23,11 +24,17 @@ def _load_server_functions():
     server_path = Path(__file__).resolve().parent.parent / "src" / "blaueis" / "gateway" / "server.py"
     source = server_path.read_text()
 
-    # Create a module-like namespace with the stdlib imports the functions need
+    # Create a module-like namespace with the stdlib imports the functions need.
+    # We also seed ``_PROCESS_START_EPOCH`` because get_pi_stats() reads it as
+    # a module-level constant. The real server.py captures it once at import
+    # time; here we capture it once at test-collection time, which gives the
+    # same "fixed for the lifetime of the test process" semantics.
     ns = {
         "configparser": configparser,
         "os": os,
         "platform": platform,
+        "time": time,
+        "_PROCESS_START_EPOCH": time.time(),
         "__name__": "blaueis.gateway.server",
     }
     # Extract just load_config and get_pi_stats function defs + their imports
@@ -213,7 +220,13 @@ def test_pi_stats_type_field():
 
 def test_pi_stats_has_expected_keys():
     stats = get_pi_stats()
-    expected = {"type", "uptime_s", "cpu_percent", "ram_total_mb", "ram_used_mb", "temp_c", "platform"}
+    expected = {
+        "type", "uptime_s", "cpu_percent", "ram_total_mb", "ram_used_mb",
+        "temp_c", "platform",
+        # Process-level fields — added so subscribers can tell a service
+        # restart apart from a Pi reboot.
+        "process_started_at", "process_uptime_s",
+    }
     assert expected.issubset(stats.keys())
 
 
@@ -223,3 +236,24 @@ def test_pi_stats_no_crash_on_any_platform():
     # On Linux (our dev env), we should get real values
     assert isinstance(stats["uptime_s"], (int, float))
     assert isinstance(stats["platform"], str)
+
+
+def test_pi_stats_process_uptime_increases():
+    """process_uptime_s must monotonically increase across calls (or
+    at worst stay equal due to int truncation), proving it's tied to a
+    fixed start time rather than recomputed from scratch."""
+    s1 = get_pi_stats()
+    time.sleep(1.05)
+    s2 = get_pi_stats()
+    assert s2["process_uptime_s"] >= s1["process_uptime_s"] + 1
+
+
+def test_pi_stats_process_started_at_is_stable():
+    """process_started_at is the *process* start; it must NOT change
+    between calls within the same process. (If it did, every restart
+    would look like a no-op to subscribers.)"""
+    s1 = get_pi_stats()
+    s2 = get_pi_stats()
+    assert s1["process_started_at"] == s2["process_started_at"]
+    # And it should be a sane Unix epoch (after 2020, before 2100).
+    assert 1577836800.0 < s1["process_started_at"] < 4102444800.0
