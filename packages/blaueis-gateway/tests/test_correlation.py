@@ -4,10 +4,10 @@ from __future__ import annotations
 import time
 
 import pytest
+from blaueis.core.frame import extract_msg_id
 from blaueis.gateway.uart_protocol import (
     HEURISTIC_WINDOW,
     UartProtocol,
-    _frame_msg_id,
 )
 
 
@@ -19,14 +19,14 @@ def _frame(msg_id: int) -> bytes:
 
 # ── msg_id extractor ─────────────────────────────────────────────────────
 
-def test_frame_msg_id_happy() -> None:
-    assert _frame_msg_id(_frame(0x41)) == 0x41
-    assert _frame_msg_id(_frame(0xC0)) == 0xC0
+def testextract_msg_id_happy() -> None:
+    assert extract_msg_id(_frame(0x41)) == 0x41
+    assert extract_msg_id(_frame(0xC0)) == 0xC0
 
 
-def test_frame_msg_id_rejects_short_and_wrong_sync() -> None:
-    assert _frame_msg_id(b"\xAA\x01") is None
-    assert _frame_msg_id(b"\x55" + _frame(0x41)[1:]) is None
+def testextract_msg_id_rejects_short_and_wrong_sync() -> None:
+    assert extract_msg_id(b"\xAA\x01") is None
+    assert extract_msg_id(b"\x55" + _frame(0x41)[1:]) is None
 
 
 # ── Callback meta + correlation ───────────────────────────────────────────
@@ -132,7 +132,7 @@ async def test_queue_frame_stores_origin_and_req_id() -> None:
     frame, origin, req_id = proto._tx_queue.get_nowait()
     assert origin == "ws:3"
     assert req_id == 12
-    assert _frame_msg_id(frame) == 0xC0
+    assert extract_msg_id(frame) == 0xC0
 
 
 @pytest.mark.asyncio

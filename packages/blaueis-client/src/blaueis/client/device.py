@@ -229,6 +229,16 @@ class Device:
         return list(self._glossary_override_affected)
 
     @property
+    def client(self):
+        """Underlying WebSocket client (or None if not connected).
+
+        Public accessor so diagnostics / advanced consumers don't need to
+        reach into ``_client``. Returns the live HvacClient instance after
+        ``connect()``; ``None`` before connect or after ``close()``.
+        """
+        return self._client
+
+    @property
     def connected(self) -> bool:
         """True if WebSocket is alive and listen loop is running."""
         if not self._client or not self._client._ws:

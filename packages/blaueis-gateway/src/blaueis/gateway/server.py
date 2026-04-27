@@ -30,22 +30,11 @@ from blaueis.core.crypto import (
     psk_to_bytes,
 )
 from blaueis.core.debug_ring import DebugRing, log_event
-from blaueis.core.frame import FrameError, validate_frame
+from blaueis.core.frame import FrameError, extract_msg_id, validate_frame
 from blaueis.gateway.slot_pool import SlotPool, SlotPoolExhausted
 from blaueis.gateway.uart_protocol import VERBOSE, UartProtocol
 
 log = logging.getLogger("hvac_gateway")
-
-
-def _extract_msg_id(frame: bytes) -> int | None:
-    """Extract the Midea message-id byte (best-effort).
-
-    Midea UART frames: AA <len> AC 00 00 00 00 00 <kind> 03 <msg_id> ...
-    Short/malformed frames return None.
-    """
-    if len(frame) < 12 or frame[0] != 0xAA:
-        return None
-    return frame[10]
 
 
 INSTALL_DIR = "/opt/blaueis-gw"
@@ -329,7 +318,7 @@ class GatewayServer:
         # from the frame. Makes the callback robust under direct invocation.
         msg_id = meta.get("msg_id")
         if msg_id is None:
-            msg_id = _extract_msg_id(raw)
+            msg_id = extract_msg_id(raw)
 
         # Ring record — every known provenance field passes through.
         log_event(

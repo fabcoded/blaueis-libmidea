@@ -168,25 +168,33 @@ def validate_frame(data: bytes) -> dict:
     return result
 
 
+def extract_msg_id(frame: bytes) -> int | None:
+    """Extract the Midea message-id byte (best-effort, no CRC check).
+
+    Frame layout: ``AA <len> AC 00 00 00 00 00 <kind> 03 <msg_id> ...``
+    Returns the byte at offset 10, or ``None`` for short / malformed frames
+    (sync byte not 0xAA, or fewer than 12 bytes). Never raises.
+
+    Used by the gateway and correlator to label frames before deciding
+    whether to forward, validate, or drop them.
+    """
+    if len(frame) < 12 or frame[0] != 0xAA:
+        return None
+    return frame[10]
+
+
 # ── Application-layer query builders ─────────────────────────────────────
 #
-# DEPRECATED: the bytes these builders emit now live in the top-level
-# `frames:` dict in serial_glossary.yaml. Prefer
-# `midea_codec.build_frame_from_spec(frame_id, glossary)` — it reads the
-# body specs directly from the glossary, enforces the bus filter, and
-# passes the test_frames_dict invariants. These wrappers are kept for
-# backward compatibility with ac_monitor.py and any external callers;
-# removing them is tracked in TODO §6 phase 2 final sweep.
+# Thin convenience wrappers around ``build_frame_from_spec`` for the
+# fixed-shape queries that have stable callers across the codebase
+# (ac_monitor, ac_probe, the client, the CLI, tests). They read body
+# specs from the top-level ``frames:`` dict in serial_glossary.yaml and
+# stay byte-identical to the glossary output, so call sites can pin to
+# either the wrapper or the spec-driven builder interchangeably.
 #
-# The wrappers must remain byte-identical to the glossary output so that
-# the old behaviour is preserved for the C0 / B5 / group1 / group3
-# callers. Groups 4 and 5 are the documented exception: before the
-# glossary landing, `build_group_query(page=0x44)` emitted body[1]=0x81
-# — never observed in any capture. The glossary now carries the
-# capture-correct body[1]=0x21 for those pages, so the wrapper's output
-# for page=0x44/0x45 intentionally differs from the pre-phase-2 baseline.
-# The change fixes the runtime bug documented in
-# serial_glossary.yaml::frames.cmd_0x41_group4_power::note.
+# Groups 4 and 5 carry the capture-correct body[1]=0x21 (UART bus); see
+# serial_glossary.yaml::frames.cmd_0x41_group4_power::note for the
+# history behind that byte.
 
 
 def _load_frames_lazy():
@@ -199,7 +207,6 @@ def _load_frames_lazy():
 def build_status_query(appliance: int = 0xAC, proto: int = 0, sub: int = 0) -> bytes:
     """CMD 0x41 — Status query (triggers 0xC0 response).
 
-    DEPRECATED: prefer build_frame_from_spec("cmd_0x41", glossary).
     Returns power, mode, fan, target_temp, indoor/outdoor temp, error code.
     Works on UART and R/T bus.
     """
@@ -235,8 +242,6 @@ _GROUP_PAGE_TO_FRAME_ID = {
 def build_group_query(appliance: int = 0xAC, page: int = 0x41, proto: int = 0, sub: int = 0) -> bytes:
     """CMD 0x41 group page query (triggers C1 group response).
 
-    DEPRECATED: prefer build_frame_from_spec("cmd_0x41_groupN", glossary).
-
     Page IDs: 0x41=Group1, 0x43=Group3 (both R/T bus only);
     0x44=Group4 power, 0x45=Group5 (both UART bus only). See
     serial_protocol.md §3.1.2 and the frames dict in
@@ -260,7 +265,6 @@ def build_group_query(appliance: int = 0xAC, page: int = 0x41, proto: int = 0, s
 def build_cap_query_extended(appliance: int = 0xAC, proto: int = 0, sub: int = 0) -> bytes:
     """CMD 0xB5 — Extended capability query (page 0x00).
 
-    DEPRECATED: prefer build_frame_from_spec("cmd_0xb5_extended", glossary).
     Returns extended-type (0x02) capability records: encoding-rich features
     like fan modes, operating modes, target temperature ranges, power calc.
     """
@@ -278,7 +282,6 @@ def build_cap_query_extended(appliance: int = 0xAC, proto: int = 0, sub: int = 0
 def build_cap_query_simple(appliance: int = 0xAC, proto: int = 0, sub: int = 0) -> bytes:
     """CMD 0xB5 — Simple capability query (page 0x01 with extra bytes).
 
-    DEPRECATED: prefer build_frame_from_spec("cmd_0xb5_simple", glossary).
     Returns simple-type (0x00) capability records: boolean features like
     swing axes, frost protection, anion ionizer, breeze, self-clean, ptc heater.
     """

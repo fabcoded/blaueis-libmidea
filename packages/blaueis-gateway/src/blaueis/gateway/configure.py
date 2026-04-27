@@ -245,7 +245,13 @@ def write_instance_config(name, serial_port, baud, ws_port, psk, device_name, ip
         os.close(fd)
         os.rename(tmp_path, str(path))
     except Exception:
-        os.close(fd) if not os.get_inheritable(fd) else None
+        # Best-effort close — the success path already closed `fd`, so a
+        # second close raises EBADF; swallow it so the original error
+        # surfaces.
+        try:
+            os.close(fd)
+        except OSError:
+            pass
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
         raise

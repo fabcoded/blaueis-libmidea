@@ -23,6 +23,7 @@ from blaueis.core.frame import (
     build_network_status_response,
     build_sn_query,
     build_version_response,
+    extract_msg_id,
     parse_frame,
 )
 
@@ -66,17 +67,6 @@ IGNORE_MSGS = {0x61}  # time sync — dongle doesn't respond
 # See flight_recorder.md §1.1 and §4.5.
 CORRELATION_TTL = 2.0       # drop outstanding TX older than this
 HEURISTIC_WINDOW = 0.5      # nearest-TX heuristic falls off after this
-
-
-def _frame_msg_id(raw: bytes) -> int | None:
-    """Extract the Midea protocol message-id byte.
-
-    Frame layout: AA <len> AC 00 00 00 00 00 <kind> 03 <msg_id> ...
-    Returns None for short or malformed frames.
-    """
-    if len(raw) < 12 or raw[0] != 0xAA:
-        return None
-    return raw[10]
 
 
 class UartProtocol:
@@ -150,7 +140,7 @@ class UartProtocol:
             return
 
         meta: dict = {}
-        msg_id = _frame_msg_id(raw)
+        msg_id = extract_msg_id(raw)
         if msg_id is not None:
             meta["msg_id"] = msg_id
 
@@ -265,7 +255,7 @@ class UartProtocol:
         req_id: int | None,
     ) -> None:
         """Update outstanding-TX state without invoking the on-frame callback."""
-        msg_id = _frame_msg_id(frame)
+        msg_id = extract_msg_id(frame)
         if msg_id is None:
             return
         self._tx_seq += 1
