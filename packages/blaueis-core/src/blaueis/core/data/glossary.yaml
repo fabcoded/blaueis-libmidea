@@ -6130,6 +6130,12 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       unit: °C
+      ha:
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: °C
+        suggested_display_precision: 0
+        entity_category: diagnostic
       alt_names:
         midea_lua: Tp
       protocols:
@@ -6456,6 +6462,11 @@ fields:
       data_type: float
       device_context: indoor_unit
       unit: °C
+      ha:
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: °C
+        suggested_display_precision: 1
       alt_names:
         midea_lua: indoor_temperature
         dudanov: indoorTemp
@@ -6602,6 +6613,12 @@ fields:
       data_type: uint16
       device_context: indoor_unit
       unit: min
+      ha:
+        device_class: duration
+        state_class: total_increasing
+        unit_of_measurement: min
+        suggested_display_precision: 0
+        entity_category: diagnostic
       alt_names:
         rev31: indoorFanRuntime
       protocols:
@@ -7176,6 +7193,12 @@ fields:
       data_type: float
       device_context: indoor_unit
       unit: °C
+      ha:
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: °C
+        suggested_display_precision: 1
+        entity_category: diagnostic
       alt_names:
         midea_lua: T1
         msmart: T1
@@ -7258,6 +7281,12 @@ fields:
       data_type: float
       device_context: outdoor_unit
       unit: °C
+      ha:
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: °C
+        suggested_display_precision: 1
+        entity_category: diagnostic
       alt_names:
         midea_lua: T4
         handbook: T4 Outdoor Ambient
