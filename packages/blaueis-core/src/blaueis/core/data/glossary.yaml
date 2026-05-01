@@ -6024,12 +6024,10 @@ fields:
     current_work_days:
       description: Current work time — days component. 16-bit big-endian.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint16
       device_context: indoor_unit
       unit: days
-      ha:
-        enabled_default: false
       alt_names:
         midea_lua: curWorkedDay
       protocols:
@@ -6043,17 +6041,15 @@ fields:
             - 0
           direction: response
           section: §5.2
-      note: 16-bit BE. Not implemented on Q11 (always 0 in all 55 frames). Single-byte decode reads body[9] only.
+      note: 'Disabled — multi-byte combination formula unverified. Q11 captures showed always 0 (55 frames); single-byte decode reads body[9] only. See docs/disabled_fields.md §2.1.'
       confidence: consistent
     current_work_hours:
       description: Current work time — hours component.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       unit: hours
-      ha:
-        enabled_default: false
       alt_names:
         midea_lua: curWorkedHour
       protocols:
@@ -6067,17 +6063,15 @@ fields:
             - 0
           direction: response
           section: §5.2
-      note: Not implemented on Q11 (always 0).
+      note: 'Disabled — multi-byte combination formula unverified. Q11 captures showed always 0. See docs/disabled_fields.md §2.1.'
       confidence: consistent
     current_work_minutes:
       description: Current work time — minutes component.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       unit: minutes
-      ha:
-        enabled_default: false
       alt_names:
         midea_lua: curWorkedMin
       protocols:
@@ -6091,7 +6085,7 @@ fields:
             - 0
           direction: response
           section: §5.2
-      note: Not implemented on Q11 (always 0).
+      note: 'Disabled — multi-byte combination formula unverified. Q11 captures showed always 0. See docs/disabled_fields.md §2.1.'
       confidence: consistent
     defrost_state:
       description: Defrost cycle state of the outdoor unit.
@@ -8225,7 +8219,8 @@ fields:
     power_on_days:
       description: Power-on cumulative days counter (BE 16-bit — body[4] high byte, body[5] low byte).
       field_class: sensor
-      feature_available: readable
+      feature_available: never
+      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint16
       device_context: indoor_unit
       unit: d
@@ -8249,7 +8244,8 @@ fields:
     power_on_hours:
       description: Power-on hours counter.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
+      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
       unit: h
@@ -8272,7 +8268,8 @@ fields:
     power_on_minutes:
       description: Power-on minutes counter.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
+      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
       unit: min
@@ -8295,7 +8292,8 @@ fields:
     power_on_seconds:
       description: Power-on seconds counter.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
+      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
       unit: s
@@ -8318,7 +8316,8 @@ fields:
     total_worked_days:
       description: Total worked cumulative days counter (BE 16-bit — body[9] high byte, body[10] low byte).
       field_class: sensor
-      feature_available: readable
+      feature_available: never
+      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint16
       device_context: indoor_unit
       unit: d
@@ -8344,7 +8343,8 @@ fields:
     total_worked_hours:
       description: Total worked hours counter (lifetime).
       field_class: sensor
-      feature_available: readable
+      feature_available: never
+      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
       unit: h
@@ -8369,7 +8369,8 @@ fields:
     total_worked_minutes:
       description: Total worked minutes counter (lifetime).
       field_class: sensor
-      feature_available: readable
+      feature_available: never
+      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
       unit: min
@@ -8394,7 +8395,8 @@ fields:
     total_worked_seconds:
       description: Total worked seconds counter (lifetime).
       field_class: sensor
-      feature_available: readable
+      feature_available: never
+      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
       unit: s
@@ -8419,7 +8421,8 @@ fields:
     current_session_days:
       description: Current session cumulative days counter (BE 16-bit — body[14] high byte, body[15] low byte).
       field_class: sensor
-      feature_available: readable
+      feature_available: never
+      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint16
       device_context: indoor_unit
       unit: d
@@ -8445,7 +8448,8 @@ fields:
     current_session_hours:
       description: Current session hours counter.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
+      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
       unit: h
@@ -8470,7 +8474,8 @@ fields:
     current_session_minutes:
       description: Current session minutes counter.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
+      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
       unit: min
@@ -8495,7 +8500,8 @@ fields:
     current_session_seconds:
       description: Current session seconds counter.
       field_class: sensor
-      feature_available: readable
+      feature_available: never
+      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
       unit: s
