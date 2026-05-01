@@ -862,7 +862,7 @@ fields:
             feature_available: always
             description: Ionizer available (protocol-level)
         confidence: consistent
-      disambiguation: 'XtremeSaveBlue Q11 reports cap 0x1E=1 but neither app nor remote
+      disambiguation: 'A probed XtremeSaveBlue unit reports cap 0x1E=1 but neither app nor remote
 
         show an ionizer button. The B5 capability alone is insufficient to
 
@@ -1479,7 +1479,7 @@ fields:
             - 0
           direction: response
           section: §4.1
-      disambiguation: 'The manufacturer Lua (Q11) reads comfortableSleepTime with mask 0x15
+      disambiguation: 'The manufacturer Lua reads comfortableSleepTime with mask 0x15
 
         (bits 4, 2, 0 — non-contiguous). This is almost certainly a bug:
 
@@ -3021,7 +3021,7 @@ fields:
     auxiliary_heat_level:
       description: Auxiliary electric heater (PTC element) level. Supplemental heating stage used
         when the heat pump alone cannot meet demand. 2-bit field at body[9] bits[4:3] — four
-        possible stages; only off and low are observed on Q11.
+        possible stages; only off and low are observed on the probed XtremeSaveBlue unit.
       field_class: stateful_enum
       feature_available: readable
       data_type: uint8
@@ -3071,9 +3071,10 @@ fields:
           correction: snap_nearest
           note: 'Permissive default applied at boot, replaced once B5 narrows it.
 
-            The 2-bit field allows raw 0..3; on Q11 only raw 0 and 1 are known to be used
-            (off / low), matching the legacy binary interpretation. Raw 2 and 3 remain
-            declared for SKUs that may stage the aux heat — unverified.
+            The 2-bit field allows raw 0..3; on the probed XtremeSaveBlue unit only raw 0
+            and 1 are known to be used (off / low), matching the legacy binary
+            interpretation. Raw 2 and 3 remain declared for SKUs that may stage the aux
+            heat — unverified.
             '
         values:
           not_supported:
@@ -3090,7 +3091,7 @@ fields:
         confidence: consistent
         sources:
         - dudanov
-        - Session 1 B5 query (0x19=0 → not supported on Q11)
+        - Session 1 B5 query (0x19=0 → not supported on the probed XtremeSaveBlue unit)
       values:
         'off':
           raw: 0
@@ -3098,8 +3099,8 @@ fields:
           confidence: confirmed
         'low':
           raw: 1
-          description: Auxiliary heater stage 1 — the only non-off level observed on Q11 (maps
-            to the historical binary 'on').
+          description: Auxiliary heater stage 1 — the only non-off level observed on the
+            probed unit (maps to the historical binary 'on').
           confidence: confirmed
         'medium':
           raw: 2
@@ -5954,7 +5955,7 @@ fields:
         confidence: consistent
         sources:
         - dudanov
-      note: Always 0 on Q11 in all sessions. Field exists in protocol but not populated by this firmware.
+      note: Always 0 on the probed unit in all sessions. Field exists in protocol but not populated by this firmware.
       confidence: consistent
       sources:
       - Sessions 1-9 (always 0)
@@ -5976,7 +5977,7 @@ fields:
             - 0
           direction: response
           section: §5.2
-      note: 'Disabled — multi-byte combination formula unverified. Q11 captures showed always 0 (55 frames); single-byte decode reads body[9] only. See docs/disabled_fields.md §2.1.'
+      note: 'Disabled — multi-byte combination formula unverified. probe captures showed always 0 (55 frames); single-byte decode reads body[9] only. See docs/disabled_fields.md §2.1.'
       confidence: consistent
     current_work_hours:
       description: Current work time — hours component.
@@ -5996,7 +5997,7 @@ fields:
             - 0
           direction: response
           section: §5.2
-      note: 'Disabled — multi-byte combination formula unverified. Q11 captures showed always 0. See docs/disabled_fields.md §2.1.'
+      note: 'Disabled — multi-byte combination formula unverified. probe captures showed always 0. See docs/disabled_fields.md §2.1.'
       confidence: consistent
     current_work_minutes:
       description: Current work time — minutes component.
@@ -6016,7 +6017,7 @@ fields:
             - 0
           direction: response
           section: §5.2
-      note: 'Disabled — multi-byte combination formula unverified. Q11 captures showed always 0. See docs/disabled_fields.md §2.1.'
+      note: 'Disabled — multi-byte combination formula unverified. probe captures showed always 0. See docs/disabled_fields.md §2.1.'
       confidence: consistent
     defrost_state:
       description: Defrost cycle state of the outdoor unit.
@@ -6258,7 +6259,7 @@ fields:
             - 0
           direction: response
           section: §4.2.5
-      note: Always 0 on Q11 (sensor idle or not fitted). Distinct from humidity_setpoint (C0 body[19]).
+      note: Always 0 on the probed unit (sensor idle or not fitted). Distinct from humidity_setpoint (C0 body[19]).
       confidence: hypothesis
     humidity_measured:
       description: Current indoor humidity from A1 heartbeat sensor.
@@ -6283,7 +6284,7 @@ fields:
             - 0
           direction: response
           section: §5.2
-      note: Always 0 on Q11. Distinct from humidity_actual (C1G5) and humidity_setpoint (C0).
+      note: Always 0 on the probed unit. Distinct from humidity_actual (C1G5) and humidity_setpoint (C0).
       confidence: consistent
     in_error:
       description: 'Error flag: indicates the unit has an active fault condition.'
@@ -6444,7 +6445,7 @@ fields:
             - 0
           direction: response
           section: §5.2
-      note: Always 0 on Q11. Raw ADC, no conversion.
+      note: Always 0 on the probed unit. Raw ADC, no conversion.
       confidence: consistent
     local_body_sense:
       description: Built-in occupancy sensor active. Detects/tracks people in the room.
@@ -6469,12 +6470,18 @@ fields:
         sensor. Own captures: always 0.'
       confidence: hypothesis
     max_bus_voltage:
-      description: 'Maximum recorded DC bus voltage. Encoding: raw + 60 = volts.'
+      description: Maximum recorded DC bus voltage on the inverter rail.
       field_class: sensor
       feature_available: readable
       data_type: uint8
       device_context: outdoor_unit
-      unit: V (raw + 60)
+      unit: V
+      ha:
+        device_class: voltage
+        state_class: measurement
+        unit_of_measurement: V
+        entity_category: diagnostic
+        enabled_default: false
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6484,17 +6491,25 @@ fields:
             bits:
             - 7
             - 0
+            encoding: voltage_offset60
           direction: response
           section: §4.2.5
-      note: 'S8: 183 raw = 243V. Plausible for European 230V mains peak.'
+      note: 'S8: 183 raw → 243 V. Plausible for European 230 VAC mains peak (≈325 V
+        unloaded, sags under load).'
       confidence: hypothesis
     min_bus_voltage:
-      description: 'Minimum recorded DC bus voltage. Encoding: raw + 60 = volts.'
+      description: Minimum recorded DC bus voltage on the inverter rail.
       field_class: sensor
       feature_available: readable
       data_type: uint8
       device_context: outdoor_unit
-      unit: V (raw + 60)
+      unit: V
+      ha:
+        device_class: voltage
+        state_class: measurement
+        unit_of_measurement: V
+        entity_category: diagnostic
+        enabled_default: false
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6504,9 +6519,10 @@ fields:
             bits:
             - 7
             - 0
+            encoding: voltage_offset60
           direction: response
           section: §4.2.5
-      note: 'S8: 136 raw = 196V. Plausible for voltage sag during compressor startup.'
+      note: 'S8: 136 raw → 196 V. Plausible for voltage sag during compressor startup.'
       confidence: hypothesis
     indoor_fan_runtime:
       description: Indoor fan total runtime (LE 16-bit minutes — body[6] low byte, body[7] high byte).
@@ -6668,7 +6684,7 @@ fields:
         confidence: consistent
         sources:
         - dudanov
-      note: Capability-only. Not present on Q11 (not in Session 1 B5 responses).
+      note: Capability-only. Not present on the probed unit (not in Session 1 B5 responses).
       confidence: consistent
       sources:
       - dudanov
@@ -6950,7 +6966,7 @@ fields:
             - 0
           direction: response
           section: §5.2
-      note: 16-bit BE. Always 0 on Q11 (no PM2.5 sensor). Single-byte decode reads only body[15].
+      note: 16-bit BE. Always 0 on the probed unit (no PM2.5 sensor). Single-byte decode reads only body[15].
       confidence: consistent
     pmv_index:
       description: PMV (Predicted Mean Vote) thermal comfort index. ISO 7730 / ASHRAE 55 scale.
@@ -7063,7 +7079,7 @@ fields:
             - 0
           direction: response
           section: §4.1
-      xye_note: 'C0/C3 byte[19]: hardware-variant bit position — bit 5 (0x20) on Q11, bit 0 (0x01) on CH-36AHU.'
+      xye_note: 'C0/C3 byte[19]: hardware-variant bit position — bit 5 (0x20) on the probed XtremeSaveBlue unit, bit 0 (0x01) on CH-36AHU.'
       disambiguation: No single 'running' bit exists in the serial C0 response. Power (body[1] bit 0) indicates commanded-on,
         not compressor-running. XYE has an explicit run_status byte but its bit position is hardware-variant-dependent.
       confidence: hypothesis
@@ -7267,7 +7283,7 @@ fields:
             encoding: power_linear_4
         alt_names:
           dudanov: CAPABILITY_POWER
-        note: Q11 reports 0x16=0 yet C1 Group 4 and A1 heartbeat return valid BCD data. Cap gates UI, not data.
+        note: The probed XtremeSaveBlue (cap 0x16=0) returns valid BCD data on C1 Group 4 and A1 heartbeat despite the cap claiming "no power calc". Cap gates UI, not data.
         confidence: consistent
         sources:
         - dudanov
@@ -7345,7 +7361,7 @@ fields:
         confidence: consistent
         sources:
         - dudanov
-      note: Always 0 on Q11 in all sessions. Field exists in protocol but not populated by this firmware.
+      note: Always 0 on the probed unit in all sessions. Field exists in protocol but not populated by this firmware.
       confidence: consistent
       sources:
       - Sessions 1-9 (always 0)

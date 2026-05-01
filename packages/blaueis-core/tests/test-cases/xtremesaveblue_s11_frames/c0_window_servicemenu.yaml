@@ -1,4 +1,4 @@
-# All C0 status responses from XtremeSaveBlue Q11, Session 11.
+# All C0 status responses from XtremeSaveBlue, Session 11.
 # Extracted from session.csv (wifi-orange channel, fromACdisplay).
 # Used by tests/test-cases/pipeline_readable_decode/pipeline.yaml
 # (V6 capture-replay) to verify the §2 promotion of 11 fields
@@ -8,7 +8,7 @@
 # State varies (turbo, setpoint changes, frost, sleep, power off)
 # — see SessionNotes.md for the operator action log.
 
-device: "XtremeSaveBlue Q11"
+device: "XtremeSaveBlue"
 session: "Session 11"
 source: "HVAC-shark-dumps/Midea-XtremeSaveBlue-logicanalyzer/Session 11/session.csv"
 bus: "UART (wifiOrange, fromACdisplay)"

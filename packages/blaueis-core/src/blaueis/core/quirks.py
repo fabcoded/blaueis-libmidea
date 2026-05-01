@@ -10,8 +10,8 @@ and are applied after process_b5 + finalize_capabilities. Two operations:
   2. synthesize_capabilities — inject synthetic B5 TLV records into
      status['capabilities_raw'] so the existing resolve_capability_encoding()
      picks the right encoding. Useful when a device under-reports its
-     capability tier (e.g. Q11 reports cap 0x16=0 "no power calc" yet
-     returns valid C1 group4 power frames).
+     capability tier (e.g. some XtremeSaveBlue firmware reports cap
+     0x16=0 "no power calc" yet returns valid C1 group4 power frames).
 
 Library API contract (frozen — used by future midea-protocol-lib + HA):
 

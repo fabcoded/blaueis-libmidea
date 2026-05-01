@@ -1,10 +1,10 @@
-# Real 0xC1 Group 6 frames — XtremeSaveBlue Q11, Session 15
+# Real 0xC1 Group 6 frames — XtremeSaveBlue, Session 15
 #
 # Diagnostics: lifetime peak currents, T4 extremes, motor flux, d/q axis,
 # torque compensation. Field mapping cross-validated against community protocol research.
 # Two runs ~10 min apart: Run 1 compressor at ~47Hz, Run 2 at ~35Hz.
 
-device: "XtremeSaveBlue Q11"
+device: "XtremeSaveBlue"
 session: "Session 15"
 source: "ac_probe.py UART probe via raspi-midea gateway"
 bus: "UART (body[1]=0x21)"

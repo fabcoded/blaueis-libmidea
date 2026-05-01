@@ -1,4 +1,4 @@
-device: XtremeSaveBlue Q11
+device: XtremeSaveBlue
 session: Session 7
 source: HVAC-shark-dumps/Midea-XtremeSaveBlue-logicanalyzer/Session 7/session.pcap
 bus: R/T (bus_type=3)

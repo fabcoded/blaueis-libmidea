@@ -410,7 +410,7 @@ def _matched_cap_value_name(cap_def: dict, cap_records: list[dict] | None) -> st
     the cap isn't present in the B5 response.
 
     Used by the override synthesizer to patch the right cap-value key
-    (e.g. ``none_0`` on Q11 where cap 0x16=0 is advertised).
+    (e.g. ``none_0`` on units where cap 0x16=0 is advertised).
     """
     if not cap_records:
         return None

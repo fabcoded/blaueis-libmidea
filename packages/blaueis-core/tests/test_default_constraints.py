@@ -224,7 +224,7 @@ def main():
     finalize_capabilities(status, glossary)
 
     fan_post = status["fields"]["fan_speed"]["active_constraints"]
-    # Cap 0x10 = 1 (stepless) on Q11 → valid_range [0, 102], step 1
+    # Cap 0x10 = 1 (stepless) on the probed unit → valid_range [0, 102], step 1
     check(
         "fan_speed.active_constraints replaced by cap (valid_range present)",
         fan_post is not None and "valid_range" in fan_post,
@@ -269,7 +269,7 @@ def main():
     finalize_capabilities(status, glossary)
 
     # Capability-only fields with no cap in B5 → never. Note that
-    # anion_ionizer cap 0x1E IS in Session 1 B5 (Q11 supports it), so
+    # anion_ionizer cap 0x1E IS in Session 1 B5 (the probed unit supports it), so
     # it gets upgraded to 'always' — not a finalize-sweep candidate.
     # breeze_away (cap 0x33) and buzzer (cap 0x2c) genuinely are NOT
     # in S1 caps and have no rsp_0xc0 decode — those are the ones
@@ -313,7 +313,7 @@ def main():
     # Negative case: a readable field whose cap is NOT in B5 should keep
     # the readable level (NOT downgrade to never), because the receiver
     # can still decode it from rsp_0xc0. auxiliary_heat_level cap 0x19 = 0
-    # in S1 (per Session 1 B5: '0x19=0 → not supported on Q11'), so its
+    # in S1 (per Session 1 B5: '0x19=0 → not supported on the probed unit'), so its
     # cap_value 'not_supported' has feature_available: never. After cap
     # upgrade auxiliary_heat_level becomes 'never' — that's the correct
     # cap-driven state, not a finalize-sweep regression.

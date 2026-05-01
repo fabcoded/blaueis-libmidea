@@ -1,6 +1,6 @@
 # Synthetic B5 frames — cooling-only unit with discrete fan
 #
-# Tests capability variants NOT covered by XtremeSaveBlue Q11:
+# Tests capability variants NOT covered by XtremeSaveBlue:
 #   - cap 0x14=0 (cool-only, no heat mode)
 #   - cap 0x10=5 (discrete fan: Low/Mid/High/Auto)
 #   - cap 0x1A=2 (turbo not available)

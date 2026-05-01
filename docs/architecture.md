@@ -41,7 +41,7 @@ Pure, synchronous. Target: Python 3.11+.
 | `query.py` | `read_field` — field lookup with value decoding |
 | `command.py` | Command body builders for set operations (C3, B0 bulk set, B1 property set) |
 | `formula.py` | Expression evaluator for glossary-driven scaling / conditions |
-| `quirks.py` | Device-specific quirks (e.g. Q11 hi-byte stripping) |
+| `quirks.py` | Device-specific quirks (e.g. cap-tier-mismatch power decode) |
 | `crypto.py` | PSK → key, AES-256-GCM handshake (`create_hello`, `complete_handshake_*`) |
 | `debug_ring.py` | `logging.Handler` with byte-sized deque + `log_event` helper (flight recorder) |
 | `ux_gating.py` | Advisory UX-layer visibility / mode-mask evaluator (consumed by HA entity `available`, and by `command.build_command_body` to zero stale bits in C3 frames) |

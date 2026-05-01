@@ -11,7 +11,7 @@ At boot:
     that declare one (TODO §3); null otherwise.
 
 Usage:
-    python build_status.py [--device "XtremeSaveBlue Q11"] [--output path/device_status.json]
+    python build_status.py [--device "XtremeSaveBlue"] [--output path/device_status.json]
 """
 
 import json

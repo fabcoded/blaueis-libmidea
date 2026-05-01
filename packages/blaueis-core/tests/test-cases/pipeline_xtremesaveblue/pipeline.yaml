@@ -1,10 +1,10 @@
-# Pipeline integration test — XtremeSaveBlue Q11
+# Pipeline integration test — XtremeSaveBlue
 #
 # Tests the full flow: build_status → B5 caps → C0 response → C0 turbo →
 # C1 Group 1 sensor telemetry. Verifies phase transitions, capability
 # upgrades, decoded values, and cross-frame state preservation.
 
-device: "XtremeSaveBlue Q11"
+device: "XtremeSaveBlue"
 
 steps:
   # Step 1: Process B5 capabilities

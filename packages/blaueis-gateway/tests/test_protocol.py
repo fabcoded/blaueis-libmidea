@@ -138,7 +138,7 @@ async def run_tests():
 
     async def feed_sn():
         await asyncio.sleep(0.05)
-        reader.feed(build_sn_response("XSAVE_BLUE_Q11"))
+        reader.feed(build_sn_response("XSAVE_BLUE_TEST"))
 
     await asyncio.gather(run_discover(), feed_sn())
 

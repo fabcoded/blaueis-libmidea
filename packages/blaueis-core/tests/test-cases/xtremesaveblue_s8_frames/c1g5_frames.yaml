@@ -1,10 +1,10 @@
-# Real 0xC1 Group 5 frames — XtremeSaveBlue Q11, Session 8
+# Real 0xC1 Group 5 frames — XtremeSaveBlue, Session 8
 #
 # Extended params: humidity, compensated setpoint, fan/EEV targets,
 # compressor runtime, bus voltages. UART bus (rare — only 5 frames in S8).
 # All fields: Hypothesis confidence.
 
-device: "XtremeSaveBlue Q11"
+device: "XtremeSaveBlue"
 session: "Session 8"
 source: "HVAC-shark-dumps/Midea-XtremeSaveBlue-logicanalyzer/Session 8/session.pcap"
 bus: "UART (bus_type=1)"

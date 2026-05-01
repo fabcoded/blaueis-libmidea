@@ -1,10 +1,10 @@
-# Real 0xB1 property response frames — XtremeSaveBlue Q11, Session 15
+# Real 0xB1 property response frames — XtremeSaveBlue, Session 15
 #
 # B1 property query responses. Each frame contains multiple TLV records.
 # Properties with data_len=0 are not supported by this unit (skipped).
 # Field mapping cross-validated against community protocol research .
 
-device: "XtremeSaveBlue Q11"
+device: "XtremeSaveBlue"
 session: "Session 15"
 source: "ac_probe.py UART probe via raspi-midea gateway"
 bus: "UART"

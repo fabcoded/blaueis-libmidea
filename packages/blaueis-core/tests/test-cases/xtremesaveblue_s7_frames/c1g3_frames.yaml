@@ -1,9 +1,9 @@
-# Real 0xC1 Group 3 frames — XtremeSaveBlue Q11, Session 7
+# Real 0xC1 Group 3 frames — XtremeSaveBlue, Session 7
 #
 # Outdoor unit diagnostics: fan speed, EEV position, DC bus voltage.
 # Extracted via tshark, R/T bus.
 
-device: "XtremeSaveBlue Q11"
+device: "XtremeSaveBlue"
 session: "Session 7"
 source: "HVAC-shark-dumps/Midea-XtremeSaveBlue-logicanalyzer/Session 7/session.pcap"
 bus: "R/T (bus_type=3)"

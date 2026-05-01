@@ -44,8 +44,8 @@ from blaueis.core.inventory import (
 # integration test.
 SESSION_15_C1G4_BODY = bytes.fromhex("c1210144000119dd00000000000000000007760000")
 
-# Q11 reports cap 0x16 = 0 ("no power calc") despite the data being valid.
-Q11_CAP_0x16_0 = [
+# Cap-0x16=0 records ("no power calc") despite the data being valid on the probed unit.
+CAP_0x16_0_RECORDS = [
     {
         "cap_id": "0x16",
         "cap_type": 2,
@@ -210,7 +210,7 @@ def test_pick_variant_handles_all_zero_field(glossary):
 def test_shadow_decoder_accumulates_then_classifies(glossary):
     sd = ShadowDecoder(glossary)
     sd.observe("rsp_0xc1_group4", SESSION_15_C1G4_BODY)
-    result = sd.snapshot(cap_records=Q11_CAP_0x16_0)
+    result = sd.snapshot(cap_records=CAP_0x16_0_RECORDS)
 
     pt = result.states["power_total_kwh"]
     pr = result.states["power_realtime_kw"]
@@ -237,7 +237,7 @@ def test_shadow_decoder_last_observation_wins(glossary):
     second[7] = (second[7] + 1) & 0xFF  # +0.01 kWh
     sd.observe("rsp_0xc1_group4", bytes(first))
     sd.observe("rsp_0xc1_group4", bytes(second))
-    result = sd.snapshot(cap_records=Q11_CAP_0x16_0)
+    result = sd.snapshot(cap_records=CAP_0x16_0_RECORDS)
 
     variants = result.states["power_total_kwh"].variants
     linear = next(v for v in variants if v.encoding == "power_linear_4")
@@ -246,7 +246,7 @@ def test_shadow_decoder_last_observation_wins(glossary):
 
 
 def test_shadow_decoder_ff_flood_frame(glossary):
-    """msg_type 0x07 returned all-FF on Q11 → every field decoded from
+    """msg_type 0x07 returned all-FF on the probed unit → every field decoded from
     that frame (if any) should carry the FF-flood marker."""
     sd = ShadowDecoder(glossary)
     # An all-FF body that the codec can identify. 0x07 device-id response:
@@ -273,7 +273,7 @@ def test_synthesize_emits_for_populated_hidden_field(glossary):
         "rsp_0xc1_group4",
         SESSION_15_C1G4_BODY,
         glossary,
-        Q11_CAP_0x16_0,
+        CAP_0x16_0_RECORDS,
     )
     assert snip is not None
     assert snip.field_name == "power_total_kwh"
@@ -316,7 +316,7 @@ def test_synthesize_skips_all_zero_fields(glossary):
         "rsp_0xc1_group4",
         SESSION_15_C1G4_BODY,
         glossary,
-        Q11_CAP_0x16_0,
+        CAP_0x16_0_RECORDS,
     )
     assert snip is None
 
@@ -336,7 +336,7 @@ def test_synthesize_yaml_parses_as_valid_override(glossary):
         "rsp_0xc1_group4",
         SESSION_15_C1G4_BODY,
         glossary,
-        Q11_CAP_0x16_0,
+        CAP_0x16_0_RECORDS,
     )
     assert snip is not None
 
@@ -362,11 +362,11 @@ def test_synthesize_yaml_parses_as_valid_override(glossary):
 def test_generate_json_sidecar_shape(glossary):
     sd = ShadowDecoder(glossary)
     sd.observe("rsp_0xc1_group4", SESSION_15_C1G4_BODY)
-    result = sd.snapshot(cap_records=Q11_CAP_0x16_0)
+    result = sd.snapshot(cap_records=CAP_0x16_0_RECORDS)
 
     walk = walk_fields(glossary)
     snips = [
-        synthesize_override_snippet(f, walk[f], "rsp_0xc1_group4", SESSION_15_C1G4_BODY, glossary, Q11_CAP_0x16_0)
+        synthesize_override_snippet(f, walk[f], "rsp_0xc1_group4", SESSION_15_C1G4_BODY, glossary, CAP_0x16_0_RECORDS)
         for f in ("power_total_kwh", "power_realtime_kw")
     ]
     snips = [s for s in snips if s]
@@ -395,7 +395,7 @@ def test_generate_json_sidecar_shape(glossary):
 def test_generate_markdown_report_shape(glossary):
     sd = ShadowDecoder(glossary)
     sd.observe("rsp_0xc1_group4", SESSION_15_C1G4_BODY)
-    result = sd.snapshot(cap_records=Q11_CAP_0x16_0)
+    result = sd.snapshot(cap_records=CAP_0x16_0_RECORDS)
     md = generate_markdown_report(result, glossary, label="test", host="192.168.210.30")
 
     # Structural sanity — starts with an HTML timestamp comment, then
@@ -414,7 +414,7 @@ def test_generate_markdown_report_shape(glossary):
 def test_generate_markdown_includes_suggested_overrides(glossary):
     sd = ShadowDecoder(glossary)
     sd.observe("rsp_0xc1_group4", SESSION_15_C1G4_BODY)
-    result = sd.snapshot(cap_records=Q11_CAP_0x16_0)
+    result = sd.snapshot(cap_records=CAP_0x16_0_RECORDS)
 
     walk = walk_fields(glossary)
     snip = synthesize_override_snippet(
@@ -423,7 +423,7 @@ def test_generate_markdown_includes_suggested_overrides(glossary):
         "rsp_0xc1_group4",
         SESSION_15_C1G4_BODY,
         glossary,
-        Q11_CAP_0x16_0,
+        CAP_0x16_0_RECORDS,
     )
     md = generate_markdown_report(
         result,

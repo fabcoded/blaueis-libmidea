@@ -1,10 +1,10 @@
-# Real 0xC1 Group 0 frames — XtremeSaveBlue Q11, Session 15
+# Real 0xC1 Group 0 frames — XtremeSaveBlue, Session 15
 #
 # Runtime timers: power-on time, total worked time, current session time.
 # Field mapping cross-validated against community protocol research.
 # All values zero in this capture — AC may need longer runtime to populate.
 
-device: "XtremeSaveBlue Q11"
+device: "XtremeSaveBlue"
 session: "Session 15"
 source: "ac_probe.py UART probe via raspi-midea gateway"
 bus: "UART (body[1]=0x21)"

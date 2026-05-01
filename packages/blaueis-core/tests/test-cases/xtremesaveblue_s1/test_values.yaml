@@ -1,4 +1,4 @@
-# Validation test cases — XtremeSaveBlue Q11
+# Validation test cases — XtremeSaveBlue
 #
 # Each test validates a field value against the device state (populated
 # glossary with decoded capabilities). Tests are a mix of valid values
