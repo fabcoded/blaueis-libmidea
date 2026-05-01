@@ -327,6 +327,17 @@ def decode_field(
 
             val = extract_bits(body[offset], bits)
 
+            # Bit-level inversion for fields where the wire bit is the
+            # negation of the desired semantic. Applied immediately after
+            # extraction so all downstream transforms (encoding, bool
+            # cast) operate on the corrected value. Only affects single-
+            # bit reads where 1 - val is meaningful; the formula `1 - val`
+            # generalises to multi-bit only as "complement-1", which is
+            # rarely useful — guard with a width check.
+            if step.get("invert"):
+                width = bits[0] - bits[1] + 1 if bits[0] >= bits[1] else 1
+                val = (1 << width) - 1 - int(val)
+
             cond = step.get("condition")
             if cond and ((cond == "!= 0" and val == 0) or (cond == "> 0" and val <= 0)):
                 continue

@@ -5769,8 +5769,10 @@ fields:
         (active heating boost); S1 raw=74-82 → 22-26 °C (varying load); live
         raw=75 → 22.5 °C (steady-state, slightly above user target 21 °C).'
       confidence: consistent
-    compressor_idle:
-      description: Compressor idle flag. 1 = idle, 0 = running.
+    compressor_running:
+      description: Compressor running flag. 1 = running, 0 = idle. The wire bit
+        is inverted (1 = idle on the wire) — codec applies invert in decode so
+        the field's semantic matches HA's device_class running (on = running).
       field_class: binary_sensor
       feature_available: readable
       data_type: bool
@@ -5778,6 +5780,7 @@ fields:
       ha:
         device_class: running
         entity_category: diagnostic
+        enabled_default: false
       protocols:
         rsp_0xc1_group1:
           frame: 0xC1 Group 1
@@ -5787,14 +5790,27 @@ fields:
             bits:
             - 0
             - 0
+            invert: true
           direction: response
           section: §4.2.1
-      note: 'body[6] is a binary idle/running flag — 1 = idle, 0 = running.
-        Initially suspected to encode compressor current, but live data shows
-        only 0/1 values: Atelier Midea Q14 reads 1=idle 0=running; XtremeSaveBlue
-        Q11 reads 0 always. No community impl ever decoded this field
-        independently.'
+      note: 'body[6] bit 0 reads 1 = idle, 0 = running on the wire. Decoder
+        inverts so the field reads 1 = running, 0 = idle, matching HA''s
+        device_class: running semantics. An alternative interpretation
+        circulating in community protocol research treats this byte as
+        a compressor-current measurement (unit ~0.25 A), but live capture
+        during a cooling cycle (passive_capture_s1, 2026-05-01) showed
+        only values 0 and 1 even at 56 Hz compressor load, confirming
+        the firmware populates a binary flag, not an analog current.
+        Cross-unit: the probed XtremeSaveBlue (cap 0x16=0) reads
+        body[6]=0 always — firmware quirk; after invert it would
+        falsely report compressor_running = True 24/7. Default is
+        enabled_default=false; owners enable via override after
+        verifying their firmware tracks the bit (a brief cool cycle
+        proves it — the bit should flip 0→1 when the compressor spools
+        up).'
       confidence: confirmed
+      sources:
+      - passive_capture_s1 (2026-05-01) — Atelier Midea, 22/22 frames at body[6]=0 during 8-56 Hz running compressor
     compressor_frequency:
       description: Compressor running frequency (FR). 0 Hz when compressor is off.
       field_class: sensor

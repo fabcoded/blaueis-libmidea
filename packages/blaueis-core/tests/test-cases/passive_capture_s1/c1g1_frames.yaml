@@ -1,0 +1,58 @@
+# Real C1_GROUP1 frames — Atelier Midea
+# Captured passively via HVAC-shark/tools/capture/passive_capture.py
+# Source pcap: HVAC-shark-dumps/passive_capture_s1/capture.pcap
+
+device: "Atelier Midea"
+frames:
+  - body_hex: "c1 21 01 41 00 00 01 01 e7 03 4a 49 5d 5e 15 00 00 00 00 00 00"
+    timestamp: 1717583.952
+  - body_hex: "c1 21 01 41 00 00 01 01 e7 03 4a 49 5d 5e 15 00 00 00 00 00 00"
+    timestamp: 1717599.159
+  - body_hex: "c1 21 01 41 08 47 00 01 e4 00 4a 49 5d 5e 15 00 00 00 00 00 00"
+    timestamp: 1717615.600
+  - body_hex: "c1 21 01 41 15 47 00 01 e2 00 4a 47 5d 5e 16 00 00 00 00 00 00"
+    timestamp: 1717630.798
+  - body_hex: "c1 21 01 41 27 47 00 02 ea 00 4a 3f 5f 5e 17 00 00 00 00 00 00"
+    timestamp: 1717646.992
+  - body_hex: "c1 21 01 41 38 47 00 02 e9 00 4a 38 61 5e 18 00 00 00 00 00 00"
+    timestamp: 1717662.193
+  - body_hex: "c1 21 01 41 38 47 00 02 e9 00 4a 34 62 5e 19 00 00 00 00 00 00"
+    timestamp: 1717678.383
+  - body_hex: "c1 21 01 41 38 47 00 02 e9 00 4a 2e 63 5e 1a 00 00 00 00 00 00"
+    timestamp: 1717694.578
+  - body_hex: "c1 21 01 41 38 47 00 02 eb 00 4a 2b 63 5e 1a 00 00 00 00 00 00"
+    timestamp: 1717709.841
+  - body_hex: "c1 21 01 41 38 47 00 02 eb 00 4a 29 64 5e 1b 00 00 00 00 00 00"
+    timestamp: 1717726.102
+  - body_hex: "c1 21 01 41 38 47 00 02 ea 00 4a 28 64 5e 1b 00 00 00 00 00 00"
+    timestamp: 1717741.365
+  - body_hex: "c1 21 01 41 38 47 00 02 ea 00 4a 27 64 5e 1b 00 00 00 00 00 00"
+    timestamp: 1717757.629
+  - body_hex: "c1 21 01 41 38 47 00 02 e9 00 4a 26 63 5e 1b 00 00 00 00 00 00"
+    timestamp: 1717773.107
+  - body_hex: "c1 21 01 41 38 33 00 02 e9 00 4a 25 63 5e 1c 00 00 00 00 00 00"
+    timestamp: 1717789.368
+  - body_hex: "c1 21 01 41 33 33 00 02 eb 00 4a 25 63 5e 1c 00 00 00 00 00 00"
+    timestamp: 1717804.627
+  - body_hex: "c1 21 01 41 33 33 00 02 eb 00 4a 24 61 5e 1c 00 00 00 00 00 00"
+    timestamp: 1717820.890
+  - body_hex: "c1 21 01 41 33 33 00 02 ea 00 4a 23 61 5e 1c 00 00 00 00 00 00"
+    timestamp: 1717836.098
+  - body_hex: "c1 21 01 41 31 00 00 01 e8 03 4a 22 60 5e 1d 00 00 00 00 00 00"
+    timestamp: 1717852.436
+  - body_hex: "c1 21 01 41 00 00 00 01 e7 03 4a 2b 5c 5e 1c 00 00 00 00 00 00"
+    timestamp: 1717867.742
+  - body_hex: "c1 21 01 41 00 00 00 01 e8 03 49 36 53 5e 1c 00 00 00 00 00 00"
+    timestamp: 1717883.933
+  - body_hex: "c1 21 01 41 00 00 00 01 e8 03 49 3d 50 5e 1b 00 00 00 00 00 00"
+    timestamp: 1717900.091
+  - body_hex: "c1 21 01 41 00 00 00 01 e8 03 49 41 4f 5e 1b 00 00 00 00 00 00"
+    timestamp: 1717915.354
+  - body_hex: "c1 21 01 41 00 00 00 01 e7 03 49 44 4f 5e 1b 00 00 00 00 00 00"
+    timestamp: 1717931.618
+  - body_hex: "c1 21 01 41 00 00 00 01 e7 03 49 44 4f 5e 1b 00 00 00 00 00 00"
+    timestamp: 1717946.879
+  - body_hex: "c1 21 01 41 00 00 01 01 e6 03 49 45 51 5e 1b 00 00 00 00 00 00"
+    timestamp: 1717963.179
+  - body_hex: "c1 21 01 41 00 00 01 01 e7 03 49 46 51 5e 1b 00 00 00 00 00 00"
+    timestamp: 1717978.445
