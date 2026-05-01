@@ -56,6 +56,10 @@ DEFAULT_POLL_INTERVAL = 15.0  # seconds
 SUPERVISOR_CHECK_INTERVAL = 5.0  # seconds
 RECONNECT_DELAYS = [5, 10, 30, 60]  # initial backoff sequence
 RECONNECT_FOREVER_INTERVAL = 60  # after exhausting backoff
+# Bound on how long start()/reconnect waits for the first C0 ingest before
+# firing on_connected anyway. Keeps boot non-blocking if the AC is silent
+# (powered off at the breaker, gateway up but UART quiet, etc.).
+INITIAL_STATUS_TIMEOUT = 3.0  # seconds
 
 
 def _parse_b1_property_id(raw) -> tuple[int, int] | None:
@@ -182,6 +186,15 @@ class Device:
 
         # ── Follow Me shadow register ─────────────────────
         self._follow_me_shadow: dict | None = None  # {"celsius": float}
+
+        # ── Initial-status handshake state ─────────────────
+        # Set by ``_query_initial_status``; signalled by ``_ingest_and_signal``
+        # the first time an rsp_0xc0 ingest completes after each (re)connect.
+        # Gates ``on_connected`` so HA's ``connected`` flag (and entity
+        # availability) only flips True once ``device.read("power")`` etc.
+        # have a real value, eliminating the boot/reconnect false-False window.
+        self._initial_status_event: asyncio.Event | None = None
+        self._post_connect_task: asyncio.Task | None = None
 
         # ── Task management ────────────────────────────────
         self._running = False
@@ -393,6 +406,12 @@ class Device:
         await self._query_gateway_info()
         await self._query_capabilities()
 
+        # Initial status round-trip: send one C0 query and wait for the
+        # ingest to land. Awaits inline (no listen-loop deadlock — the
+        # listen loop is running in a separate task at this point and
+        # will deliver the rsp_0xc0 frame). Fires on_connected after.
+        await self._post_connect_init()
+
         # Start poll loop (queries derived from database each cycle)
         self._poll_task = asyncio.create_task(self._poll_loop())
 
@@ -406,7 +425,12 @@ class Device:
         """Stop supervisor and all loops, disconnect."""
         self._running = False
 
-        for task in [self._supervisor_task, self._poll_task, self._listen_task]:
+        for task in [
+            self._supervisor_task,
+            self._poll_task,
+            self._listen_task,
+            self._post_connect_task,
+        ]:
             if task and not task.done():
                 task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
@@ -415,6 +439,7 @@ class Device:
         self._supervisor_task = None
         self._poll_task = None
         self._listen_task = None
+        self._post_connect_task = None
 
         if self._client:
             await self._client.close()
@@ -428,14 +453,18 @@ class Device:
     # ── Connection management ──────────────────────────────
 
     async def _connect(self):
-        """Establish WebSocket connection and wire up message handler."""
+        """Establish WebSocket connection and wire up message handler.
+
+        Does NOT fire ``on_connected``. That is deferred to
+        ``_post_connect_init`` so HA's connected flag flips True only
+        after the first C0 has been ingested (entities have real values
+        instead of None at the moment of availability).
+        """
         self._client = HvacClient(
             self.host, self.port, psk=self._psk_bytes, no_encrypt=self._no_encrypt
         )
         await self._client.connect()
         self._client.add_listener(self._on_gateway_message)
-        if self.on_connected:
-            self.on_connected()
 
     async def _reconnect(self):
         """Reconnect WebSocket with backoff. Does NOT re-query B5 or wipe status."""
@@ -461,6 +490,19 @@ class Device:
                         await self._client.close()
                 await self._connect()
                 log.info("Reconnected to %s:%d", self.host, self.port)
+                # Cannot await the post-connect handshake inline here —
+                # this method is called from inside _listen_loop, which
+                # is the one consuming the WS frames we need to ingest.
+                # Spawn it as a task so it runs after _reconnect returns
+                # and the listen loop resumes consuming frames.
+                if (
+                    self._post_connect_task
+                    and not self._post_connect_task.done()
+                ):
+                    self._post_connect_task.cancel()
+                self._post_connect_task = asyncio.create_task(
+                    self._post_connect_init()
+                )
                 return
             except Exception as e:
                 log.warning("Reconnect attempt %d failed: %s", attempt, e)
@@ -644,6 +686,70 @@ class Device:
                  self.gateway_info.get("instance"),
                  self.gateway_info.get("version"))
 
+    async def _query_initial_status(self) -> bool:
+        """Send one cmd_0x41 and wait for the next C0 ingest to complete.
+
+        Returns True if a fresh C0 was ingested before the timeout, False
+        otherwise (timeout, send failure, no client). On True, the status
+        database has real values for every C0-sourced field, so consumers
+        can read ``power``/``operating_mode``/etc. without seeing None.
+
+        The event is set by ``_ingest_and_signal`` AFTER ``_db.ingest``
+        completes — so by the time ``wait_for`` returns, entity callbacks
+        have already fired with the new values.
+        """
+        if not self._client or not self._client._ws:
+            return False
+        self._initial_status_event = asyncio.Event()
+        try:
+            try:
+                await self._client.send_frame(build_status_query().hex(" "))
+            except Exception as e:
+                log.warning("Initial status send failed: %s", e)
+                return False
+            try:
+                await asyncio.wait_for(
+                    self._initial_status_event.wait(),
+                    timeout=INITIAL_STATUS_TIMEOUT,
+                )
+                return True
+            except asyncio.TimeoutError:
+                log.warning(
+                    "Initial status query timed out after %.1fs — "
+                    "AC may be silent (e.g. powered off at breaker)",
+                    INITIAL_STATUS_TIMEOUT,
+                )
+                return False
+        finally:
+            self._initial_status_event = None
+
+    async def _post_connect_init(self) -> None:
+        """Run post-(re)connect handshake, then fire ``on_connected``.
+
+        Sequence: send one status query, wait for the first C0 ingest to
+        complete (or time out), then signal connected. Any exception is
+        logged but does not block ``on_connected`` — HA needs to learn
+        about the connection even if the AC is silent.
+
+        Awaited from ``start()`` (where the listen loop has not been
+        re-entered yet) and spawned as a task from ``_reconnect()`` (where
+        the listen loop is suspended in this same call stack and would
+        deadlock the C0 ingest path if we awaited inline).
+        """
+        try:
+            ok = await self._query_initial_status()
+            if ok:
+                log.info("Initial status received and ingested")
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.exception("Initial status query crashed")
+        if self.on_connected:
+            try:
+                self.on_connected()
+            except Exception:
+                log.exception("on_connected callback error")
+
     # ── Frame reception (writes to database) ────────────────
 
     def _on_gateway_message(self, msg: dict):
@@ -736,11 +842,7 @@ class Device:
                         self._b5_response_event.set()
             else:
                 asyncio.create_task(
-                    self._db.ingest(
-                        body, protocol_key,
-                        timestamp=ts,
-                        available_fields=self.available_fields,
-                    )
+                    self._ingest_and_signal(body, protocol_key, ts)
                 )
                 if protocol_key == "rsp_0xc0" and self._follow_me_shadow is not None:
                     fm = read_field(self._status, "follow_me")
@@ -749,6 +851,27 @@ class Device:
 
         except Exception as e:
             log.debug("Frame decode error: %s", e)
+
+    async def _ingest_and_signal(
+        self, body: bytes, protocol_key: str, ts: str
+    ) -> None:
+        """Ingest a non-B5 frame and signal initial-status if applicable.
+
+        The signal fires AFTER ``_db.ingest`` completes, so by the time
+        ``_query_initial_status`` returns, all C0-sourced fields are
+        readable and entity callbacks have already run with the new
+        values. Fan-out from ``_process_frame`` via ``create_task``.
+        """
+        await self._db.ingest(
+            body, protocol_key,
+            timestamp=ts,
+            available_fields=self.available_fields,
+        )
+        if (
+            protocol_key == "rsp_0xc0"
+            and self._initial_status_event is not None
+        ):
+            self._initial_status_event.set()
 
     # ── Query frame builder ────────────────────────────────
 

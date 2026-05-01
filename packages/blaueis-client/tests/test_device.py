@@ -347,3 +347,120 @@ def test_frame_observer_receives_bytes_copy():
     assert captures and isinstance(captures[0], bytes)
     with pytest.raises(TypeError):
         captures[0][0] = 0  # type: ignore[index]
+
+
+# ── Initial-status handshake (boot/reconnect gap closer) ────
+
+
+async def test_ingest_and_signal_signals_on_c0_only():
+    """The initial-status event fires only on rsp_0xc0 ingest, not on any
+    other protocol. Other frames (B1, C1, etc.) coming in during the wait
+    must NOT prematurely unblock _query_initial_status."""
+    from unittest.mock import AsyncMock
+
+    d = _make_device()
+    d._db.ingest = AsyncMock()  # isolate the signal-gate from real ingest
+    d._initial_status_event = asyncio.Event()
+
+    await d._ingest_and_signal(b"", "rsp_0xb1", "ts")
+    assert not d._initial_status_event.is_set()
+
+    await d._ingest_and_signal(b"", "rsp_0xc0", "ts")
+    assert d._initial_status_event.is_set()
+
+
+async def test_ingest_and_signal_no_crash_when_not_armed():
+    """If no _query_initial_status is in flight, the event is None and the
+    helper must still ingest cleanly without dereferencing it."""
+    from unittest.mock import AsyncMock
+
+    d = _make_device()
+    d._db.ingest = AsyncMock()
+    assert d._initial_status_event is None  # default
+
+    # Should not raise:
+    await d._ingest_and_signal(b"", "rsp_0xc0", "ts")
+    d._db.ingest.assert_awaited_once()
+
+
+async def test_query_initial_status_returns_true_on_c0_ingest():
+    """Happy path: send query, get C0 ingest, event is set, helper returns
+    True and clears the event to leave state ready for the next reconnect."""
+    d = _make_device()
+    ws = MockWebSocket()
+    await _inject_ws(d, ws)
+
+    task = asyncio.create_task(d._query_initial_status())
+    # Yield so the coroutine sends its frame and arms the event.
+    await asyncio.sleep(0)
+
+    assert len(ws.sent) >= 1, "expected one cmd_0x41 to be sent"
+    assert d._initial_status_event is not None
+
+    # Simulate a C0 ingest completing — _ingest_and_signal would set this.
+    d._initial_status_event.set()
+
+    result = await task
+    assert result is True
+    assert d._initial_status_event is None
+
+
+async def test_query_initial_status_times_out_when_silent(monkeypatch):
+    """Timeout fallback: if no C0 arrives within INITIAL_STATUS_TIMEOUT the
+    helper returns False and clears the event so on_connected can still fire."""
+    import blaueis.client.device as dev_mod
+
+    monkeypatch.setattr(dev_mod, "INITIAL_STATUS_TIMEOUT", 0.05)
+
+    d = _make_device()
+    ws = MockWebSocket()
+    await _inject_ws(d, ws)
+
+    result = await d._query_initial_status()
+    assert result is False
+    assert d._initial_status_event is None
+
+
+async def test_post_connect_init_fires_on_connected_after_signal():
+    """on_connected fires AFTER the initial status round-trip — never before.
+    This is the contract that lets HA's connected flag track real entity
+    values rather than the bare WS state."""
+    d = _make_device()
+    ws = MockWebSocket()
+    await _inject_ws(d, ws)
+
+    order: list[str] = []
+    d.on_connected = lambda: order.append("on_connected")
+
+    task = asyncio.create_task(d._post_connect_init())
+    await asyncio.sleep(0)  # let it send the query and arm the event
+
+    # on_connected must NOT have fired yet — we're mid-handshake.
+    assert order == []
+    assert d._initial_status_event is not None
+
+    # Now signal the C0 ingest.
+    order.append("c0_ingested")
+    d._initial_status_event.set()
+    await task
+
+    assert order == ["c0_ingested", "on_connected"]
+
+
+async def test_post_connect_init_fires_on_connected_on_timeout(monkeypatch):
+    """Even if the AC is silent (no C0 arrives), on_connected must still
+    fire after the timeout — HA needs to learn about the connection so
+    cards stop showing 'Unavailable' from the disconnect side."""
+    import blaueis.client.device as dev_mod
+
+    monkeypatch.setattr(dev_mod, "INITIAL_STATUS_TIMEOUT", 0.05)
+
+    d = _make_device()
+    ws = MockWebSocket()
+    await _inject_ws(d, ws)
+
+    fired = []
+    d.on_connected = lambda: fired.append(True)
+
+    await d._post_connect_init()
+    assert fired == [True]
