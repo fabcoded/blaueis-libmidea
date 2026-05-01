@@ -1,0 +1,37 @@
+# XtremeSaveBlue — full diagnostic profile (v1)
+#
+# Format: Glossary-Override YAML for the Home Assistant integration.
+#         NOT the CLI quirks-loader format (compare with
+#         xtremesaveblue_power_quirk.yaml — that one feeds ac_monitor.py
+#         and build_command.py via the --quirks flag).
+#
+# Audience: enthusiasts who want the same diagnostic visibility we run
+# on the dev unit. Copy the YAML below into the "Glossary Overrides"
+# textarea in the integration's Configure dialog (Settings →
+# Integrations → blaueis_midea → Configure → Advanced).
+#
+# What it does: enables read-only diagnostic sensors that ship disabled
+# by default in the upstream glossary. Defaults stay conservative for
+# users who don't want every wire-level signal cluttering their device
+# card; this profile flips them on for users who do.
+#
+# Versioning: bump the trailing _v1 → _v2 if the profile shape ever
+# changes in a way that breaks copy-paste compatibility (e.g. a field
+# rename, a removed override, an encoding change requiring a clean
+# re-add). Additions within v1 do not require a version bump.
+#
+# Confirmed on:
+#   - Atelier Midea (XtremeSaveBlue, fingerprint TBD)
+#
+# ─── Copy from here ─────────────────────────────────────────────────
+fields:
+  sensor:
+    # Inverter DC bus voltage rails — diagnostic only. Useful for
+    # spotting brownouts (min sags) and supply spikes (max climbs).
+    max_bus_voltage:
+      ha:
+        enabled_default: true
+    min_bus_voltage:
+      ha:
+        enabled_default: true
+# ─── Copy to here ───────────────────────────────────────────────────

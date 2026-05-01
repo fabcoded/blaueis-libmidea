@@ -30,7 +30,7 @@ from blaueis.core.status import build_status
 
 TESTS_DIR = Path(__file__).resolve().parent
 SPEC_DIR = TESTS_DIR.parent / "src" / "blaueis" / "core" / "data"
-Q11_QUIRKS = SPEC_DIR / "device_quirks" / "xtremesaveblue_q11_power.yaml"
+POWER_QUIRK = SPEC_DIR / "device_quirks" / "xtremesaveblue_power_quirk.yaml"
 
 passed = 0
 failed = 0
@@ -290,11 +290,11 @@ def test_multiple_quirks_compose():
 
 def test_load_device_quirks_helper():
     print("\n11. load_device_quirks loads YAML file")
-    quirks = load_device_quirks(Q11_QUIRKS)
+    quirks = load_device_quirks(POWER_QUIRK)
     check("loaded dict", isinstance(quirks, dict), f"got {type(quirks)}")
     check(
-        "name = XtremeSaveBlue Q11 power monitoring",
-        "Q11" in quirks.get("name", ""),
+        "name = XtremeSaveBlue power monitoring (cap 0x16=0)",
+        "XtremeSaveBlue" in quirks.get("name", "") and "0x16=0" in quirks.get("name", ""),
         f"got {quirks.get('name')}",
     )
     check(
@@ -309,19 +309,20 @@ def test_load_device_quirks_helper():
     )
 
 
-# ── Test 12: KILLER — Q11 quirks unlock real power decode ───────────────
+# ── Test 12: KILLER — power quirk unlocks real decode on cap 0x16=0 unit ─
 
 
-def test_q11_power_quirks_real_decode():
-    """Load the bundled Q11 quirks file and process a real C1 Group 4
-    frame from Session 15. The 4 power fields should decode with the
-    expected values (721.57 kWh, 0.191 kW)."""
-    print("\n12. KILLER: Q11 quirks unlock real power decode end-to-end")
+def test_power_quirk_real_decode_on_cap_0x16_0_unit():
+    """Load the bundled XtremeSaveBlue power quirk and process a real
+    C1 Group 4 frame from a unit returning cap 0x16=0 (Session 15).
+    The 4 power fields should decode with the expected values
+    (721.57 kWh, 0.191 kW)."""
+    print("\n12. KILLER: power quirk unlocks real decode on cap 0x16=0 unit")
     glossary = load_glossary()
     status = build_status(device="test", glossary=glossary)
 
-    # Apply Q11 quirks (which forces fa=readable + synthesizes cap 0x16=4)
-    quirks = load_device_quirks(Q11_QUIRKS)
+    # Apply the power quirk (forces fa=readable + synthesizes cap 0x16=4)
+    quirks = load_device_quirks(POWER_QUIRK)
     report = apply_device_quirks(status, quirks, glossary)
     check(
         "report.fields_overridden has 4 power fields",
@@ -409,11 +410,11 @@ def test_apply_quirks_files_helper():
     print("\n14. apply_quirks_files loads + applies a list of paths")
     glossary = load_glossary()
     status = build_status(device="test", glossary=glossary)
-    reports = apply_quirks_files(status, [Q11_QUIRKS], glossary)
+    reports = apply_quirks_files(status, [POWER_QUIRK], glossary)
     check("returns list of 1 report", len(reports) == 1, f"got {len(reports)}")
     check("report has source path", "source" in reports[0], "missing source key")
     check(
-        "Q11 fields overridden",
+        "power-quirk fields overridden",
         len(reports[0]["fields_overridden"]) == 4,
         f"got {reports[0]['fields_overridden']}",
     )
@@ -434,7 +435,7 @@ def main():
     test_force_overrides_real_cap()
     test_multiple_quirks_compose()
     test_load_device_quirks_helper()
-    test_q11_power_quirks_real_decode()
+    test_power_quirk_real_decode_on_cap_0x16_0_unit()
     test_library_api_is_pure()
     test_apply_quirks_files_helper()
 

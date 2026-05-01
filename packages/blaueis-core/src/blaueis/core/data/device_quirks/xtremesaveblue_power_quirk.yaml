@@ -1,17 +1,19 @@
-# Device quirks: XtremeSaveBlue Q11 — power monitoring fix
+# Device quirks: XtremeSaveBlue — power monitoring fix
+# Applies to units returning cap 0x16=0
 #
 # Apply with:
-#   ac_monitor.py --host ... --quirks protocols/midea/spec/device_quirks/xtremesaveblue_q11_power.yaml
-#   build_command.py status.json --quirks protocols/midea/spec/device_quirks/xtremesaveblue_q11_power.yaml --set ...
+#   ac_monitor.py --host ... --quirks protocols/midea/spec/device_quirks/xtremesaveblue_power_quirk.yaml
+#   build_command.py status.json --quirks protocols/midea/spec/device_quirks/xtremesaveblue_power_quirk.yaml --set ...
 
-name: "XtremeSaveBlue Q11 — power monitoring"
+name: "XtremeSaveBlue — power monitoring (cap 0x16=0)"
 description: |
-  The Q11 firmware reports cap 0x16=0 ("no power calc") which causes
-  process_b5 to gate the 4 power fields to feature_available=never.
-  But Session 15 probe data confirms the AC actually returns valid
-  C1 Group 4 power frames with real linear-encoded data (~721 kWh
-  total monotonically increasing across 4 captures, ~660 W real-time
-  draw with the compressor running).
+  Some XtremeSaveBlue firmware reports cap 0x16=0 ("no power calc")
+  which causes process_b5 to gate the 4 power fields to
+  feature_available=never. Session 15 probe data on a unit returning
+  cap 0x16=0 confirms the AC actually returns valid C1 Group 4 power
+  frames with real linear-encoded data (~721 kWh total monotonically
+  increasing across 4 captures, ~660 W real-time draw with the
+  compressor running).
 
   Cross-validation across 4 probe runs (56 minutes apart):
     Run 1: body[4..7] = 00 01 19 BE → linear = 721.26 kWh
