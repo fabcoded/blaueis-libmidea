@@ -35,3 +35,9 @@ Approximate counts today: core 61 · gateway 43 · client 147 · tools 48. Tests
 - Never edit files directly under `/opt/blaueis-gw/` as root — the update path assumes a clean checkout.
 
 Architecture, operations, WebSocket protocol, flight-recorder design, and StatusDB internals live in `docs/`.
+
+## Downstream consumer — blaueis-ha-midea
+
+`blaueis-ha-midea` mirrors `packages/blaueis-{core,client}/src/blaueis/{core,client}/` into its own tree at `custom_components/blaueis_midea/lib/blaueis/{core,client}/`. The mirror is automated and drift-gated on the ha-midea side (see `blaueis-ha-midea/tools/sync_from_libmidea.py` and the pre-commit hook there). After making a libmidea change that affects the public API (anything in `blaueis-core` or `blaueis-client`), expect a follow-up ha-midea commit to land the sync.
+
+This mirror is a one-way build artefact, libmidea → ha-midea. Never edit the ha-midea vendored copy as a path to changing libmidea — the next sync overwrites it.
