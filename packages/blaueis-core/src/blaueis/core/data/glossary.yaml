@@ -8144,8 +8144,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: raw (x8 = RPM)
-      alt_names:
-        rev60: roomIFengjiSpeed
       protocols:
         rsp_0xc1_group2:
           frame: 0xC1 Group 2
