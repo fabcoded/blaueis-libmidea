@@ -5857,6 +5857,12 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       unit: Hz
+      ha:
+        device_class: frequency
+        state_class: measurement
+        unit_of_measurement: Hz
+        suggested_display_precision: 0
+        entity_category: diagnostic
       alt_names:
         midea_lua: FR
         handbook: Compressor Frequency
@@ -6946,6 +6952,11 @@ fields:
       data_type: float
       device_context: outdoor_unit
       unit: °C
+      ha:
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: °C
+        suggested_display_precision: 1
       alt_names:
         dudanov: outdoorTemp
         msmart: outdoor_temperature
@@ -7078,6 +7089,11 @@ fields:
       data_type: float
       device_context: indoor_unit
       unit: kW
+      ha:
+        device_class: power
+        state_class: measurement
+        unit_of_measurement: kW
+        suggested_display_precision: 2
       alt_names:
         midea_lua: curRealTimePower
         legacy: realtime_power_kw
@@ -7276,6 +7292,11 @@ fields:
       data_type: float
       device_context: indoor_unit
       unit: kWh
+      ha:
+        device_class: energy
+        state_class: total_increasing
+        unit_of_measurement: kWh
+        suggested_display_precision: 1
       alt_names:
         midea_lua: totalPowerConsume
         dudanov: totalPowerConsumption
