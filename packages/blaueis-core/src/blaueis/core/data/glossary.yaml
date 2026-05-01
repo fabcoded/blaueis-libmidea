@@ -786,7 +786,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev90: alarmSleep
+        rev1: alarmSleep
         handbook: Alarm Sleep
       protocols:
         cmd_0x40:
@@ -819,7 +819,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev91: b5_anion
+        rev1: b5_anion
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -911,8 +911,8 @@ fields:
             logic applies — concurrent deflection geometries fight. Also
             suppresses swing/turbo/jet_cool which reshape the micro-vent path.
       alt_names:
-        rev97: WindDeblow
-        rev98: wind_avoid
+        rev1: WindDeblow
+        rev2: wind_avoid
         dudanov: WIND_OFF_ME
         handbook: Breeze Away
       protocols:
@@ -1001,8 +1001,8 @@ fields:
             this field's geometry. Also forces strong_wind off and auto-fan
             per community protocol research on FA100 behavior.
       alt_names:
-        rev99: GentleWindSense
-        rev100: gentle_wind_sense
+        rev1: GentleWindSense
+        rev2: gentle_wind_sense
         dudanov: BREEZE_CONTROL
         handbook: Breeze Mild
       protocols:
@@ -1095,8 +1095,8 @@ fields:
             strong_wind (boost velocity), jet_cool, no_wind_sense (redundant
             older variant), or sibling breeze modes.
       alt_names:
-        rev101: PreventStraightWind
-        rev102: prevent_straight_wind
+        rev1: PreventStraightWind
+        rev2: prevent_straight_wind
         dudanov: ONE_KEY_NO_WIND
         handbook: Breezeless
       protocols:
@@ -1176,7 +1176,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev103: buzzer
+        rev1: buzzer
         dudanov: m_buzzer
         msmart: beep_on
         midea_local: prompt_tone
@@ -1258,7 +1258,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev104: catchCold
+        rev1: catchCold
         handbook: Anti-Cold, Cold Prevention
       protocols:
         cmd_0x40:
@@ -1298,7 +1298,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev105: wisdomEye
+        rev1: wisdomEye
         neoacheron: childSleep
         handbook: Child Sleep, Wise Eye
       protocols:
@@ -1339,7 +1339,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev107: cleanUp
+        rev1: cleanUp
         handbook: Purifier, Clean Up
       protocols:
         cmd_0x40:
@@ -1380,7 +1380,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        rev113: comfortableSleepValue
+        rev1: comfortableSleepValue
         handbook: Comfort Sleep, Cosy Sleep
         dudanov: comfortSleep
       composite:
@@ -1523,7 +1523,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev120: dryClean
+        rev1: dryClean
         handbook: Dry Clean, X-Fan, Auto Clean
       protocols:
         cmd_0x40:
@@ -1574,8 +1574,8 @@ fields:
             evidence: AC keeps eco_mode set and silently drops turbo when
             both arrive same frame. Schema is UX guidance, not wire enforcement.
       alt_names:
-        rev122: ECO
-        rev123: eco
+        rev1: ECO
+        rev2: eco
         dudanov: m_ecoMode
         msmart: eco_mode
         node_mideahvac: ecoMode
@@ -1659,7 +1659,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev126: energySave
+        rev1: energySave
         handbook: Energy Save
       protocols:
         cmd_0x40:
@@ -1700,7 +1700,7 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        rev128: exchangeAir
+        rev1: exchangeAir
         handbook: Fresh Air, Ventilation
       protocols:
         cmd_0x40:
@@ -1752,7 +1752,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        rev129: windMode
+        rev1: windMode
         dudanov: m_fanSpeed
         msmart: fan_speed
         node_mideahvac: fanSpeed
@@ -1976,7 +1976,7 @@ fields:
       ha:
         entity_category: diagnostic
       alt_names:
-        rev130: bodySense
+        rev1: bodySense
         handbook: Follow Me, I Feel
       protocols:
         cmd_0x40:
@@ -2133,7 +2133,7 @@ fields:
       - 0
       - 100
       alt_names:
-        rev131: fresh_air_fan_speed
+        rev1: fresh_air_fan_speed
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -2167,8 +2167,8 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev132: FreshAir
-        rev133: fresh_air
+        rev1: FreshAir
+        rev2: fresh_air
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -2410,7 +2410,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev147: farceWind
+        rev1: farceWind
         handbook: Low Wind, Quiet Wind
       protocols:
         cmd_0x40:
@@ -2443,7 +2443,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev151: nightLight
+        rev1: nightLight
         handbook: Night Light, LED Dimmer
       protocols:
         cmd_0x40:
@@ -2502,8 +2502,8 @@ fields:
           raw: 6
           description: Smart dehumidification (Lua only)
       alt_names:
-        rev152: Mode
-        rev153: mode
+        rev1: Mode
+        rev2: mode
         dudanov: m_mode
         msmart: operational_mode
         node_mideahvac: mode
@@ -2708,8 +2708,8 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev164: DeviceOnOff
-        rev165: power
+        rev1: DeviceOnOff
+        rev2: power
         dudanov: powerState
         msmart: power_state
         node_mideahvac: powerOn
@@ -2761,7 +2761,7 @@ fields:
       - 0
       - 1440
       alt_names:
-        rev167: closeTime
+        rev1: closeTime
         msmart: power_off_timer_value
       composite:
         members:
@@ -2850,7 +2850,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev168: closeTimerSwitch
+        rev1: closeTimerSwitch
         msmart: power_off_timer
         dudanov: timerOff
       protocols:
@@ -2903,7 +2903,7 @@ fields:
       - 0
       - 1440
       alt_names:
-        rev169: openTime
+        rev1: openTime
         msmart: power_on_timer_value
       composite:
         members:
@@ -2989,7 +2989,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev170: openTimerSwitch
+        rev1: openTimerSwitch
         msmart: power_on_timer
         dudanov: timerOn
       protocols:
@@ -3029,7 +3029,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev172: powerSave
+        rev1: powerSave
         handbook: Power Save
       protocols:
         cmd_0x40:
@@ -3064,7 +3064,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        rev96: PTCValue
+        rev1: PTCValue
         dudanov: m_ptc
         midea_protocol: ptc_heater
       protocols:
@@ -3180,10 +3180,10 @@ fields:
         note: Passive parameter — driven by performance-preset forces, not
           typically adjusted standalone. Shown when cap-confirmed.
       alt_names:
-        rev175: Gear
-        rev176: GenMode
-        rev177: Gear5
-        rev178: rate_select
+        rev1: Gear
+        rev2: GenMode
+        rev3: Gear5
+        rev4: rate_select
         handbook: Rate Select, Speed Mode
       protocols:
         cmd_0xb0:
@@ -3253,7 +3253,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev179: resume
+        rev1: resume
         handbook: Auto Restart, Power Resume
       protocols:
         cmd_0x40:
@@ -3386,8 +3386,8 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev180: SelfClean
-        rev181: self_clean
+        rev1: SelfClean
+        rev2: self_clean
         dudanov: activeClean
         midea_local: self_clean
       protocols:
@@ -3451,7 +3451,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev182: silkyCool
+        rev1: silkyCool
         dudanov: m_silkyCool
       protocols:
         rsp_0xc0:
@@ -3594,7 +3594,7 @@ fields:
             Mutually exclusive with high-output presets (turbo, strong_wind,
             jet_cool) whose loud operation defeats the purpose.
       alt_names:
-        rev183: sleepValue
+        rev1: sleepValue
         dudanov: m_sleep
         handbook: Sleep, Good Sleep
       protocols:
@@ -3666,7 +3666,7 @@ fields:
           description: Horizontal swing on
       device_context: indoor_unit
       alt_names:
-        rev185: swingLR
+        rev1: swingLR
         dudanov: m_swingLR
         msmart: swing_horizontal
         midea_local: swing_horizontal
@@ -3765,7 +3765,7 @@ fields:
           description: Vertical swing on
       device_context: indoor_unit
       alt_names:
-        rev186: swingUD
+        rev1: swingUD
         dudanov: m_swingUD
         msmart: swing_vertical
         midea_local: swing_vertical
@@ -3871,7 +3871,7 @@ fields:
       - 16.0
       - 30.5
       alt_names:
-        rev191: temperature
+        rev1: temperature
         dudanov: targetTemp
         msmart: target_temperature
         node_mideahvac: setpoint
@@ -4158,7 +4158,7 @@ fields:
             profile). Probe evidence (atelier unit): strong_wind + turbo in
             same frame — AC keeps strong_wind, drops turbo.
       alt_names:
-        rev184: strong_wind
+        rev1: strong_wind
       protocols:
         cmd_0x40:
           frame: 0x40 Set
@@ -4317,7 +4317,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev192: water_pump
+        rev1: water_pump
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4351,7 +4351,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev92: water_washing_manual
+        rev1: water_washing_manual
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4385,7 +4385,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev94: water_washing
+        rev1: water_washing
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4420,7 +4420,7 @@ fields:
       device_context: indoor_unit
       unit: minute
       alt_names:
-        rev95: water_washing_time
+        rev1: water_washing_time
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4458,8 +4458,8 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        rev193: WindBlow
-        rev194: wind_straight
+        rev1: WindBlow
+        rev2: wind_straight
         dudanov: WIND_ON_ME
       protocols:
         cmd_0xb0:
@@ -4535,8 +4535,8 @@ fields:
       device_context: indoor_unit
       feature_available: capability
       alt_names:
-        rev143: LeftRightSwipe
-        rev144: wind_swing_lr
+        rev1: LeftRightSwipe
+        rev2: wind_swing_lr
         handbook: Horizontal Vane Angle, Wind Direction LR
       values:
         'off':
@@ -4633,8 +4633,8 @@ fields:
       device_context: indoor_unit
       feature_available: capability
       alt_names:
-        rev145: UpDownSwipe
-        rev146: wind_swing_ud
+        rev1: UpDownSwipe
+        rev2: wind_swing_ud
         handbook: Vertical Vane Angle, Wind Direction UD
       values:
         'off':
@@ -5790,7 +5790,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev106: coolFan
+        rev1: coolFan
         handbook: Fan Dry, Cool Fan, Post-run Fan
       protocols:
         rsp_0xc0:
@@ -5821,7 +5821,7 @@ fields:
         unit_of_measurement: °C
         suggested_display_precision: 1
       alt_names:
-        rev108: compensated_temp_setpoint
+        rev1: compensated_temp_setpoint
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -5851,7 +5851,7 @@ fields:
         entity_category: diagnostic
         enabled_default: false
       alt_names:
-        rev110: compressor_current
+        rev1: compressor_current
       protocols:
         rsp_0xc1_group1:
           frame: 0xC1 Group 1
@@ -5896,7 +5896,7 @@ fields:
         suggested_display_precision: 0
         entity_category: diagnostic
       alt_names:
-        rev109: FR
+        rev1: FR
         handbook: Compressor Frequency
       protocols:
         rsp_0xc1_group1:
@@ -5925,7 +5925,7 @@ fields:
         state_class: measurement
         unit_of_measurement: min
       alt_names:
-        rev111: compressor_run_time
+        rev1: compressor_run_time
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -5951,7 +5951,7 @@ fields:
         state_class: measurement
         unit_of_measurement: Hz
       alt_names:
-        rev112: FT
+        rev1: FT
         handbook: Target Frequency
       protocols:
         rsp_0xc1_group1:
@@ -5975,7 +5975,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev114: selfCosySleep
+        rev1: selfCosySleep
       protocols:
         rsp_0xc0:
           frame: 0xC0 Response
@@ -5998,7 +5998,7 @@ fields:
       device_context: indoor_unit
       unit: kWh
       alt_names:
-        rev166: curRunPower
+        rev1: curRunPower
         legacy: current_run_power_kwh
       protocols:
         rsp_0xc1_group4:
@@ -6061,7 +6061,7 @@ fields:
       device_context: indoor_unit
       unit: days
       alt_names:
-        rev115: curWorkedDay
+        rev1: curWorkedDay
       protocols:
         rsp_0xa1:
           frame: 0xA1 Heartbeat
@@ -6083,7 +6083,7 @@ fields:
       device_context: indoor_unit
       unit: hours
       alt_names:
-        rev116: curWorkedHour
+        rev1: curWorkedHour
       protocols:
         rsp_0xa1:
           frame: 0xA1 Heartbeat
@@ -6105,7 +6105,7 @@ fields:
       device_context: indoor_unit
       unit: minutes
       alt_names:
-        rev117: curWorkedMin
+        rev1: curWorkedMin
       protocols:
         rsp_0xa1:
           frame: 0xA1 Heartbeat
@@ -6141,7 +6141,7 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        rev118: defrost_step
+        rev1: defrost_step
       protocols:
         rsp_0xc1_sub02:
           frame: 0xC1 Sub-page 0x02
@@ -6169,7 +6169,7 @@ fields:
         suggested_display_precision: 0
         entity_category: diagnostic
       alt_names:
-        rev119: Tp
+        rev1: Tp
       protocols:
         rsp_0xc1_group1:
           frame: 0xC1 Group 1
@@ -6231,7 +6231,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev121: dustFull
+        rev1: dustFull
         handbook: Filter Clean Reminder
       protocols:
         rsp_0xc0:
@@ -6255,7 +6255,7 @@ fields:
       device_context: outdoor_unit
       unit: steps (raw x 8)
       alt_names:
-        rev124: eev_position
+        rev1: eev_position
         handbook: EEV Position, Expansion Valve
       ha:
         state_class: measurement
@@ -6286,7 +6286,7 @@ fields:
       device_context: outdoor_unit
       unit: steps (raw x 8)
       alt_names:
-        rev125: eev_target_angle
+        rev1: eev_target_angle
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6312,7 +6312,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        rev127: errorCode
+        rev1: errorCode
         handbook: Error Code, Fault Code, E1-E9
       protocols:
         rsp_0xc0:
@@ -6336,7 +6336,7 @@ fields:
       device_context: indoor_unit
       unit: °C
       alt_names:
-        rev134: fresh_air_temp
+        rev1: fresh_air_temp
       protocols:
         rsp_0xb1:
           frame: 0xB1 Property Response
@@ -6360,7 +6360,7 @@ fields:
       device_context: indoor_unit
       unit: '%'
       alt_names:
-        rev135: humidity
+        rev1: humidity
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6387,7 +6387,7 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        rev136: curHum
+        rev1: curHum
       protocols:
         rsp_0xa1:
           frame: 0xA1 Heartbeat
@@ -6408,7 +6408,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev137: inError
+        rev1: inError
       protocols:
         rsp_0xc0:
           frame: 0xC0 Response
@@ -6468,7 +6468,7 @@ fields:
           raw: 5
           description: Fan only
       alt_names:
-        rev138: indoor_mode
+        rev1: indoor_mode
       protocols:
         rsp_0xc1_group1:
           frame: 0xC1 Group 1
@@ -6500,7 +6500,7 @@ fields:
         unit_of_measurement: °C
         suggested_display_precision: 1
       alt_names:
-        rev139: indoor_temperature
+        rev1: indoor_temperature
         dudanov: indoorTemp
         msmart: indoor_temperature
         node_mideahvac: indoorTemperature
@@ -6534,7 +6534,7 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
-        rev140: ipm_module_temp
+        rev1: ipm_module_temp
       protocols:
         rsp_0xc1_group3:
           frame: 0xC1 Group 3
@@ -6557,7 +6557,7 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        rev141: lightAdValue
+        rev1: lightAdValue
       protocols:
         rsp_0xa1:
           frame: 0xA1 Heartbeat
@@ -6578,7 +6578,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev142: localBodySense
+        rev1: localBodySense
         handbook: Occupancy Sensor, Smart Eye, Motion Detect
       protocols:
         rsp_0xc0:
@@ -6608,7 +6608,7 @@ fields:
         entity_category: diagnostic
         enabled_default: false
       alt_names:
-        rev148: max_bus_voltage
+        rev1: max_bus_voltage
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6638,7 +6638,7 @@ fields:
         entity_category: diagnostic
         enabled_default: false
       alt_names:
-        rev149: min_bus_voltage
+        rev1: min_bus_voltage
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6743,7 +6743,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev150: naturalFan
+        rev1: naturalFan
         handbook: Natural Wind, Natural Breeze
       protocols:
         rsp_0xc0:
@@ -6831,7 +6831,7 @@ fields:
         unit_of_measurement: V
         suggested_display_precision: 0
       alt_names:
-        rev154: outdoor_dc_bus_voltage
+        rev1: outdoor_dc_bus_voltage
       protocols:
         rsp_0xc1_group3:
           frame: 0xC1 Group 3
@@ -6893,7 +6893,7 @@ fields:
       device_context: outdoor_unit
       unit: RPM (raw x 8)
       alt_names:
-        rev155: outdoor_fan_speed
+        rev1: outdoor_fan_speed
         handbook: Outdoor Fan Speed
       protocols:
         rsp_0xc1_group3:
@@ -6918,7 +6918,7 @@ fields:
       device_context: outdoor_unit
       unit: RPM (raw x 8)
       alt_names:
-        rev156: outdoor_fan_target_speed
+        rev1: outdoor_fan_target_speed
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6939,7 +6939,7 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
-        rev157: outDoorBackTemp
+        rev1: outDoorBackTemp
       protocols:
         rsp_0xc1_group3:
           frame: 0xC1 Group 3
@@ -6968,7 +6968,7 @@ fields:
         unit_of_measurement: V
         suggested_display_precision: 0
       alt_names:
-        rev158: outdoor_supply_voltage
+        rev1: outdoor_supply_voltage
       protocols:
         rsp_0xc1_group1:
           frame: 0xC1 Group 1
@@ -6989,7 +6989,7 @@ fields:
       device_context: outdoor_unit
       unit: Hz
       alt_names:
-        rev159: outdoor_target_freq
+        rev1: outdoor_target_freq
       protocols:
         rsp_0xc1_group3:
           frame: 0xC1 Group 3
@@ -7050,7 +7050,7 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
-        rev160: outdoor_total_current
+        rev1: outdoor_total_current
       protocols:
         rsp_0xc1_group1:
           frame: 0xC1 Group 1
@@ -7071,7 +7071,7 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        rev161: peakElec
+        rev1: peakElec
         handbook: Peak Electricity
       protocols:
         rsp_0xc0:
@@ -7100,7 +7100,7 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        rev162: pm25Value
+        rev1: pm25Value
       protocols:
         rsp_0xa1:
           frame: 0xA1 Heartbeat
@@ -7121,7 +7121,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        rev163: pmvValue
+        rev1: pmvValue
         node_mideahvac: pmv
         handbook: PMV, Thermal Comfort
       protocols:
@@ -7153,7 +7153,7 @@ fields:
         unit_of_measurement: kW
         suggested_display_precision: 2
       alt_names:
-        rev171: curRealTimePower
+        rev1: curRealTimePower
         legacy: realtime_power_kw
       protocols:
         rsp_0xc1_group4:
@@ -7247,7 +7247,7 @@ fields:
         suggested_display_precision: 1
         entity_category: diagnostic
       alt_names:
-        rev187: T1
+        rev1: T1
         msmart: T1
       protocols:
         rsp_0xc1_group1:
@@ -7275,7 +7275,7 @@ fields:
       device_context: indoor_unit
       unit: °C
       alt_names:
-        rev188: T2
+        rev1: T2
         handbook: T2 Heat Exchanger
       protocols:
         rsp_0xc1_group1:
@@ -7302,7 +7302,7 @@ fields:
       device_context: outdoor_unit
       unit: °C
       alt_names:
-        rev189: T3
+        rev1: T3
         handbook: T3 Outdoor Coil
       protocols:
         rsp_0xc1_group1:
@@ -7335,7 +7335,7 @@ fields:
         suggested_display_precision: 1
         entity_category: diagnostic
       alt_names:
-        rev190: T4
+        rev1: T4
         handbook: T4 Outdoor Ambient
       protocols:
         rsp_0xc1_group1:
@@ -7368,7 +7368,7 @@ fields:
         unit_of_measurement: kWh
         suggested_display_precision: 1
       alt_names:
-        rev173: totalPowerConsume
+        rev1: totalPowerConsume
         dudanov: totalPowerConsumption
         legacy: total_power_kwh
       protocols:
@@ -7453,7 +7453,7 @@ fields:
       device_context: indoor_unit
       unit: kWh
       alt_names:
-        rev174: totalRunPower
+        rev1: totalRunPower
         legacy: total_run_power_kwh
       protocols:
         rsp_0xc1_group4:
@@ -7562,7 +7562,7 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        rev93: water_washing_stage
+        rev1: water_washing_stage
       protocols:
         rsp_0xb1:
           frame: 0xB1 Property Response
