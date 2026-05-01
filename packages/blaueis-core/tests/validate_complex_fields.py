@@ -26,14 +26,16 @@ import yaml
 SPEC = Path(__file__).resolve().parent.parent / "src" / "blaueis" / "core" / "data"
 TESTS = Path(__file__).resolve().parent / "test-cases"
 
-# The reference-implementation oracle lives in the test-loops write-exempt
-# subtree. We add it to sys.path so we can import the clean public API
-# without referencing any upstream file names or function names.
-_ORACLE_DIR = Path(__file__).resolve().parents[5] / "blaueis-research" / "internal-tests" / "lua"
+# Opt-in developer harness: the reference-implementation oracle lives outside
+# this repo. Point at it via the BLAUEIS_ORACLE_DIR environment variable; tests
+# auto-skip when unset or the directory is missing.
+_oracle_env = os.environ.get("BLAUEIS_ORACLE_DIR")
+_ORACLE_DIR = Path(_oracle_env) if _oracle_env else None
 
-# This module is an opt-in developer harness: the reference oracle it
-# cross-checks against is not bundled in the public repo. Skip when absent.
-pytestmark = pytest.mark.skipif(not _ORACLE_DIR.exists(), reason="oracle data unavailable (private)")
+pytestmark = pytest.mark.skipif(
+    _ORACLE_DIR is None or not _ORACLE_DIR.exists(),
+    reason="oracle data unavailable (set BLAUEIS_ORACLE_DIR to enable)",
+)
 
 
 def _load_oracle():
