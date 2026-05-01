@@ -221,6 +221,14 @@ encodings:
     unit: kW
     byte_count: 3
     note: Non-BCD alternative for instantaneous power.
+  voltage_offset60:
+    formula: raw + 60
+    unit: V
+    scale: 1.0
+    offset: -60
+    note: Inverter DC bus rail. The wire carries (volts - 60) packed into a uint8
+      so the 0..255 range maps to 60..315 V — the band an inverter's rectified bus
+      actually lives in. Used by max_bus_voltage and min_bus_voltage in C1 Group 5.
   uint16_le:
     formula: body[o] | (body[o+1] << 8)
     unit: ''
