@@ -778,7 +778,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: alarmSleep
         handbook: Alarm Sleep
       protocols:
         cmd_0x40:
@@ -810,8 +809,6 @@ fields:
       feature_available: capability
       data_type: bool
       device_context: indoor_unit
-      alt_names:
-        midea_lua: b5_anion
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -903,7 +900,6 @@ fields:
             logic applies — concurrent deflection geometries fight. Also
             suppresses swing/turbo/jet_cool which reshape the micro-vent path.
       alt_names:
-        midea_lua: wind_avoid
         dudanov: WIND_OFF_ME
         handbook: Breeze Away
       protocols:
@@ -992,7 +988,6 @@ fields:
             this field's geometry. Also forces strong_wind off and auto-fan
             per community protocol research on FA100 behavior.
       alt_names:
-        midea_lua: gentle_wind_sense
         dudanov: BREEZE_CONTROL
         handbook: Breeze Mild
       protocols:
@@ -1085,7 +1080,6 @@ fields:
             strong_wind (boost velocity), jet_cool, no_wind_sense (redundant
             older variant), or sibling breeze modes.
       alt_names:
-        midea_lua: prevent_straight_wind
         dudanov: ONE_KEY_NO_WIND
         handbook: Breezeless
       protocols:
@@ -1165,7 +1159,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: buzzer
         dudanov: m_buzzer
         msmart: beep_on
         midea_local: prompt_tone
@@ -1247,7 +1240,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: catchCold
         handbook: Anti-Cold, Cold Prevention
       protocols:
         cmd_0x40:
@@ -1287,7 +1279,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: wisdomEye
         neoacheron: childSleep
         handbook: Child Sleep, Wise Eye
       protocols:
@@ -1328,7 +1319,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: cleanUp
         handbook: Purifier, Clean Up
       protocols:
         cmd_0x40:
@@ -1369,7 +1359,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_lua: comfortableSleepValue
         handbook: Comfort Sleep, Cosy Sleep
         dudanov: comfortSleep
       composite:
@@ -1512,7 +1501,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: dryClean
         handbook: Dry Clean, X-Fan, Auto Clean
       protocols:
         cmd_0x40:
@@ -1563,7 +1551,6 @@ fields:
             evidence: AC keeps eco_mode set and silently drops turbo when
             both arrive same frame. Schema is UX guidance, not wire enforcement.
       alt_names:
-        midea_lua: eco
         dudanov: m_ecoMode
         msmart: eco_mode
         node_mideahvac: ecoMode
@@ -1647,7 +1634,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: energySave
         handbook: Energy Save
       protocols:
         cmd_0x40:
@@ -1688,7 +1674,6 @@ fields:
       ha:
         enabled_default: false
       alt_names:
-        midea_lua: exchangeAir
         handbook: Fresh Air, Ventilation
       protocols:
         cmd_0x40:
@@ -1740,7 +1725,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_lua: windMode
         dudanov: m_fanSpeed
         msmart: fan_speed
         node_mideahvac: fanSpeed
@@ -1964,7 +1948,6 @@ fields:
       ha:
         entity_category: diagnostic
       alt_names:
-        midea_lua: bodySense
         handbook: Follow Me, I Feel
       protocols:
         cmd_0x40:
@@ -2120,8 +2103,6 @@ fields:
       range:
       - 0
       - 100
-      alt_names:
-        midea_lua: fresh_air_fan_speed
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -2154,8 +2135,6 @@ fields:
       feature_available: capability
       data_type: bool
       device_context: indoor_unit
-      alt_names:
-        midea_lua: fresh_air
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -2397,7 +2376,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: farceWind
         handbook: Low Wind, Quiet Wind
       protocols:
         cmd_0x40:
@@ -2430,7 +2408,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: nightLight
         handbook: Night Light, LED Dimmer
       protocols:
         cmd_0x40:
@@ -2489,7 +2466,6 @@ fields:
           raw: 6
           description: Smart dehumidification (Lua only)
       alt_names:
-        midea_lua: mode
         dudanov: m_mode
         msmart: operational_mode
         node_mideahvac: mode
@@ -2694,7 +2670,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: power
         dudanov: powerState
         msmart: power_state
         node_mideahvac: powerOn
@@ -2746,7 +2721,6 @@ fields:
       - 0
       - 1440
       alt_names:
-        midea_lua: closeTime
         msmart: power_off_timer_value
       composite:
         members:
@@ -2835,7 +2809,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: closeTimerSwitch
         msmart: power_off_timer
         dudanov: timerOff
       protocols:
@@ -2888,7 +2861,6 @@ fields:
       - 0
       - 1440
       alt_names:
-        midea_lua: openTime
         msmart: power_on_timer_value
       composite:
         members:
@@ -2974,7 +2946,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: openTimerSwitch
         msmart: power_on_timer
         dudanov: timerOn
       protocols:
@@ -3014,7 +2985,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: powerSave
         handbook: Power Save
       protocols:
         cmd_0x40:
@@ -3050,7 +3020,6 @@ fields:
       device_context: indoor_unit
       alt_names:
         dudanov: m_ptc
-        midea_lua: PTCValue
         midea_protocol: ptc_heater
       protocols:
         cmd_0x40:
@@ -3164,7 +3133,6 @@ fields:
         note: Passive parameter — driven by performance-preset forces, not
           typically adjusted standalone. Shown when cap-confirmed.
       alt_names:
-        midea_lua: rate_select
         handbook: Rate Select, Speed Mode
       protocols:
         cmd_0xb0:
@@ -3218,8 +3186,6 @@ fields:
             raw: 3
             feature_available: always
             description: 5-stage gear mode
-        alt_names:
-          midea_lua: b5_rate_select
         confidence: consistent
         sources:
         - Session 1 B5 query (0x48=1)
@@ -3236,7 +3202,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: resume
         handbook: Auto Restart, Power Resume
       protocols:
         cmd_0x40:
@@ -3369,7 +3334,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: self_clean
         dudanov: activeClean
         midea_local: self_clean
       protocols:
@@ -3433,7 +3397,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: silkyCool
         dudanov: m_silkyCool
       protocols:
         rsp_0xc0:
@@ -3576,7 +3539,6 @@ fields:
             Mutually exclusive with high-output presets (turbo, strong_wind,
             jet_cool) whose loud operation defeats the purpose.
       alt_names:
-        midea_lua: sleepValue
         dudanov: m_sleep
         handbook: Sleep, Good Sleep
       protocols:
@@ -3648,7 +3610,6 @@ fields:
           description: Horizontal swing on
       device_context: indoor_unit
       alt_names:
-        midea_lua: swingLR
         dudanov: m_swingLR
         msmart: swing_horizontal
         midea_local: swing_horizontal
@@ -3747,7 +3708,6 @@ fields:
           description: Vertical swing on
       device_context: indoor_unit
       alt_names:
-        midea_lua: swingUD
         dudanov: m_swingUD
         msmart: swing_vertical
         midea_local: swing_vertical
@@ -3853,7 +3813,6 @@ fields:
       - 16.0
       - 30.5
       alt_names:
-        midea_lua: temperature
         dudanov: targetTemp
         msmart: target_temperature
         node_mideahvac: setpoint
@@ -4139,8 +4098,6 @@ fields:
             energy-saving modes (eco, sleep), and with jet_cool (own fan
             profile). Probe evidence (atelier unit): strong_wind + turbo in
             same frame — AC keeps strong_wind, drops turbo.
-      alt_names:
-        midea_lua: strong_wind
       protocols:
         cmd_0x40:
           frame: 0x40 Set
@@ -4298,8 +4255,6 @@ fields:
       feature_available: capability
       data_type: bool
       device_context: indoor_unit
-      alt_names:
-        midea_lua: water_pump
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4332,8 +4287,6 @@ fields:
       feature_available: capability
       data_type: bool
       device_context: indoor_unit
-      alt_names:
-        midea_lua: water_washing_manual
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4366,8 +4319,6 @@ fields:
       feature_available: capability
       data_type: bool
       device_context: indoor_unit
-      alt_names:
-        midea_lua: water_washing
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4401,8 +4352,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: minute
-      alt_names:
-        midea_lua: water_washing_time
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4440,7 +4389,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_lua: wind_straight
         dudanov: WIND_ON_ME
       protocols:
         cmd_0xb0:
@@ -4516,7 +4464,6 @@ fields:
       device_context: indoor_unit
       feature_available: capability
       alt_names:
-        midea_lua: wind_swing_lr
         handbook: Horizontal Vane Angle, Wind Direction LR
       values:
         'off':
@@ -4593,8 +4540,6 @@ fields:
               range: [1, 100]
               step: 1
               mode: clamp
-        alt_names:
-          midea_lua: b5_wind_swing_lr_angle
         confidence: consistent
         sources:
         - Session 1 B5 query (0x0A=1)
@@ -4615,7 +4560,6 @@ fields:
       device_context: indoor_unit
       feature_available: capability
       alt_names:
-        midea_lua: wind_swing_ud
         handbook: Vertical Vane Angle, Wind Direction UD
       values:
         'off':
@@ -4692,8 +4636,6 @@ fields:
               range: [1, 100]
               step: 1
               mode: clamp
-        alt_names:
-          midea_lua: b5_wind_swing_ud_angle
         confidence: consistent
         sources:
         - Session 1 B5 query (0x09=1)
@@ -5773,7 +5715,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: coolFan
         handbook: Fan Dry, Cool Fan, Post-run Fan
       protocols:
         rsp_0xc0:
@@ -5798,8 +5739,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: °C
-      alt_names:
-        midea_lua: compensated_temp_setpoint
       ha:
         device_class: temperature
         state_class: measurement
@@ -5827,9 +5766,6 @@ fields:
       feature_available: readable
       data_type: bool
       device_context: outdoor_unit
-      alt_names:
-        midea_lua: compressor_current
-        midea_js: yaSuoJiDianLiu
       ha:
         device_class: running
         entity_category: diagnostic
@@ -5864,7 +5800,6 @@ fields:
         suggested_display_precision: 0
         entity_category: diagnostic
       alt_names:
-        midea_lua: FR
         handbook: Compressor Frequency
       protocols:
         rsp_0xc1_group1:
@@ -5892,8 +5827,6 @@ fields:
         device_class: duration
         state_class: measurement
         unit_of_measurement: min
-      alt_names:
-        midea_lua: compressor_run_time
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -5919,7 +5852,6 @@ fields:
         state_class: measurement
         unit_of_measurement: Hz
       alt_names:
-        midea_lua: FT
         handbook: Target Frequency
       protocols:
         rsp_0xc1_group1:
@@ -5942,8 +5874,6 @@ fields:
       feature_available: readable
       data_type: bool
       device_context: indoor_unit
-      alt_names:
-        midea_lua: selfCosySleep
       protocols:
         rsp_0xc0:
           frame: 0xC0 Response
@@ -5966,7 +5896,6 @@ fields:
       device_context: indoor_unit
       unit: kWh
       alt_names:
-        midea_lua: curRunPower
         legacy: current_run_power_kwh
       protocols:
         rsp_0xc1_group4:
@@ -6028,8 +5957,6 @@ fields:
       data_type: uint16
       device_context: indoor_unit
       unit: days
-      alt_names:
-        midea_lua: curWorkedDay
       protocols:
         rsp_0xa1:
           frame: 0xA1 Heartbeat
@@ -6050,8 +5977,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: hours
-      alt_names:
-        midea_lua: curWorkedHour
       protocols:
         rsp_0xa1:
           frame: 0xA1 Heartbeat
@@ -6072,8 +5997,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: minutes
-      alt_names:
-        midea_lua: curWorkedMin
       protocols:
         rsp_0xa1:
           frame: 0xA1 Heartbeat
@@ -6108,8 +6031,6 @@ fields:
           description: Defrost ending
       ha:
         enabled_default: false
-      alt_names:
-        midea_lua: defrost_step
       protocols:
         rsp_0xc1_sub02:
           frame: 0xC1 Sub-page 0x02
@@ -6136,8 +6057,6 @@ fields:
         unit_of_measurement: °C
         suggested_display_precision: 0
         entity_category: diagnostic
-      alt_names:
-        midea_lua: Tp
       protocols:
         rsp_0xc1_group1:
           frame: 0xC1 Group 1
@@ -6199,7 +6118,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: dustFull
         handbook: Filter Clean Reminder
       protocols:
         rsp_0xc0:
@@ -6223,7 +6141,6 @@ fields:
       device_context: outdoor_unit
       unit: steps (raw x 8)
       alt_names:
-        midea_lua: eev_position
         handbook: EEV Position, Expansion Valve
       ha:
         state_class: measurement
@@ -6253,8 +6170,6 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       unit: steps (raw x 8)
-      alt_names:
-        midea_lua: eev_target_angle
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6280,7 +6195,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_lua: errorCode
         handbook: Error Code, Fault Code, E1-E9
       protocols:
         rsp_0xc0:
@@ -6303,8 +6217,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: °C
-      alt_names:
-        midea_lua: fresh_air_temp
       protocols:
         rsp_0xb1:
           frame: 0xB1 Property Response
@@ -6327,8 +6239,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: '%'
-      alt_names:
-        midea_lua: humidity
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6354,8 +6264,6 @@ fields:
         sources: own observation — field stays 0 across all modes/power on SKUs without the physical humidity sensor
       ha:
         enabled_default: false
-      alt_names:
-        midea_lua: curHum
       protocols:
         rsp_0xa1:
           frame: 0xA1 Heartbeat
@@ -6375,8 +6283,6 @@ fields:
       feature_available: readable
       data_type: bool
       device_context: indoor_unit
-      alt_names:
-        midea_lua: inError
       protocols:
         rsp_0xc0:
           frame: 0xC0 Response
@@ -6435,8 +6341,6 @@ fields:
         fan:
           raw: 5
           description: Fan only
-      alt_names:
-        midea_lua: indoor_mode
       protocols:
         rsp_0xc1_group1:
           frame: 0xC1 Group 1
@@ -6468,7 +6372,6 @@ fields:
         unit_of_measurement: °C
         suggested_display_precision: 1
       alt_names:
-        midea_lua: indoor_temperature
         dudanov: indoorTemp
         msmart: indoor_temperature
         node_mideahvac: indoorTemperature
@@ -6501,8 +6404,6 @@ fields:
       feature_available: never
       data_type: uint8
       device_context: outdoor_unit
-      alt_names:
-        midea_lua: ipm_module_temp
       protocols:
         rsp_0xc1_group3:
           frame: 0xC1 Group 3
@@ -6524,8 +6425,6 @@ fields:
       device_context: indoor_unit
       ha:
         enabled_default: false
-      alt_names:
-        midea_lua: lightAdValue
       protocols:
         rsp_0xa1:
           frame: 0xA1 Heartbeat
@@ -6546,7 +6445,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: localBodySense
         handbook: Occupancy Sensor, Smart Eye, Motion Detect
       protocols:
         rsp_0xc0:
@@ -6569,8 +6467,6 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       unit: V (raw + 60)
-      alt_names:
-        midea_lua: max_bus_voltage
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6591,8 +6487,6 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       unit: V (raw + 60)
-      alt_names:
-        midea_lua: min_bus_voltage
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6696,7 +6590,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: naturalFan
         handbook: Natural Wind, Natural Breeze
       protocols:
         rsp_0xc0:
@@ -6778,8 +6671,6 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       unit: V
-      alt_names:
-        midea_lua: outdoor_dc_bus_voltage
       ha:
         device_class: voltage
         state_class: measurement
@@ -6846,7 +6737,6 @@ fields:
       device_context: outdoor_unit
       unit: RPM (raw x 8)
       alt_names:
-        midea_lua: outdoor_fan_speed
         handbook: Outdoor Fan Speed
       protocols:
         rsp_0xc1_group3:
@@ -6870,8 +6760,6 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       unit: RPM (raw x 8)
-      alt_names:
-        midea_lua: outdoor_fan_target_speed
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6891,8 +6779,6 @@ fields:
       feature_available: never
       data_type: uint8
       device_context: outdoor_unit
-      alt_names:
-        midea_lua: outDoorBackTemp
       protocols:
         rsp_0xc1_group3:
           frame: 0xC1 Group 3
@@ -6915,8 +6801,6 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       unit: V
-      alt_names:
-        midea_lua: outdoor_supply_voltage
       ha:
         device_class: voltage
         state_class: measurement
@@ -6941,8 +6825,6 @@ fields:
       data_type: uint8
       device_context: outdoor_unit
       unit: Hz
-      alt_names:
-        midea_lua: outdoor_target_freq
       protocols:
         rsp_0xc1_group3:
           frame: 0xC1 Group 3
@@ -7002,8 +6884,6 @@ fields:
       feature_available: readable
       data_type: uint8
       device_context: outdoor_unit
-      alt_names:
-        midea_lua: outdoor_total_current
       protocols:
         rsp_0xc1_group1:
           frame: 0xC1 Group 1
@@ -7024,7 +6904,6 @@ fields:
       data_type: bool
       device_context: indoor_unit
       alt_names:
-        midea_lua: peakElec
         handbook: Peak Electricity
       protocols:
         rsp_0xc0:
@@ -7052,8 +6931,6 @@ fields:
         sources: own observation — field returns null across all modes/power on SKUs without the physical PM sensor
       ha:
         enabled_default: false
-      alt_names:
-        midea_lua: pm25Value
       protocols:
         rsp_0xa1:
           frame: 0xA1 Heartbeat
@@ -7074,7 +6951,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       alt_names:
-        midea_lua: pmvValue
         node_mideahvac: pmv
         handbook: PMV, Thermal Comfort
       protocols:
@@ -7106,7 +6982,6 @@ fields:
         unit_of_measurement: kW
         suggested_display_precision: 2
       alt_names:
-        midea_lua: curRealTimePower
         legacy: realtime_power_kw
       protocols:
         rsp_0xc1_group4:
@@ -7200,7 +7075,6 @@ fields:
         suggested_display_precision: 1
         entity_category: diagnostic
       alt_names:
-        midea_lua: T1
         msmart: T1
       protocols:
         rsp_0xc1_group1:
@@ -7228,7 +7102,6 @@ fields:
       device_context: indoor_unit
       unit: °C
       alt_names:
-        midea_lua: T2
         handbook: T2 Heat Exchanger
       protocols:
         rsp_0xc1_group1:
@@ -7255,7 +7128,6 @@ fields:
       device_context: outdoor_unit
       unit: °C
       alt_names:
-        midea_lua: T3
         handbook: T3 Outdoor Coil
       protocols:
         rsp_0xc1_group1:
@@ -7288,7 +7160,6 @@ fields:
         suggested_display_precision: 1
         entity_category: diagnostic
       alt_names:
-        midea_lua: T4
         handbook: T4 Outdoor Ambient
       protocols:
         rsp_0xc1_group1:
@@ -7321,7 +7192,6 @@ fields:
         unit_of_measurement: kWh
         suggested_display_precision: 1
       alt_names:
-        midea_lua: totalPowerConsume
         dudanov: totalPowerConsumption
         legacy: total_power_kwh
       protocols:
@@ -7406,7 +7276,6 @@ fields:
       device_context: indoor_unit
       unit: kWh
       alt_names:
-        midea_lua: totalRunPower
         legacy: total_run_power_kwh
       protocols:
         rsp_0xc1_group4:
@@ -7514,8 +7383,6 @@ fields:
       feature_available: capability
       data_type: uint8
       device_context: indoor_unit
-      alt_names:
-        midea_lua: water_washing_stage
       protocols:
         rsp_0xb1:
           frame: 0xB1 Property Response
