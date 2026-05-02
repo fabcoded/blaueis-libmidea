@@ -6125,6 +6125,8 @@ fields:
       feature_available: readable-opt
       data_type: enum
       device_context: outdoor_unit
+      ha:
+        entity_category: diagnostic
       values:
         none:
           raw: 0
@@ -6551,6 +6553,8 @@ fields:
       feature_available: readable-opt
       data_type: uint8
       device_context: indoor_unit
+      ha:
+        entity_category: diagnostic
       alt_names:
         rev1: lightAdValue
       protocols:
@@ -7083,7 +7087,7 @@ fields:
     pm25_concentration:
       description: PM2.5 particulate matter concentration. 16-bit big-endian.
       field_class: sensor
-      feature_available: readable-opt
+      feature_available: never
       data_type: uint16
       device_context: indoor_unit
       unit: ug/m3
