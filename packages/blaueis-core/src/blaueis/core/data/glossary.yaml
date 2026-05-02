@@ -6268,6 +6268,8 @@ fields:
         state_class: measurement
         unit_of_measurement: steps
         suggested_display_precision: 0
+        entity_category: diagnostic
+        enabled_default: false
       protocols:
         rsp_0xc1_group3:
           frame: 0xC1 Group 3
@@ -6310,6 +6312,8 @@ fields:
         state_class: measurement
         unit_of_measurement: steps
         suggested_display_precision: 0
+        entity_category: diagnostic
+        enabled_default: false
       note: 'S8: 46 raw = 368 steps. Compare with G3 eev_position (actual).'
       confidence: hypothesis
     error_code:
