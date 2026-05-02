@@ -7869,6 +7869,7 @@ fields:
       feature_available: readable-opt
       ha:
         entity_category: diagnostic
+        state_class: measurement
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
