@@ -422,8 +422,8 @@
         },
         "feature_available": {
           "type": "string",
-          "enum": ["always", "readable", "capability", "never"],
-          "description": "Access level. 'always': read+write, no cap needed. 'readable': decode-only until cap upgrades to writable. 'capability': unavailable until B5 cap confirms. 'never': disabled (service/disputed)."
+          "enum": ["always", "readable", "readable-opt", "capability", "capability-opt", "never"],
+          "description": "Field-level access tier. Determines whether HA registers an entity, whether the field's frame is included in the poll schedule, and the entity's default-enabled state in HA's entity registry. 'always': polled, registered, enabled by default, read+write. 'readable': polled, registered, enabled by default, read-only. 'readable-opt': polled, registered, but disabled by default in HA's entity registry — user enables with one click; for fields whose data costs poll-traffic / DB storage and is only useful to advanced users (e.g. inverter rails, EEV positions). 'capability': not polled or registered until the B5 capability probe confirms support; on confirmation behaves like 'readable'. 'capability-opt': cap-gated like 'capability', but on confirmation behaves like 'readable-opt' (registered + disabled by default); for fields where cap-confirm is known to be unreliable across firmware variants — surfacing the entity tells the user it exists, but disabled-by-default prevents wrong-decoded values from polluting dashboards before user-confirmation. 'never': not polled, no entity, hard-hidden; only path to surface is an explicit YAML hard-override via the integration's Glossary-Overrides textarea (for disputed encoding, unconfirmed availability, or known-broken decode). The two '-opt' states are the soft-override tier (one click in HA UI). The 'never' state is the hard-override tier (paste YAML). Both override paths use identical YAML syntax — only the starting glossary value differs."
         },
         "power_independent": {
           "type": "boolean",
@@ -526,7 +526,7 @@
       "properties": {
         "raw": { "description": "Raw byte value." },
         "description": { "type": "string" },
-        "feature_available": { "type": "string", "enum": ["always", "readable", "capability", "never"], "description": "Overrides the field-level feature_available when this cap value is active." },
+        "feature_available": { "type": "string", "enum": ["always", "readable", "readable-opt", "capability", "capability-opt", "never"], "description": "Per-cap-value access override. Replaces the field-level feature_available whenever the device's B5 cap probe matches this value's raw. Same enum semantics as field-level (see above). Common pattern: field-level is 'capability'; per-cap-value entries map individual raw values to 'always' / 'readable-opt' / 'never' to express 'this cap value means full availability', 'this means available but disabled by default', 'this means unsupported'." },
         "encoding": { "type": "string", "description": "Key into top-level encodings dict. Overrides the protocol entry's encoding when this cap value is active. Used when capability switches the decode format (e.g. BCD vs linear)." },
         "valid_range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
         "valid_set": { "type": "array" },
