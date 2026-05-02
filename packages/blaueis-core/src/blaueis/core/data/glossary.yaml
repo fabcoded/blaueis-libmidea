@@ -2197,7 +2197,7 @@ fields:
       sources:
       - serial_protocol.md §3.5
     humidity_setpoint:
-      description: Target humidity level (0-100%). Only functional on units with humidity control capability.
+      description: Target humidity level (0-100%) for dehumidify mode.
       field_class: stateful_numeric
       _migration:
         _reclassified_from: unknown
@@ -2211,6 +2211,15 @@ fields:
       range:
       - 0
       - 100
+      note: 'Setpoint stays generally available because dehumidify mode is
+        a thermodynamic program — drive the evaporator below the room dew
+        point with reduced fan speed and water condenses out — not a
+        closed-loop control around a humidity reading. Most units support
+        the program regardless of whether they ship with an actual humidity
+        sensor (cf. humidity_actual / humidity_measured, which are
+        readable-opt because the physical sensor is the rare add-on).
+        The cap 0x1F enum can still pin this to never on units that
+        explicitly disclaim humidity control entirely.'
       alt_names:
         rev1: target_humidity
         dudanov: m_humiditySetpoint
@@ -6355,12 +6364,15 @@ fields:
       sources:
       - serial_protocol.md §3.5
     humidity_actual:
-      description: Current indoor humidity measured by sensor. Distinct from humidity_setpoint.
+      description: Current indoor humidity measured by sensor (C1 Group 5 path).
       field_class: sensor
-      feature_available: readable
+      feature_available: readable-opt
       data_type: uint8
       device_context: indoor_unit
       unit: '%'
+      ux:
+        hardware_flag: b5_has_humidity_sensor
+        sources: own observation — field stays 0 across all modes/power on SKUs without the physical humidity sensor
       alt_names:
         rev1: humidity
       protocols:
@@ -6374,7 +6386,15 @@ fields:
             - 0
           direction: response
           section: §4.2.5
-      note: Always 0 on the probed unit (sensor idle or not fitted). Distinct from humidity_setpoint (C0 body[19]).
+      note: 'Optional comfort sensor — the physical humidity sensor is a
+        relatively rare add-on (more common than a PM2.5 sensor, but most
+        residential SKUs ship without it). When absent, the field reads 0
+        across every mode / power state. Mirrors humidity_measured (A1
+        body[17]) and indoor_humidity (B1 prop 0x15,0x00) — same physical
+        sensor, three different protocol surfaces; default to opt-in so
+        the device card does not advertise a no-data-here ghost entity
+        on units without the sensor. Distinct from humidity_setpoint
+        (C0 body[19]), which targets the dehumidify program.'
       confidence: hypothesis
     humidity_measured:
       description: Current indoor humidity from A1 heartbeat sensor.
@@ -6399,7 +6419,13 @@ fields:
             - 0
           direction: response
           section: §5.2
-      note: Always 0 on the probed unit. Distinct from humidity_actual (C1G5) and humidity_setpoint (C0).
+      note: 'Optional comfort sensor — same physical reading as
+        humidity_actual (C1 Group 5) and indoor_humidity (B1
+        prop 0x15,0x00) via the A1 heartbeat. Reads 0 across every
+        mode / power state on units without the sensor; default to
+        opt-in. See humidity_actual for the broader rationale and
+        humidity_setpoint for the program (dehumidify) that does not
+        require this sensor.'
       confidence: consistent
     in_error:
       description: 'Error flag: indicates the unit has an active fault condition.'
