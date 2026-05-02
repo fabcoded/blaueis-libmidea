@@ -6396,7 +6396,22 @@ fields:
         across multiple sessions during normal operation, with the paired
         error_detected flag staying off — i.e. error_code carries
         protection-state codes that do not necessarily trip the
-        hard-fault flag.'
+        hard-fault flag.
+
+        Known blind spot — external-input protections do NOT surface
+        here. The "CP" window-contact protection is the documented
+        example: when an MFB-X dry contact opens, the AC display shows
+        "CP" and the unit refuses commands, but error_code stays at 0
+        and error_detected stays off (Session 11, two complete
+        open/close cycles). The CP state is carried on the R/T 0x93
+        extension-board frame (request body[1] bit 5 latches
+        contact-open; response body[3] = 0x04 during CP), on the XYE
+        C0 32-byte byte[21] bit 3, and on the display↔mainboard
+        internal bus — none of which our UART tap currently captures.
+        Other external/configurable protections (gateway alarms,
+        building-management interlocks) likely behave the same way.
+        Treat error_code + error_detected as covering internal
+        protection states and sensor faults only.'
       confidence: confirmed
       sources:
       - serial_protocol.md §4.1
