@@ -321,8 +321,8 @@
         },
         "field_class": {
           "type": "string",
-          "enum": ["sensor", "trigger", "stateful_bool", "stateful_enum", "stateful_numeric", "complex_function", "unknown"],
-          "description": "Semantic classification of the field. 'sensor': decode-only, no encode path. 'trigger': encode-only, fire-and-forget action with no read-back. 'stateful_bool': bidirectional boolean toggle. 'stateful_enum': bidirectional discrete-set selector. 'stateful_numeric': bidirectional continuous-numeric setpoint (e.g. humidity_setpoint in [0,100] %) — neither bool nor discrete enum, but a single scalar with a valid_range and step. 'complex_function': multi-key composite, may have state-machine semantics, may share wire bytes with siblings. 'unknown': inference could not assign a class; needs manual review. Optional — when omitted, downstream tools may fall back to inference from data_type and protocols. See serial_glossary_guide.md Part 2 — field_class."
+          "enum": ["sensor", "binary_sensor", "trigger", "stateful_bool", "stateful_enum", "stateful_numeric", "complex_function", "unknown"],
+          "description": "Semantic classification of the field. 'sensor': decode-only numeric/enum, no encode path. 'binary_sensor': decode-only bool — same wire side as 'sensor' but routed to HA's binary_sensor platform with `device_class: problem` / `running` / etc. 'trigger': encode-only, fire-and-forget action with no read-back. 'stateful_bool': bidirectional boolean toggle. 'stateful_enum': bidirectional discrete-set selector. 'stateful_numeric': bidirectional continuous-numeric setpoint (e.g. humidity_setpoint in [0,100] %) — neither bool nor discrete enum, but a single scalar with a valid_range and step. 'complex_function': multi-key composite, may have state-machine semantics, may share wire bytes with siblings. 'unknown': inference could not assign a class; needs manual review. Optional — when omitted, downstream tools may fall back to inference from data_type and protocols. See serial_glossary_guide.md Part 2 — field_class."
         },
         "composite": {
           "$ref": "#/$defs/composite",

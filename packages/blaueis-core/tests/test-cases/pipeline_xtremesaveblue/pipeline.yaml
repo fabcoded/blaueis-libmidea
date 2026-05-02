@@ -46,7 +46,7 @@ steps:
       fields.turbo_mode.value: false
       fields.frost_protection.value: false
       fields.error_code.value: 0
-      fields.in_error.value: false
+      fields.error_detected.value: false
       # Sensors not in C0 stay null
       fields.compressor_frequency.value: null
 

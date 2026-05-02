@@ -6440,15 +6440,18 @@ fields:
         humidity_setpoint for the program (dehumidify) that does not
         require this sensor.'
       confidence: consistent
-    in_error:
+    error_detected:
       description: 'Error flag: indicates the unit has an active fault condition.'
       label: "Error Detected"
-      field_class: sensor
+      field_class: binary_sensor
       feature_available: readable
       data_type: bool
       device_context: indoor_unit
+      ha:
+        device_class: problem
       alt_names:
         rev1: inError
+        rev2: in_error
       protocols:
         rsp_0xc0:
           frame: 0xC0 Response

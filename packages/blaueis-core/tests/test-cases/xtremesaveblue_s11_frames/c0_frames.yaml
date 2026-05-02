@@ -21,7 +21,7 @@ frames:
     follow_me: false
     frost_protection: false
     humidity_setpoint: 0
-    in_error: false
+    error_detected: false
     indoor_temperature: 24.2
     local_body_sense: false
     low_frequency_fan: false
@@ -70,7 +70,7 @@ frames:
     follow_me: false
     frost_protection: false
     humidity_setpoint: 0
-    in_error: false
+    error_detected: false
     indoor_temperature: 24.4
     local_body_sense: false
     low_frequency_fan: false
@@ -117,7 +117,7 @@ frames:
     follow_me: false
     frost_protection: false
     humidity_setpoint: 0
-    in_error: false
+    error_detected: false
     indoor_temperature: 26.4
     local_body_sense: false
     low_frequency_fan: false
@@ -164,7 +164,7 @@ frames:
     follow_me: false
     frost_protection: false
     humidity_setpoint: 0
-    in_error: false
+    error_detected: false
     indoor_temperature: 27.2
     local_body_sense: false
     low_frequency_fan: false
@@ -209,7 +209,7 @@ frames:
     follow_me: false
     frost_protection: false
     humidity_setpoint: 0
-    in_error: false
+    error_detected: false
     indoor_temperature: 28.2
     local_body_sense: false
     low_frequency_fan: false
