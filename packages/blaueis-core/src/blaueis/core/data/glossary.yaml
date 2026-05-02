@@ -7891,9 +7891,10 @@ fields:
     q_axis_current:
       description: Compressor motor q-axis current (raw x 64). Signed per JS comment.
       field_class: sensor
-      feature_available: readable
+      feature_available: readable-opt
       ha:
         entity_category: diagnostic
+        state_class: measurement
       data_type: uint8
       device_context: outdoor_unit
       alt_names:

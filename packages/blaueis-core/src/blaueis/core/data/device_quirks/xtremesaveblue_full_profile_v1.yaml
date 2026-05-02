@@ -53,6 +53,16 @@ fields:
     # firmware variants; this flag disambiguates).
     compressor_running:
       feature_available: readable
+    # FOC d-axis and q-axis motor currents (raw x 64, no unit-of-measure
+    # because the wire encoding doesn't scale to amps). Default-hidden
+    # globally because they're sub-second-changing motor internals;
+    # graphable via state_class measurement when enabled. Useful for
+    # overlay correlation against compressor_frequency / discharge_pipe_temp
+    # to see "what the inverter is doing" during cycle transitions.
+    d_axis_current:
+      feature_available: readable
+    q_axis_current:
+      feature_available: readable
     # Realtime power draw + cumulative energy. The stock cap probe
     # under-reports availability for these on this hardware revision,
     # so feature_available is forced and the correct linear encodings
