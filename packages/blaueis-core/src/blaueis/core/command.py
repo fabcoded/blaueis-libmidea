@@ -112,11 +112,11 @@ def _field_is_exempt(name: str, field_def: dict, status: dict, glossary: dict | 
     if fdef is None:
         return True
     fa = fdef.get("feature_available")
-    # 'never' = unit doesn't have this capability; 'capability' = pre-B5
-    # state where decoding is suppressed by process_data_frame, so the
-    # field will never have a last_updated.  Both are exempt for the same
+    # 'never' = unit doesn't have this capability; 'capability' / 'capability-opt'
+    # = pre-B5 state where decoding is suppressed by process_data_frame, so the
+    # field will never have a last_updated.  All three are exempt for the same
     # reason: we can't get fresh data for them.
-    if fa in ("never", "capability"):
+    if fa in ("never", "capability", "capability-opt"):
         return True
     # Pure write-only fields: no rsp_* entry → no decode path → no
     # last_updated will ever be populated by process_data_frame.

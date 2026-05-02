@@ -45,12 +45,13 @@ def test_init_defaults():
     assert d.port == 8765
     assert d.connected is False
     assert d.capabilities_received is False
-    # 'always' and 'readable' fields are available before B5;
-    # only 'capability' fields need B5 confirmation
+    # 'always', 'readable', and the '-opt' soft-disabled variants are
+    # available before B5; 'capability' / 'capability-opt' need B5
+    # confirmation; 'never' is always excluded.
     avail = d.available_fields
     assert len(avail) > 0
     assert all(
-        f["feature_available"] in ("always", "readable")
+        f["feature_available"] in ("always", "readable", "readable-opt")
         for f in avail.values()
     )
 

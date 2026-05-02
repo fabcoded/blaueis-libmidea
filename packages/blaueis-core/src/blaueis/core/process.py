@@ -148,7 +148,7 @@ def finalize_capabilities(status: dict, glossary: dict):
     all_cap_ids = {r["cap_id"].lower() for r in all_caps}
 
     for field_name, status_field in status["fields"].items():
-        if status_field["feature_available"] == "capability":
+        if status_field["feature_available"] in ("capability", "capability-opt"):
             fdef = fields.get(field_name, {})
             cap_def = fdef.get("capability", {})
             cap_id = cap_def.get("cap_id", "").lower()
@@ -198,8 +198,9 @@ def process_data_frame(
         if not status_field:
             continue
 
-        # Skip fields that are not available (never, or capability not yet resolved)
-        if status_field["feature_available"] in ("never", "capability"):
+        # Skip fields that are not available (never, or *capability* / *capability-opt*
+        # not yet resolved by B5 promotion)
+        if status_field["feature_available"] in ("never", "capability", "capability-opt"):
             continue
 
         status_field.setdefault("sources", {})[protocol_key] = {

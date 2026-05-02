@@ -1696,11 +1696,9 @@ fields:
           known disambiguation issue (body[9] bit 1 is ''exchange_air'' in 0x40 but ''natural_wind'' in 0xC0). Demoted until
           semantics clarified and round-trip verified.'
         _source: §10 audit 2026-04-10
-      feature_available: readable
+      feature_available: readable-opt
       data_type: bool
       device_context: indoor_unit
-      ha:
-        enabled_default: false
       alt_names:
         rev1: exchangeAir
         handbook: Fresh Air, Ventilation
@@ -1725,12 +1723,10 @@ fields:
         (0x80) here regardless of timer state. Not user-facing — the encoder must write 1 as a fixed constant to match the
         manufacturer's frame format.
       field_class: stateful_bool
-      feature_available: always
+      feature_available: never
       data_type: bool
       device_context: indoor_unit
       default_value: true
-      ha:
-        enabled_default: false
       protocols:
         cmd_0x40:
           frame: 0x40 Set
@@ -2679,11 +2675,9 @@ fields:
       description: Reserved protocol bit — must always be set to 1 in 0x40 Set frames. Part of the body[1] byte alongside
         power and resume.
       field_class: stateful_bool
-      feature_available: always
+      feature_available: never
       data_type: bool
       default_value: true
-      ha:
-        enabled_default: false
       protocols:
         cmd_0x40:
           frame: 0x40 Set
@@ -5699,19 +5693,19 @@ fields:
             correction: ignore
           supported_cool:
             raw: 1
-            feature_available: conditional
+            feature_available: always
             ux:
               visible_in_modes: [cool]
             description: Available; applies when operating_mode is cool.
           supported_variant_2:
             raw: 2
-            feature_available: conditional
+            feature_available: always
             description: |
               Advertised variant; mode applicability unverified on
               this project.
           supported_cool_heat:
             raw: 3
-            feature_available: conditional
+            feature_available: always
             ux:
               visible_in_modes: [cool, heat]
             description: Available; applies when operating_mode is cool or heat.
@@ -5850,13 +5844,12 @@ fields:
         is inverted (1 = idle on the wire) — codec applies invert in decode so
         the field's semantic matches HA's device_class running (on = running).
       field_class: binary_sensor
-      feature_available: readable
+      feature_available: readable-opt
       data_type: bool
       device_context: outdoor_unit
       ha:
         device_class: running
         entity_category: diagnostic
-        enabled_default: false
       alt_names:
         rev1: compressor_current
       protocols:
@@ -6129,7 +6122,7 @@ fields:
     defrost_state:
       description: Defrost cycle state of the outdoor unit.
       field_class: sensor
-      feature_available: readable
+      feature_available: readable-opt
       data_type: enum
       device_context: outdoor_unit
       values:
@@ -6145,8 +6138,6 @@ fields:
         ending:
           raw: 3
           description: Defrost ending
-      ha:
-        enabled_default: false
       alt_names:
         rev1: defrost_step
       protocols:
@@ -6257,7 +6248,7 @@ fields:
     eev_position:
       description: 'Electronic expansion valve position. Encoding: raw x 8 = steps.'
       field_class: sensor
-      feature_available: readable
+      feature_available: readable-opt
       data_type: uint8
       device_context: outdoor_unit
       unit: steps (raw x 8)
@@ -6269,7 +6260,6 @@ fields:
         unit_of_measurement: steps
         suggested_display_precision: 0
         entity_category: diagnostic
-        enabled_default: false
       protocols:
         rsp_0xc1_group3:
           frame: 0xC1 Group 3
@@ -6290,7 +6280,7 @@ fields:
     eev_target_angle:
       description: 'Electronic expansion valve target position. Encoding: raw x 8 = steps.'
       field_class: sensor
-      feature_available: readable
+      feature_available: readable-opt
       data_type: uint8
       device_context: outdoor_unit
       unit: steps (raw x 8)
@@ -6313,7 +6303,6 @@ fields:
         unit_of_measurement: steps
         suggested_display_precision: 0
         entity_category: diagnostic
-        enabled_default: false
       note: 'S8: 46 raw = 368 steps. Compare with G3 eev_position (actual).'
       confidence: hypothesis
     error_code:
@@ -6388,15 +6377,13 @@ fields:
     humidity_measured:
       description: Current indoor humidity from A1 heartbeat sensor.
       field_class: sensor
-      feature_available: readable
+      feature_available: readable-opt
       data_type: uint8
       device_context: indoor_unit
       unit: '%'
       ux:
         hardware_flag: b5_has_humidity_sensor
         sources: own observation — field stays 0 across all modes/power on SKUs without the physical humidity sensor
-      ha:
-        enabled_default: false
       alt_names:
         rev1: curHum
       protocols:
@@ -6561,11 +6548,9 @@ fields:
     light_adc_value:
       description: Ambient light sensor raw ADC value.
       field_class: sensor
-      feature_available: readable
+      feature_available: readable-opt
       data_type: uint8
       device_context: indoor_unit
-      ha:
-        enabled_default: false
       alt_names:
         rev1: lightAdValue
       protocols:
@@ -6607,7 +6592,7 @@ fields:
     max_bus_voltage:
       description: Maximum recorded DC bus voltage on the inverter rail.
       field_class: sensor
-      feature_available: readable
+      feature_available: readable-opt
       data_type: uint8
       device_context: outdoor_unit
       unit: V
@@ -6616,7 +6601,6 @@ fields:
         state_class: measurement
         unit_of_measurement: V
         entity_category: diagnostic
-        enabled_default: false
       alt_names:
         rev1: max_bus_voltage
       protocols:
@@ -6637,7 +6621,7 @@ fields:
     min_bus_voltage:
       description: Minimum recorded DC bus voltage on the inverter rail.
       field_class: sensor
-      feature_available: readable
+      feature_available: readable-opt
       data_type: uint8
       device_context: outdoor_unit
       unit: V
@@ -6646,7 +6630,6 @@ fields:
         state_class: measurement
         unit_of_measurement: V
         entity_category: diagnostic
-        enabled_default: false
       alt_names:
         rev1: min_bus_voltage
       protocols:
@@ -7100,15 +7083,13 @@ fields:
     pm25_concentration:
       description: PM2.5 particulate matter concentration. 16-bit big-endian.
       field_class: sensor
-      feature_available: readable
+      feature_available: readable-opt
       data_type: uint16
       device_context: indoor_unit
       unit: ug/m3
       ux:
         hardware_flag: b5_has_pm25_sensor
         sources: own observation — field returns null across all modes/power on SKUs without the physical PM sensor
-      ha:
-        enabled_default: false
       alt_names:
         rev1: pm25Value
       protocols:
@@ -7679,11 +7660,9 @@ fields:
     compressor_flux:
       description: Compressor motor magnetic flux (raw x 8).
       field_class: sensor
-      feature_available: readable
+      feature_available: readable-opt
       data_type: uint8
       device_context: outdoor_unit
-      ha:
-        enabled_default: false
       alt_names:
         rev38: engineFlux
       protocols:
@@ -8382,8 +8361,6 @@ fields:
       data_type: uint16
       device_context: indoor_unit
       unit: d
-      ha:
-        enabled_default: false
       alt_names:
         rev70: totalWorkedDay
       protocols:
@@ -8409,8 +8386,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: h
-      ha:
-        enabled_default: false
       alt_names:
         rev71: totalWorkedHour
       protocols:
@@ -8435,8 +8410,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: min
-      ha:
-        enabled_default: false
       alt_names:
         rev72: totalWorkedMin
       protocols:
@@ -8461,8 +8434,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: s
-      ha:
-        enabled_default: false
       alt_names:
         rev73: totalWorkedSec
       protocols:
@@ -8487,8 +8458,6 @@ fields:
       data_type: uint16
       device_context: indoor_unit
       unit: d
-      ha:
-        enabled_default: false
       alt_names:
         rev74: curWorkedDay
       protocols:
@@ -8514,8 +8483,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: h
-      ha:
-        enabled_default: false
       alt_names:
         rev75: curWorkedHour
       protocols:
@@ -8540,8 +8507,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: min
-      ha:
-        enabled_default: false
       alt_names:
         rev76: curWorkedMin
       protocols:
@@ -8566,8 +8531,6 @@ fields:
       data_type: uint8
       device_context: indoor_unit
       unit: s
-      ha:
-        enabled_default: false
       alt_names:
         rev77: curWorkedSec
       protocols:
@@ -9211,7 +9174,7 @@ fields:
             correction: ignore
           supported:
             raw: 1
-            feature_available: conditional
+            feature_available: readable-opt
             description: |
               Advertised variant. Any non-zero value indicates the
               capability is present; the concrete value-to-variant
@@ -9249,7 +9212,7 @@ fields:
             correction: ignore
           supported:
             raw: 1
-            feature_available: conditional
+            feature_available: readable-opt
             description: |
               Advertised variant. Any non-zero value indicates the
               capability is present; the concrete value-to-variant
@@ -9322,7 +9285,7 @@ fields:
             correction: ignore
           supported:
             raw: 1
-            feature_available: conditional
+            feature_available: readable-opt
             description: |
               Advertised variant. Any non-zero value indicates the
               capability is present; the concrete value-to-variant

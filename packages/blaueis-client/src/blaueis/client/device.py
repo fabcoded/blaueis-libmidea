@@ -279,12 +279,20 @@ class Device:
 
     @property
     def available_fields(self) -> dict[str, dict]:
-        """Fields confirmed available by B5 or marked 'always'/'readable'."""
+        """Fields confirmed available by B5 or marked 'always'/'readable'/'-opt'.
+
+        '-opt' variants flow through here: they're registered as HA
+        entities (just disabled by default in the registry, see sensor.py).
+        Pre-B5 'capability' / 'capability-opt' are excluded; once B5
+        promotes them, their feature_available becomes one of always /
+        readable / readable-opt / never (per the matched cap-value)
+        and they enter or leave this list accordingly.
+        """
         result = {}
         all_fields = self._db.field_flat
         for name, fdata in self._status["fields"].items():
             fa = fdata.get("feature_available", "never")
-            if fa in ("never", "capability"):
+            if fa in ("never", "capability", "capability-opt"):
                 continue
             gdef = all_fields.get(name, {})
             result[name] = {
@@ -337,7 +345,7 @@ class Device:
 
         for fname, fdata in self._status["fields"].items():
             fa = fdata.get("feature_available", "never")
-            if fa in ("never", "capability"):
+            if fa in ("never", "capability", "capability-opt"):
                 continue  # not confirmed available
             gdef = all_fields.get(fname, {})
             protocols = gdef.get("protocols", {})
