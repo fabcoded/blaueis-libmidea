@@ -11,10 +11,14 @@
 # blaueis_midea → Configure → Advanced).
 #
 # What it does:
-#   1. Enables read-only diagnostic sensors that ship disabled by
-#      default in the upstream glossary (defaults stay conservative for
-#      users who don't want every wire-level signal cluttering their
-#      device card; this profile flips them on for users who do).
+#   1. Soft-promotes a small set of diagnostic sensors from
+#      `feature_available: readable-opt` (registered + disabled by
+#      default in HA's entity registry) to `readable` (registered +
+#      enabled). Same end result as clicking "enable" once per entity
+#      in HA's Devices & Services UI, but baked into a profile so a
+#      pasted YAML covers all of them at once. Defaults stay
+#      conservative in the upstream glossary for users who don't want
+#      every wire-level signal cluttering their device card.
 #   2. Corrects power-metering capability + encoding for this unit:
 #      the stock cap probe doesn't reliably mark realtime/total power
 #      as available, and the correct linear encoding for this hardware
@@ -34,26 +38,21 @@ fields:
     # Inverter DC bus voltage rails — diagnostic only. Useful for
     # spotting brownouts (min sags) and supply spikes (max climbs).
     max_bus_voltage:
-      ha:
-        enabled_default: true
+      feature_available: readable
     min_bus_voltage:
-      ha:
-        enabled_default: true
+      feature_available: readable
     # Electronic expansion valve actual + target position. Useful for
     # observing refrigerant-flow modulation under load and verifying
     # the inverter's superheat-control loop is tracking.
     eev_position:
-      ha:
-        enabled_default: true
+      feature_available: readable
     eev_target_angle:
-      ha:
-        enabled_default: true
+      feature_available: readable
     # Compressor on/off state — diagnostic. Useful for cross-checking
     # frequency / current readings (zero-frequency ≠ off in all
     # firmware variants; this flag disambiguates).
     compressor_running:
-      ha:
-        enabled_default: true
+      feature_available: readable
     # Realtime power draw + cumulative energy. The stock cap probe
     # under-reports availability for these on this hardware revision,
     # so feature_available is forced and the correct linear encodings
