@@ -7866,7 +7866,7 @@ fields:
     d_axis_current:
       description: Compressor motor d-axis current (raw x 64). Signed per JS comment.
       field_class: sensor
-      feature_available: readable
+      feature_available: readable-opt
       ha:
         entity_category: diagnostic
       data_type: uint8
