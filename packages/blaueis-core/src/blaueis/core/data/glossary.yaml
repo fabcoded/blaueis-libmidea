@@ -6330,6 +6330,8 @@ fields:
       feature_available: readable
       data_type: uint8
       device_context: indoor_unit
+      ha:
+        off_behavior: available
       alt_names:
         rev1: errorCode
         handbook: Error Code, Fault Code, E1-E9
@@ -6449,6 +6451,7 @@ fields:
       device_context: indoor_unit
       ha:
         device_class: problem
+        off_behavior: available
       alt_names:
         rev1: inError
         rev2: in_error
