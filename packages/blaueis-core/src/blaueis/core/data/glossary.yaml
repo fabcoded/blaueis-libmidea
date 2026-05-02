@@ -5797,6 +5797,8 @@ fields:
       description: 'Post-run fan / cool fan: keeps fan running after compressor stops to dry evaporator.'
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -5826,6 +5828,7 @@ fields:
       device_context: indoor_unit
       unit: °C
       ha:
+        entity_category: diagnostic
         device_class: temperature
         state_class: measurement
         unit_of_measurement: °C
@@ -5930,6 +5933,7 @@ fields:
       device_context: outdoor_unit
       unit: seconds (raw x 64)
       ha:
+        entity_category: diagnostic
         device_class: duration
         state_class: measurement
         unit_of_measurement: min
@@ -5956,6 +5960,7 @@ fields:
       device_context: outdoor_unit
       unit: Hz
       ha:
+        entity_category: diagnostic
         device_class: frequency
         state_class: measurement
         unit_of_measurement: Hz
@@ -5981,6 +5986,8 @@ fields:
       description: Cosy sleep switch / self cosy sleep toggle. Separate from cosy_sleep mode (0-3).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -6459,6 +6466,8 @@ fields:
       description: Indoor fan motor stator flux (raw sensor value).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -6480,6 +6489,8 @@ fields:
         field.
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: enum
       device_context: indoor_unit
       values:
@@ -6716,6 +6727,8 @@ fields:
       description: 'Current defrost cycle stage: 0=none, 1=start, 2=in progress, 3=ending.'
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -6744,6 +6757,7 @@ fields:
       alt_names:
         rev33: engineTotalWorkedTime
       ha:
+        entity_category: diagnostic
         device_class: duration
         state_class: total_increasing
         unit_of_measurement: h
@@ -6768,6 +6782,8 @@ fields:
       description: 'Natural wind / natural breeze: simulates outdoor wind with variable fan speed.'
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -6854,6 +6870,7 @@ fields:
       device_context: outdoor_unit
       unit: V
       ha:
+        entity_category: diagnostic
         device_class: voltage
         state_class: measurement
         unit_of_measurement: V
@@ -6877,6 +6894,8 @@ fields:
       description: Outdoor fan motor stator flux (raw sensor value).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -6897,6 +6916,8 @@ fields:
       description: Secondary outdoor voltage reading (raw, unit unclear).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -6917,6 +6938,8 @@ fields:
       description: 'Outdoor unit DC fan speed. Encoding: raw x 8 = RPM.'
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       unit: RPM (raw x 8)
@@ -6942,6 +6965,8 @@ fields:
       description: 'Outdoor fan target speed. Encoding: raw x 8 = RPM.'
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       unit: RPM (raw x 8)
@@ -6991,6 +7016,7 @@ fields:
       device_context: outdoor_unit
       unit: V
       ha:
+        entity_category: diagnostic
         device_class: voltage
         state_class: measurement
         unit_of_measurement: V
@@ -7013,6 +7039,8 @@ fields:
       description: Outdoor target compressor frequency (from outdoor controller perspective).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       unit: Hz
@@ -7075,6 +7103,8 @@ fields:
       description: Outdoor unit total current. Raw value multiplied by 4.
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -7096,6 +7126,8 @@ fields:
       description: Peak electricity / demand response flag.
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -7144,6 +7176,8 @@ fields:
       description: PMV (Predicted Mean Vote) thermal comfort index. ISO 7730 / ASHRAE 55 scale.
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -7238,6 +7272,8 @@ fields:
       description: Whether the compressor / indoor fan is currently running (not just powered on).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -7296,6 +7332,8 @@ fields:
       description: Indoor heat exchanger intermediate temperature (T2 thermistor). Offset 30.
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: float
       device_context: indoor_unit
       unit: °C
@@ -7323,6 +7361,8 @@ fields:
       description: Outdoor coil temperature (T3 thermistor). Offset 50.
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: float
       device_context: outdoor_unit
       unit: °C
@@ -7607,6 +7647,8 @@ fields:
       description: Lifetime maximum current draw recorded by the unit.
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       unit: A
@@ -7630,6 +7672,8 @@ fields:
       description: Lifetime maximum T4 outdoor ambient temperature (raw sensor value).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -7652,6 +7696,8 @@ fields:
       description: Lifetime minimum T4 outdoor ambient temperature (raw sensor value).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -7674,6 +7720,8 @@ fields:
       description: Cumulative error/fault count since installation.
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -7696,6 +7744,8 @@ fields:
       description: Compressor motor magnetic flux (raw x 8).
       field_class: sensor
       feature_available: readable-opt
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -7718,6 +7768,8 @@ fields:
       description: Fan motor magnetic flux (raw x 8).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -7740,6 +7792,8 @@ fields:
       description: Compressor motor d-axis current (raw x 64). Signed per JS comment.
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -7762,6 +7816,8 @@ fields:
       description: Compressor motor q-axis current (raw x 64). Signed per JS comment.
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -7784,6 +7840,8 @@ fields:
       description: Compressor motor peak current.
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       unit: A
@@ -7807,6 +7865,8 @@ fields:
       description: PFC (Power Factor Correction) circuit peak current.
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       unit: A
@@ -7830,6 +7890,8 @@ fields:
       description: Fan motor peak current.
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       unit: A
@@ -7853,6 +7915,8 @@ fields:
       description: Motor torque compensation angle (LE 16-bit — body[15] low byte, body[16] high byte).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint16
       device_context: outdoor_unit
       alt_names:
@@ -7877,6 +7941,8 @@ fields:
       description: Motor torque compensation magnitude (raw x 8).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -7899,6 +7965,8 @@ fields:
       description: AD calibration voltage (raw x 16).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -8141,6 +8209,8 @@ fields:
       description: Indoor fan set speed (raw value; consumer multiplies by 8 for RPM).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: indoor_unit
       unit: raw (x8 = RPM)
@@ -8164,6 +8234,8 @@ fields:
       description: Indoor fan actual speed (raw value; consumer multiplies by 8 for RPM).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: indoor_unit
       unit: raw (x8 = RPM)
@@ -8185,6 +8257,8 @@ fields:
       description: Indoor unit fault state byte 1 (8 individual fault bits).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -8207,6 +8281,8 @@ fields:
       description: Indoor unit fault state byte 2 (8 individual fault bits).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -8229,6 +8305,8 @@ fields:
       description: Indoor unit fault state byte 3 (8 individual fault bits).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -8251,6 +8329,8 @@ fields:
       description: Indoor unit load state byte 1 (8 individual state bits).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -8273,6 +8353,8 @@ fields:
       description: Indoor unit load state byte 2 (8 individual state bits).
       field_class: sensor
       feature_available: readable
+      ha:
+        entity_category: diagnostic
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -8919,6 +9001,8 @@ fields:
       description: Total operating time (24-bit LE).
       field_class: sensor
       feature_available: capability
+      ha:
+        entity_category: diagnostic
       data_type: uint16
       device_context: indoor_unit
       alt_names:
