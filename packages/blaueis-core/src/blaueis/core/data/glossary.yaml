@@ -6332,6 +6332,35 @@ fields:
       device_context: indoor_unit
       ha:
         off_behavior: available
+      values:
+        ok:                              { raw: 0,  description: "OK (0)" }
+        indoor_display_comm:             { raw: 1,  description: "Interior ↔ display board communication failure (1)" }
+        indoor_main_e:                   { raw: 2,  description: "Indoor main control board E-party failure (2)" }
+        indoor_outdoor_comm:             { raw: 3,  description: "Indoor ↔ outdoor board communication failure (3)" }
+        zero_crossing:                   { raw: 4,  description: "Zero-crossing detection failure (4)" }
+        indoor_fan_stall:                { raw: 5,  description: "Indoor fan stall (5)" }
+        outdoor_condenser_sensor:        { raw: 6,  description: "Outdoor condenser sensor failure (6)" }
+        outdoor_ambient_sensor:          { raw: 7,  description: "Outdoor ambient temperature sensor failure (7)" }
+        exhaust_temp_sensor:             { raw: 8,  description: "Compressor exhaust temperature sensor failure (8)" }
+        outdoor_e_side:                  { raw: 9,  description: "Outdoor E-side failure (9)" }
+        indoor_temp_sensor:              { raw: 10, description: "Indoor temperature sensor failure (10)" }
+        indoor_evap_sensor:              { raw: 11, description: "Indoor evaporator temperature sensor failure (11)" }
+        outdoor_fan_stall:               { raw: 12, description: "Outdoor fan stall (12)" }
+        ipm_protection:                  { raw: 13, description: "IPM module protection (13)" }
+        voltage_protection:              { raw: 14, description: "Voltage protection (14)" }
+        compressor_top_temp_protection:  { raw: 15, description: "Compressor top-temperature protection (15)" }
+        outdoor_low_temp_protection:     { raw: 16, description: "Outdoor temperature low protection (16)" }
+        compressor_position_protection:  { raw: 17, description: "Compressor position protection (17)" }
+        display_e_side:                  { raw: 18, description: "Display board E-side fault (18)" }
+        outer_pipe_temp_protection:      { raw: 21, description: "Outer pipe temperature protection (21)" }
+        exhaust_high_temp_protection:    { raw: 23, description: "Exhaust high-temperature protection (23)" }
+        heating_cold_wind_protection:    { raw: 25, description: "Heating cold-wind protection (25)" }
+        current_protection:              { raw: 26, description: "Current protection (26)" }
+        evaporator_temp_protection:      { raw: 29, description: "Evaporator high/low-temperature protection (29)" }
+        condenser_temp_freq_limit:       { raw: 30, description: "Condenser high/low-temperature protection + frequency limit (30)" }
+        exhaust_temp_swing_protection:   { raw: 31, description: "Exhaust high/low-temperature protection (31)" }
+        protocol_mismatch:               { raw: 32, description: "Indoor ↔ outdoor protocol mismatch (32)" }
+        refrigerant_leak_protection:     { raw: 33, description: "Refrigerant-leakage protection (33)" }
       alt_names:
         rev1: errorCode
         handbook: Error Code, Fault Code, E1-E9
@@ -6346,9 +6375,32 @@ fields:
             - 0
           direction: response
           section: §4.1
+        rsp_0xb1:
+          frame: 0xB1 Property Response
+          byte: property ID 0x3F,0x00; data byte 0
+          direction: response
+          decode:
+          - property_id: 0x3F,0x00
+            offset: 0
+            bits:
+            - 7
+            - 0
+          section: §3.5
+      note: 'Value labels and the 0..33 range come from node-mideahvac.
+        The codes are firmware/SKU-dependent — gaps (19, 20, 22, 24,
+        27, 28) were not in the source table and are reserved or
+        SKU-specific. Two protocol surfaces: rsp_0xC0 body[16] is the
+        always-on heartbeat; rsp_0xB1 property 0x3F is an on-demand
+        re-query path. On the dev unit (XtremeSaveBlue), code 29
+        ("Evaporator high/low-temperature protection") has been observed
+        across multiple sessions during normal operation, with the paired
+        error_detected flag staying off — i.e. error_code carries
+        protection-state codes that do not necessarily trip the
+        hard-fault flag.'
       confidence: confirmed
       sources:
       - serial_protocol.md §4.1
+      - node-mideahvac — error code 0..33 lookup table
     fresh_air_temp:
       description: Fresh air intake temperature reading from the ventilation system.
       field_class: sensor
