@@ -5875,10 +5875,10 @@ fields:
         Cross-unit: the probed XtremeSaveBlue (cap 0x16=0) reads
         body[6]=0 always — firmware quirk; after invert it would
         falsely report compressor_running = True 24/7. Default is
-        enabled_default=false; owners enable via override after
-        verifying their firmware tracks the bit (a brief cool cycle
-        proves it — the bit should flip 0→1 when the compressor spools
-        up).'
+        feature_available=readable-opt; owners enable via the
+        Glossary-Overrides textarea after verifying their firmware
+        tracks the bit (a brief cool cycle proves it — the bit should
+        flip 0→1 when the compressor spools up).'
       confidence: confirmed
       sources:
       - passive_capture_s1 (2026-05-01) — Atelier Midea, 22/22 frames at body[6]=0 during 8-56 Hz running compressor

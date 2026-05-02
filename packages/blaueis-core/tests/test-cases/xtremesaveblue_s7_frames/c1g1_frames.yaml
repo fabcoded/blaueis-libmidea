@@ -24,7 +24,7 @@ frames:
       compressor_running: true
       outdoor_total_current: 1
       outdoor_supply_voltage: 229
-    notes: "Compressor off. T2=45C (residual heat in exchanger). T3=1C (outdoor coil cold). Voltage=229V (standby). body[6]=0 raw on this firmware (the probed unit reports 0 always regardless of compressor state — firmware quirk); after the codec's invert this surfaces as compressor_running=true, which is wrong on this hardware. Owners of cap-0x16=0 units should leave compressor_running disabled (enabled_default=false in glossary)."
+    notes: "Compressor off. T2=45C (residual heat in exchanger). T3=1C (outdoor coil cold). Voltage=229V (standby). body[6]=0 raw on this firmware (the probed unit reports 0 always regardless of compressor state — firmware quirk); after the codec's invert this surfaces as compressor_running=true, which is wrong on this hardware. Owners of cap-0x16=0 units should leave compressor_running disabled (feature_available=readable-opt in glossary)."
 
   - name: "cool mode active — compressor running 56Hz"
     timestamp: 327.4

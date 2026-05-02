@@ -350,7 +350,7 @@
         },
         "ha": {
           "$ref": "#/$defs/ha_block",
-          "description": "Home Assistant entity metadata: device_class, state_class, unit, precision, entity_category, enabled_default, off_behavior. Consumed by the HA integration's per-platform entity classes (sensor, binary_sensor, switch, select, number)."
+          "description": "Home Assistant entity metadata: device_class, state_class, unit, precision, entity_category, off_behavior. Consumed by the HA integration's per-platform entity classes (sensor, binary_sensor, switch, select, number). Registry-disabled-default behaviour is driven by feature_available *-opt suffix, not a separate ha-block flag."
         },
         "mutual_exclusion": {
           "$ref": "#/$defs/mutual_exclusion",
@@ -852,10 +852,6 @@
           "type": "string",
           "enum": ["config", "diagnostic"],
           "description": "HA entity category; places the entity under Configuration or Diagnostics."
-        },
-        "enabled_default": {
-          "type": "boolean",
-          "description": "When false, the entity is created but disabled by default in the HA registry."
         },
         "off_behavior": {
           "type": "string",
