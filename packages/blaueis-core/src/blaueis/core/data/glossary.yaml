@@ -6366,7 +6366,7 @@ fields:
     humidity_actual:
       description: Current indoor humidity measured by sensor (C1 Group 5 path).
       field_class: sensor
-      feature_available: readable-opt
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       unit: '%'
@@ -6389,17 +6389,22 @@ fields:
       note: 'Optional comfort sensor — the physical humidity sensor is a
         relatively rare add-on (more common than a PM2.5 sensor, but most
         residential SKUs ship without it). When absent, the field reads 0
-        across every mode / power state. Mirrors humidity_measured (A1
-        body[17]) and indoor_humidity (B1 prop 0x15,0x00) — same physical
-        sensor, three different protocol surfaces; default to opt-in so
-        the device card does not advertise a no-data-here ghost entity
-        on units without the sensor. Distinct from humidity_setpoint
+        across every mode / power state; we have not yet observed a
+        non-zero reading on any probed unit. Mirrors humidity_measured
+        (A1 body[17]) and indoor_humidity (B1 prop 0x15,0x00) — same
+        physical sensor, three different protocol surfaces. Defaulted
+        to never (not registered). The cap-gated B1 surface
+        (indoor_humidity) carries the auto-promotion semantic if a future
+        unit signalizes it; the C1G5 / A1 surfaces have no wired cap_id,
+        so promotion on those happens via the per-instance
+        Glossary-Overrides textarea once an owner confirms the sensor
+        works on their hardware. Distinct from humidity_setpoint
         (C0 body[19]), which targets the dehumidify program.'
       confidence: hypothesis
     humidity_measured:
       description: Current indoor humidity from A1 heartbeat sensor.
       field_class: sensor
-      feature_available: readable-opt
+      feature_available: never
       data_type: uint8
       device_context: indoor_unit
       unit: '%'
@@ -6422,8 +6427,8 @@ fields:
       note: 'Optional comfort sensor — same physical reading as
         humidity_actual (C1 Group 5) and indoor_humidity (B1
         prop 0x15,0x00) via the A1 heartbeat. Reads 0 across every
-        mode / power state on units without the sensor; default to
-        opt-in. See humidity_actual for the broader rationale and
+        mode / power state on every probed unit; defaulted to never.
+        See humidity_actual for the broader rationale and
         humidity_setpoint for the program (dehumidify) that does not
         require this sensor.'
       confidence: consistent
