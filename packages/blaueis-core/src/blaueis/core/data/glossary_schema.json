@@ -310,6 +310,10 @@
           "type": "string",
           "description": "One-line human-readable description of what this field represents."
         },
+        "label": {
+          "type": "string",
+          "description": "Optional human-facing display name. When set, consumers (e.g. the HA integration's _attr_name) prefer this over the auto-derived title-case of the field key. Use to disambiguate paired fields, drop technical prefixes from the UI, or follow handbook terminology — leave unset for fields whose key already reads cleanly in title case."
+        },
         "default_priority": {
           "type": "array",
           "items": { "type": "string" },

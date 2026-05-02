@@ -6325,6 +6325,7 @@ fields:
       confidence: hypothesis
     error_code:
       description: Device error/fault code (0-33). 0 = no error.
+      label: "Error Code"
       field_class: sensor
       feature_available: readable
       data_type: uint8
@@ -6441,6 +6442,7 @@ fields:
       confidence: consistent
     in_error:
       description: 'Error flag: indicates the unit has an active fault condition.'
+      label: "Error Detected"
       field_class: sensor
       feature_available: readable
       data_type: bool
