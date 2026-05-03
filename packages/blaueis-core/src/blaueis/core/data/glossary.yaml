@@ -12,7 +12,7 @@
 # Assistant integration, a control script, or a data-logging job.
 #
 # This is NOT a wire-level protocol spec. Frame layouts, byte offsets, decode
-# formulas, and capability-TLV encodings live in the companion HVAC-shark
+# formulas, and capability-TLV encodings live in the companion blaueis-hvacshark
 # repository. Wire details appear here only insofar as the codec needs them to
 # round-trip values (see `protocols:` / `decode:` / `encoding:` blocks on each
 # field) — but they are implementation mechanics, not the contract.

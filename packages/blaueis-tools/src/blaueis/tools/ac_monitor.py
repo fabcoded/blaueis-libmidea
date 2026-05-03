@@ -31,7 +31,7 @@ import time
 from collections import Counter
 from pathlib import Path
 
-# ac-monitor/ -> examples/ -> raspi-midea/ -> tools/ -> HVAC-shark/
+# ac-monitor/ -> examples/ -> raspi-midea/ -> tools/ -> blaueis-hvacshark/
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 # Order matters: tools-serial midea_frame.py is canonical (full builders).
 # Gateway has a stripped-down midea_frame.py with only handshake builders.

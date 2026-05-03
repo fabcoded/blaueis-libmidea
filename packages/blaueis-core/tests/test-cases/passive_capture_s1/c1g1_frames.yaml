@@ -1,6 +1,6 @@
 # Real C1_GROUP1 frames — Atelier Midea
-# Captured passively via HVAC-shark/tools/capture/passive_capture.py
-# Source pcap: HVAC-shark-dumps/passive_capture_s1/capture.pcap
+# Captured passively via blaueis-hvacshark/tools/capture/passive_capture.py
+# Source pcap: blaueis-hvacshark-traces/passive_capture_s1/capture.pcap
 
 device: "Atelier Midea"
 frames:

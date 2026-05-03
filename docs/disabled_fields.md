@@ -28,7 +28,7 @@ no protocol-level fix would help.
 **To re-enable any of these**: capture-pair before/after the position
 change, plus a video showing the actual louver angle, across at least
 two distinct mode/setpoint combinations. Open an issue in
-`HVAC-shark/protocols/midea/` with the captures attached.
+`blaueis-hvacshark/protocols/midea/` with the captures attached.
 
 ---
 
@@ -158,7 +158,7 @@ correlate the byte to a physical quantity.
    target temperature, ambient temperature, what the wall remote shows
    on its display, and whether a compressor is audibly running.
 3. **Open a PR or issue** in either `blaueis-libmidea` or
-   `HVAC-shark` with the bundle attached and a one-line description
+   `blaueis-hvacshark` with the bundle attached and a one-line description
    of what hypothesis the data lets us test.
 
 Even a single rollover-spanning capture for a duration field would let

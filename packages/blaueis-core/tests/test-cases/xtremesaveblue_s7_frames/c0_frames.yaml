@@ -1,6 +1,6 @@
 device: XtremeSaveBlue
 session: Session 7
-source: HVAC-shark-dumps/Midea-XtremeSaveBlue-logicanalyzer/Session 7/session.pcap
+source: blaueis-hvacshark-traces/Midea-XtremeSaveBlue-logicanalyzer/Session 7/session.pcap
 bus: R/T (bus_type=3)
 frame_type: 0xC0 Status Response
 frames:

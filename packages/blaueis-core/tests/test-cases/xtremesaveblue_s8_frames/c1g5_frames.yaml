@@ -6,7 +6,7 @@
 
 device: "XtremeSaveBlue"
 session: "Session 8"
-source: "HVAC-shark-dumps/Midea-XtremeSaveBlue-logicanalyzer/Session 8/session.pcap"
+source: "blaueis-hvacshark-traces/Midea-XtremeSaveBlue-logicanalyzer/Session 8/session.pcap"
 bus: "UART (bus_type=1)"
 frame_type: "0xC1 Group 5"
 

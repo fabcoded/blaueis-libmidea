@@ -253,7 +253,7 @@ Symptoms → where to look, in order.
 ### Timing weirdness
 
 1. Ring has `tx_seq` and timestamps — extract to CSV, plot against `frame_spacing_ms`.
-2. Cross-reference with `HVAC-shark-dumps/data-analysis/midea/uart/timing-analysis.md`.
+2. Cross-reference with `blaueis-hvacshark-traces/data-analysis/midea/uart/timing-analysis.md`.
 3. If cadence dropped below ~70 ms post-TX: raise `frame_spacing_ms` (OEM envelope).
 
 ---
