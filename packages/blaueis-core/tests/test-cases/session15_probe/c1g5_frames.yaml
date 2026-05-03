@@ -18,7 +18,7 @@ frames:
     ground_truth:
       # Multi-byte LE16 fields (now decoded via uint16_le encoding):
       indoor_fan_runtime: 7146       # body[6..7] = 0xEA 0x1B → 0x1BEA = 7146 min (~119 h)
-      defrost_step: 0                # body[10] = 0x00 (no defrost)
+      defrost_status: 0              # body[10] = 0x00 (no defrost)
       compressor_cumul_hours: 1915   # body[14..15] = 0x7B 0x07 → 0x077B = 1915 h
       # Existing fields for non-regression:
       humidity_actual: 0             # body[4] = 0x00

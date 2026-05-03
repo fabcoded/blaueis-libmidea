@@ -418,6 +418,10 @@
           "type": "string",
           "description": "Additional context not covered by other properties."
         },
+        "signoff": {
+          "type": "string",
+          "description": "Free-text list of human-judgment open items blocking sign-off (e.g. 'verify sign matches actual current direction', 'confirm range outside 22-31°C'). Mechanical gaps (missing unit, missing ha block, missing sources) are detected by tooling from the field's other keys and do not need to appear here. Empty or absent → no human-judgment items pending. Removed line-by-line as items are resolved."
+        },
         "confidence": { "$ref": "#/$defs/confidence_label" },
         "sources": {
           "type": "array",

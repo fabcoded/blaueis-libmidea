@@ -776,6 +776,7 @@ fields:
   control:
     alarm_sleep:
       description: Alarm sleep / wake-up timer function.
+      signoff: tbd
       field_class: stateful_bool
       _migration:
         _previous_feature_available: always
@@ -814,6 +815,7 @@ fields:
       - serial_protocol.md §3.2/§4.1
     anion_ionizer:
       description: Anion / negative-ion air purifier. Generates negative ions to improve air quality.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -882,6 +884,7 @@ fields:
     breeze_away:
       description: 'Breeze Away: deflects airflow away from the user. Handbook §1.18 (non-TwinFlap) or sub-mode of Breezeless
         function (TwinFlap).'
+      signoff: tbd
       field_class: stateful_bool
       _migration:
         _reclassified_from: complex_function
@@ -974,6 +977,7 @@ fields:
       - handbook §1.18
     breeze_mild:
       description: 'Breeze Mild: intermediate soft-breeze mode between Breeze Away and Breezeless. TwinFlap models only.'
+      signoff: tbd
       field_class: stateful_bool
       _migration:
         _reclassified_from: complex_function
@@ -1065,6 +1069,7 @@ fields:
     breezeless:
       description: 'Breezeless / wind-free mode. Air passes through micro-holes, eliminating direct draft. TwinFlap models:
         one-key activation. Standard models: via property 0x42.'
+      signoff: tbd
       field_class: stateful_enum
       _migration:
         _reclassified_from: complex_function
@@ -1154,13 +1159,13 @@ fields:
       values:
         'off':
           raw: 0
-          description: Breezeless disabled
+          description: Breezeless disabled (0)
         mode_1:
           raw: 1
-          description: Breezeless mode 1 (standard)
+          description: Breezeless mode 1 (standard) (1)
         mode_2:
           raw: 2
-          description: Breezeless mode 2 (enhanced)
+          description: Breezeless mode 2 (enhanced) (2)
       note: 'Property-only (no 0x40/0xC0 body bits). Mutual exclusion: disables swing, turbo, jet_cool when active. On FA100,
         activated via property 0x43 with value 0x04 instead.'
       confidence: consistent
@@ -1169,6 +1174,7 @@ fields:
       - handbook (TwinFlap §1.19)
     buzzer:
       description: Request audible beep feedback from the AC display board on command receipt.
+      signoff: tbd
       field_class: trigger
       _migration:
         _reclassified_from: complex_function
@@ -1255,6 +1261,7 @@ fields:
       - own captures Sessions 4-8
     catch_cold:
       description: 'Anti-cold / cold prevention: prevents blowing cold air during heat-up.'
+      signoff: tbd
       field_class: stateful_bool
       feature_available: always
       data_type: bool
@@ -1290,6 +1297,7 @@ fields:
       - serial_protocol.md §3.2/§4.1
     child_sleep:
       description: Child sleep / wise eye occupancy sensor write control.
+      signoff: tbd
       field_class: stateful_bool
       _migration:
         _previous_feature_available: always
@@ -1331,6 +1339,7 @@ fields:
       - serial_protocol.md §3.2/§4.1
     cleanup:
       description: Clean up / purifier mode active.
+      signoff: tbd
       field_class: stateful_bool
       _migration:
         _previous_feature_available: always
@@ -1371,6 +1380,7 @@ fields:
       description: 'Comfort sleep mode. Multi-key composite: the user-visible state is determined by the combination of comfortableSleepValue
         (body[8] bits[1:0]) and comfortableSleepSwitch (body[9] bit 6). A third sub-field, comfortableSleepTime (body[17]
         bits[4:0]), carries the sleep duration and is destructively overwritten to 0x0A when transitioning to ON.'
+      signoff: tbd
       field_class: complex_function
       _migration:
         _reclassified_from: stateful_enum
@@ -1520,6 +1530,7 @@ fields:
       - forge-mode cross-validation
     dry_clean:
       description: 'Dry clean / X-Fan: runs fan after cooling to dry the evaporator and prevent mold.'
+      signoff: tbd
       field_class: stateful_bool
       feature_available: always
       data_type: bool
@@ -1553,6 +1564,7 @@ fields:
       - serial_protocol.md §3.2/§4.1
     eco_mode:
       description: Energy-saving ECO mode.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: readable
       data_type: bool
@@ -1656,6 +1668,7 @@ fields:
       - midea-local
     energy_save:
       description: Energy save mode. Different from ECO mode and power_save.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: always
       data_type: bool
@@ -1689,6 +1702,7 @@ fields:
       - serial_protocol.md §3.2/§4.1
     exchange_air:
       description: Fresh air / ventilation exchange mode.
+      signoff: tbd
       field_class: stateful_bool
       _migration:
         _previous_feature_available: always
@@ -1745,6 +1759,7 @@ fields:
       description: Fan speed setting. Each cap value defines the enum presets and
         slider behaviour that apply when that cap is active. No field-level values
         block — every enum/slider option lives inside capability.values.<cap>.
+      signoff: tbd
       field_class: stateful_enum
       feature_available: readable
       data_type: uint8
@@ -1967,6 +1982,7 @@ fields:
       - protocol_shared.md §6
     follow_me:
       description: 'Follow Me / I Feel: use external sensor temperature for control loop instead of unit thermistor.'
+      signoff: tbd
       field_class: binary_sensor
       feature_available: always
       data_type: bool
@@ -2026,6 +2042,7 @@ fields:
       - live test 2026-04-10 (gateway round-trip confirmed activation sequence)
     frost_protection:
       description: Frost protection mode (8°C auxiliary heat). Maintains minimum temperature to prevent pipe freezing.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: readable
       data_type: bool
@@ -2122,6 +2139,7 @@ fields:
       - midea-local
     fresh_air_fan_speed:
       description: Fresh air ventilation fan speed (0-100).
+      signoff: tbd
       field_class: stateful_numeric
       feature_available: capability
       data_type: uint8
@@ -2160,6 +2178,7 @@ fields:
       - serial_protocol.md §3.5
     fresh_air_switch:
       description: Fresh air ventilation on/off switch (B0 property protocol).
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -2198,6 +2217,7 @@ fields:
       - serial_protocol.md §3.5
     humidity_setpoint:
       description: Target humidity level (0-100%) for dehumidify mode.
+      signoff: tbd
       field_class: stateful_numeric
       _migration:
         _reclassified_from: unknown
@@ -2316,6 +2336,7 @@ fields:
       - serial_protocol.md §4.1 body[19]
     jet_cool:
       description: Jet Cool mode. Rapid cooling burst, typically full power for a fixed duration.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -2407,6 +2428,7 @@ fields:
       confidence: hypothesis
     low_frequency_fan:
       description: Low frequency / quiet fan mode. Reduces fan noise.
+      signoff: tbd
       field_class: stateful_bool
       _migration:
         _previous_feature_available: always
@@ -2445,6 +2467,7 @@ fields:
       - serial_protocol.md §3.2/§4.1
     night_light:
       description: 'Night light / LED dimmer: reduces display brightness during sleep.'
+      signoff: tbd
       field_class: stateful_bool
       feature_available: always
       data_type: bool
@@ -2478,6 +2501,7 @@ fields:
       - serial_protocol.md §3.2/§4.1
     operating_mode:
       description: HVAC operating mode (auto, cool, dry, heat, fan, smart_dry).
+      signoff: tbd
       field_class: stateful_enum
       _migration:
         _reclassified_from: complex_function
@@ -2492,22 +2516,22 @@ fields:
       values:
         auto:
           raw: 1
-          description: Automatic mode selection
+          description: Automatic mode selection (1)
         cool:
           raw: 2
-          description: Cooling
+          description: Cooling (2)
         dry:
           raw: 3
-          description: Dehumidification
+          description: Dehumidification (3)
         heat:
           raw: 4
-          description: Heating
+          description: Heating (4)
         fan:
           raw: 5
-          description: Fan only (ventilation)
+          description: Fan only (ventilation) (5)
         smart_dry:
           raw: 6
-          description: Smart dehumidification (Lua only)
+          description: Smart dehumidification (Lua only) (6)
       alt_names:
         rev1: Mode
         rev2: mode
@@ -2707,6 +2731,7 @@ fields:
       - all implementations
     power:
       description: Master power on/off for the AC unit.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: always
       power_independent: true
@@ -2753,6 +2778,7 @@ fields:
       description: 'Power-off countdown timer value in minutes (0-1440). Derived composite: synthesised from three sub-fields
         packed into body[5] and body[6]. Only meaningful when power_off_timer is ON; value is undefined when the timer switch
         is OFF.'
+      signoff: tbd
       field_class: complex_function
       _migration:
         _inferred_class: complex_function
@@ -2847,6 +2873,7 @@ fields:
     power_off_timer:
       description: Power-off timer enable/disable switch. When ON, the unit will automatically power off after the countdown
         set by power_off_time_value.
+      signoff: tbd
       field_class: stateful_bool
       _migration:
         _inferred_class: stateful_bool
@@ -2896,6 +2923,7 @@ fields:
       description: 'Power-on countdown timer value in minutes (0-1440). Derived composite: synthesised from three sub-fields
         packed into body[4] and body[6]. Mirror of power_off_time_value for the power-on direction. Only meaningful when power_on_timer
         is ON.'
+      signoff: tbd
       field_class: complex_function
       _migration:
         _inferred_class: complex_function
@@ -2986,6 +3014,7 @@ fields:
     power_on_timer:
       description: Power-on timer enable/disable switch. When ON, the unit will automatically power on after the countdown
         set by power_on_time_value.
+      signoff: tbd
       field_class: stateful_bool
       _migration:
         _inferred_class: stateful_bool
@@ -3030,6 +3059,7 @@ fields:
       - Session 11 (all frames show 0x7F = timer OFF)
     power_save:
       description: Power save mode. Different from ECO mode and energy_save.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: always
       data_type: bool
@@ -3065,6 +3095,7 @@ fields:
       description: Auxiliary electric heater (PTC element) level. Supplemental heating stage used
         when the heat pump alone cannot meet demand. 2-bit field at body[9] bits[4:3] — four
         possible stages; only off and low are observed on the probed XtremeSaveBlue unit.
+      signoff: tbd
       field_class: stateful_enum
       feature_available: readable
       data_type: uint8
@@ -3139,22 +3170,22 @@ fields:
       values:
         'off':
           raw: 0
-          description: Auxiliary heater off
+          description: Auxiliary heater off (0)
           confidence: confirmed
         'low':
           raw: 1
           description: Auxiliary heater stage 1 — the only non-off level observed on the
-            probed unit (maps to the historical binary 'on').
+            probed unit (maps to the historical binary 'on'). (1)
           confidence: confirmed
         'medium':
           raw: 2
           description: Auxiliary heater stage 2 — label hypothetical; no hardware observed to
-            drive this level.
+            drive this level. (2)
           confidence: hypothesis
         'high':
           raw: 3
           description: Auxiliary heater stage 3 — label hypothetical; no hardware observed to
-            drive this level.
+            drive this level. (3)
           confidence: hypothesis
       disambiguation: 'Previously named ptc_heater (moved to alt_names.midea_protocol).
 
@@ -3172,6 +3203,7 @@ fields:
       - dudanov
     rate_select:
       description: Fan speed/rate selection mode. Determines available speed control granularity.
+      signoff: tbd
       field_class: stateful_enum
       _migration:
         _reclassified_from: unknown
@@ -3254,6 +3286,7 @@ fields:
       - Session 1 B5 query
     resume:
       description: 'Power resume: restore previous operating state on power recovery after outage.'
+      signoff: tbd
       field_class: stateful_bool
       feature_available: always
       data_type: bool
@@ -3287,6 +3320,7 @@ fields:
       - serial_protocol.md §3.2/§4.1
     screen_display:
       description: Indoor unit display/LED on or off. Toggled via dedicated 0x41 sub-command, not 0x40 Set.
+      signoff: tbd
       field_class: stateful_bool
       _migration:
         _reclassified_from: unknown
@@ -3383,6 +3417,7 @@ fields:
       - Session 11
     self_clean:
       description: Self-cleaning mode. Unit runs a cleaning cycle to remove moisture/bacteria from the evaporator.
+      signoff: tbd
       field_class: stateful_bool
       _migration:
         _reclassified_from: complex_function
@@ -3453,6 +3488,7 @@ fields:
       - Session 1 B5 query (0x39=1)
     silky_cool:
       description: Silky cool / wind-free mode. Reduces draft sensation by redirecting airflow through micro-holes.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: readable
       data_type: bool
@@ -3518,6 +3554,7 @@ fields:
       - serial_protocol.md §4.1 body[22]
     smart_eye:
       description: Smart eye / presence detection. Adjusts operation based on room occupancy. (community name nobody_energy_save).
+      signoff: tbd
       field_class: stateful_bool
       data_type: bool
       device_context: indoor_unit
@@ -3581,6 +3618,7 @@ fields:
       - dudanov
     sleep_mode:
       description: 'Sleep mode: adjusts temperature gradually during sleep for comfort.'
+      signoff: tbd
       field_class: stateful_bool
       feature_available: always
       data_type: bool
@@ -3631,6 +3669,7 @@ fields:
       - serial_protocol.md §3.2/§4.1
     swing_reserved:
       description: Reserved bits in the swing control byte — must always be 0x3 (bits [5:4] set) in 0x40 Set frames.
+      signoff: tbd
       field_class: unknown
       _migration:
         _needs_review: false
@@ -3661,16 +3700,17 @@ fields:
       - all captured 0x40 frames
     swing_horizontal:
       description: Horizontal (left/right) air vane oscillation. Wire encoding uses 2 bits — 0x03=ON, 0x00=OFF.
+      signoff: tbd
       field_class: stateful_enum
       feature_available: readable
       data_type: uint8
       values:
         'off':
           raw: 0
-          description: Horizontal swing off
+          description: Horizontal swing off (0)
         'on':
           raw: 3
-          description: Horizontal swing on
+          description: Horizontal swing on (3)
       device_context: indoor_unit
       alt_names:
         rev1: swingLR
@@ -3760,16 +3800,17 @@ fields:
       - own captures
     swing_vertical:
       description: Vertical (up/down) air vane oscillation. Wire encoding uses 2 bits — 0x03=ON (0x0C in byte), 0x00=OFF.
+      signoff: tbd
       field_class: stateful_enum
       feature_available: readable
       data_type: uint8
       values:
         'off':
           raw: 0
-          description: Vertical swing off
+          description: Vertical swing off (0)
         'on':
           raw: 3
-          description: Vertical swing on
+          description: Vertical swing on (3)
       device_context: indoor_unit
       alt_names:
         rev1: swingUD
@@ -3860,6 +3901,7 @@ fields:
       - own captures
     target_temperature:
       description: User-requested room temperature setpoint.
+      signoff: tbd
       field_class: stateful_numeric
       _migration:
         _reclassified_from: complex_function
@@ -4061,6 +4103,7 @@ fields:
     temperature_unit:
       description: 'Display temperature unit: Celsius or Fahrenheit. Changes display only — all protocol values remain in
         °C.'
+      signoff: tbd
       field_class: stateful_bool
       feature_available: readable
       data_type: bool
@@ -4140,6 +4183,7 @@ fields:
       description: Strong-wind fan boost. Distinct from turbo_mode — this drives fan-side airflow only and does not raise
         compressor frequency. The manufacturer cloud plugin keeps these as two independent fields; cross-validation via forge
         mode confirmed the bits are fully orthogonal (verified via forge-mode cross-validation).
+      signoff: tbd
       field_class: stateful_bool
       _migration:
         _reclassified_from: complex_function
@@ -4193,6 +4237,7 @@ fields:
     turbo_mode:
       description: High-performance turbo (compressor boost). Reads only body[10] bit 1; the body[8] bit 5 signal that was
         previously OR-folded here is now a separate field `strong_wind` (verified via forge-mode cross-validation).
+      signoff: tbd
       field_class: stateful_bool
       feature_available: readable
       data_type: bool
@@ -4318,6 +4363,7 @@ fields:
     water_pump:
       description: 'Water pump relay on/off. Independent from the aqua_wash cycle — separate property (0x50). May be a condensate
         drain pump, a fresh water supply pump for the aqua-clean system, or dual-purpose.'
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -4352,6 +4398,7 @@ fields:
       - serial_protocol.md §3.5
     aqua_wash_manual:
       description: Evaporator aqua-clean manual trigger. May use plumbed water (premium units) or condensate flooding.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -4386,6 +4433,7 @@ fields:
       - serial_protocol.md §3.5
     aqua_wash_switch:
       description: Evaporator aqua-clean cycle on/off. Distinct from dry self_clean (0x39).
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -4420,6 +4468,7 @@ fields:
       - serial_protocol.md §3.5
     aqua_wash_time:
       description: Evaporator aqua-clean cycle duration.
+      signoff: tbd
       field_class: stateful_numeric
       feature_available: capability
       data_type: uint8
@@ -4455,6 +4504,7 @@ fields:
       - serial_protocol.md §3.5
     wind_straight:
       description: Direct airflow control. On YB100 models, value 0x02 activates Breeze Away mode.
+      signoff: tbd
       field_class: stateful_enum
       _migration:
         _reclassified_from: complex_function
@@ -4521,13 +4571,13 @@ fields:
       values:
         'off':
           raw: 0
-          description: Direct airflow control off
+          description: Direct airflow control off (0)
         straight:
           raw: 1
-          description: Direct blow (air aimed at user)
+          description: Direct blow (air aimed at user) (1)
         avoid:
           raw: 2
-          description: Avoid direct blow (YB100 breeze-away routing)
+          description: Avoid direct blow (YB100 breeze-away routing) (2)
       note: Not documented in user handbooks. Property-only (no 0x40/0xC0 body bits). On YB100, property 0x33 wind_avoid is
         internally routed to 0x32 with value 0x02.
       confidence: hypothesis
@@ -4536,6 +4586,7 @@ fields:
         positions (raw 1 / 25 / 50 / 75 / 100) plus raw 0 (backend-only "released"
         — AC sets this to release the vane when a pattern mode like swing takes
         over; not user-selectable). Sent via B0 property 0x0A.'
+      signoff: tbd
       label: "Louver Angle LR"
       field_class: stateful_enum
       data_type: uint8
@@ -4552,27 +4603,27 @@ fields:
           raw: 0
           user_selectable: false
           description: Released — AC controls vane (pattern mode, swing, or power off). Only the AC sets this.
-          label: "--"
+          label: "-- (0)"
         left:
           raw: 1
           description: Far left (1%)
-          label: "Far Left"
+          label: "Far Left (1)"
         left_mid:
           raw: 25
           description: Left of centre (25%)
-          label: "Left"
+          label: "Left (25)"
         center:
           raw: 50
           description: Center (50%)
-          label: "Center"
+          label: "Center (50)"
         right_mid:
           raw: 75
           description: Right of centre (75%)
-          label: "Right"
+          label: "Right (75)"
         right:
           raw: 100
           description: Far right (100%)
-          label: "Far Right"
+          label: "Far Right (100)"
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4636,6 +4687,7 @@ fields:
         positions (raw 1 / 25 / 50 / 75 / 100) plus raw 0 (backend-only "released"
         — AC sets this to release the vane when a pattern mode like swing takes
         over; not user-selectable). Sent via B0 property 0x09.'
+      signoff: tbd
       label: "Louver Angle UD"
       field_class: stateful_enum
       data_type: uint8
@@ -4652,27 +4704,27 @@ fields:
           raw: 0
           user_selectable: false
           description: Released — AC controls vane (pattern mode, swing, or power off). Only the AC sets this.
-          label: "--"
+          label: "-- (0)"
         up:
           raw: 1
           description: Highest / top (1%)
-          label: "Top"
+          label: "Top (1)"
         up_mid:
           raw: 25
           description: Above centre (25%)
-          label: "Upper"
+          label: "Upper (25)"
         center:
           raw: 50
           description: Centre (50%)
-          label: "Middle"
+          label: "Middle (50)"
         down_mid:
           raw: 75
           description: Below centre (75%)
-          label: "Lower"
+          label: "Lower (75)"
         down:
           raw: 100
           description: Lowest / bottom (100%)
-          label: "Bottom"
+          label: "Bottom (100)"
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4732,6 +4784,7 @@ fields:
       - own research
     no_wind_sense:
       description: Wind-free / no-wind sensation control. 1-byte variant; FA models use 2 bytes (high byte ignored here).
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -4781,6 +4834,7 @@ fields:
       confidence: hypothesis
     cool_hot_sense:
       description: Cool/hot comfort sensing mode toggle.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -4813,6 +4867,7 @@ fields:
       confidence: hypothesis
     auto_prevent_straight_wind:
       description: Automatic prevent-straight-wind toggle.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -4845,6 +4900,7 @@ fields:
       confidence: hypothesis
     intelligent_wind:
       description: Intelligent wind / smart airflow mode.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -4877,6 +4933,7 @@ fields:
       confidence: hypothesis
     child_prevent_cold_wind:
       description: Child cold-wind prevention mode.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -4909,6 +4966,7 @@ fields:
       confidence: hypothesis
     high_temperature_monitor:
       description: High-temperature monitoring toggle.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -4941,6 +4999,7 @@ fields:
       confidence: hypothesis
     little_angel:
       description: Little Angel feature toggle (Midea marketing name).
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -4973,6 +5032,7 @@ fields:
       confidence: hypothesis
     security:
       description: Security mode (0=off, 2->off, 3->on).
+      signoff: tbd
       field_class: stateful_enum
       feature_available: capability
       data_type: uint8
@@ -5005,6 +5065,7 @@ fields:
       confidence: hypothesis
     intelligent_control:
       description: Intelligent control mode toggle.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -5037,6 +5098,7 @@ fields:
       confidence: hypothesis
     face_register:
       description: Face recognition registration toggle.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -5069,6 +5131,7 @@ fields:
       confidence: hypothesis
     even_wind:
       description: Even-wind distribution mode.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -5101,6 +5164,7 @@ fields:
       confidence: hypothesis
     single_tuyere:
       description: Single outlet (tuyere) mode.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -5133,6 +5197,7 @@ fields:
       confidence: hypothesis
     prevent_straight_wind_lr:
       description: Left-right specific straight-wind prevention.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -5165,6 +5230,7 @@ fields:
       confidence: hypothesis
     cvp:
       description: CVP feature toggle (semantics undocumented in community sources).
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -5221,6 +5287,7 @@ fields:
       confidence: hypothesis
     new_wind_sense:
       description: Newer-generation no-wind-sense variant.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -5280,6 +5347,7 @@ fields:
       confidence: hypothesis
     comfort:
       description: Comfort mode toggle.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -5336,6 +5404,7 @@ fields:
       confidence: hypothesis
     pre_cool_hot:
       description: Pre-cool/pre-heat scheduling mode.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -5368,6 +5437,7 @@ fields:
       confidence: hypothesis
     body_check:
       description: Body-check / occupancy detection toggle.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -5424,6 +5494,7 @@ fields:
       confidence: hypothesis
     mito_cool_temp:
       description: Mito-cool target temperature. Encoding (raw - 50) / 2 °C.
+      signoff: tbd
       field_class: stateful_numeric
       feature_available: capability
       data_type: float
@@ -5459,6 +5530,7 @@ fields:
       confidence: hypothesis
     mito_heat_temp:
       description: Mito-heat target temperature. Encoding (raw - 50) / 2 °C.
+      signoff: tbd
       field_class: stateful_numeric
       feature_available: capability
       data_type: float
@@ -5494,6 +5566,7 @@ fields:
       confidence: hypothesis
     extreme_wind_value:
       description: Extreme wind mode value byte.
+      signoff: tbd
       field_class: stateful_enum
       feature_available: capability
       data_type: uint8
@@ -5526,6 +5599,7 @@ fields:
       confidence: hypothesis
     extreme_wind_level:
       description: Extreme wind mode level byte.
+      signoff: tbd
       field_class: stateful_enum
       feature_available: capability
       data_type: uint8
@@ -5558,6 +5632,7 @@ fields:
       confidence: hypothesis
     wind_around_value:
       description: Wind-around mode value byte.
+      signoff: tbd
       field_class: stateful_enum
       feature_available: capability
       data_type: uint8
@@ -5590,6 +5665,7 @@ fields:
       confidence: hypothesis
     wind_around_ud_mode:
       description: Wind-around up/down mode byte.
+      signoff: tbd
       field_class: stateful_enum
       feature_available: capability
       data_type: uint8
@@ -5622,6 +5698,7 @@ fields:
       confidence: hypothesis
     ieco_number:
       description: iECO program number byte.
+      signoff: tbd
       field_class: stateful_enum
       feature_available: capability
       data_type: uint8
@@ -5654,6 +5731,7 @@ fields:
       confidence: hypothesis
     ieco_switch:
       description: iECO program switch byte (on/off).
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -5724,6 +5802,7 @@ fields:
       confidence: hypothesis
     remote_control_lock:
       description: Remote control lock state byte.
+      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
@@ -5756,6 +5835,7 @@ fields:
       confidence: hypothesis
     prevent_super_cool:
       description: Prevent super-cool mode value (byte 0; bytes 1-4 are 0xFF padding).
+      signoff: tbd
       field_class: stateful_enum
       feature_available: capability
       data_type: uint8
@@ -5795,6 +5875,7 @@ fields:
   sensor:
     clean_fan_time:
       description: 'Post-run fan / cool fan: keeps fan running after compressor stops to dry evaporator.'
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -5822,6 +5903,7 @@ fields:
       description: Compensated temperature setpoint (Tsc) — the internal control
         loop target after adjustments. Encoding (raw - 30) / 2 °C, shared with
         t1_indoor_coil.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: uint8
@@ -5855,6 +5937,7 @@ fields:
       description: Compressor running flag. 1 = running, 0 = idle. The wire bit
         is inverted (1 = idle on the wire) — codec applies invert in decode so
         the field's semantic matches HA's device_class running (on = running).
+      signoff: tbd
       field_class: binary_sensor
       feature_available: readable-opt
       data_type: bool
@@ -5927,6 +6010,7 @@ fields:
       - Session 11 service menu
     compressor_runtime_current:
       description: 'Current compressor run time since last start. Encoding: raw x 64 = seconds.'
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: uint8
@@ -5954,6 +6038,7 @@ fields:
       confidence: hypothesis
     compressor_target_frequency:
       description: Compressor target frequency (FT). Set by control logic. 0 Hz when compressor is off.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: uint8
@@ -5984,6 +6069,7 @@ fields:
       - Session 11 service menu
     cosy_sleep_switch:
       description: Cosy sleep switch / self cosy sleep toggle. Separate from cosy_sleep mode (0-3).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -6008,6 +6094,7 @@ fields:
       - serial_protocol.md §4.1
     power_current_run_kwh:
       description: Energy consumed in the current run cycle in kWh. Resets on power cycle.
+      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: float
@@ -6135,44 +6222,9 @@ fields:
           section: §5.2
       note: 'Disabled — multi-byte combination formula unverified. probe captures showed always 0. See docs/disabled_fields.md §2.1.'
       confidence: consistent
-    defrost_state:
-      description: Defrost cycle state of the outdoor unit.
-      field_class: sensor
-      feature_available: readable-opt
-      data_type: enum
-      device_context: outdoor_unit
-      ha:
-        entity_category: diagnostic
-      values:
-        none:
-          raw: 0
-          description: No defrost
-        starting:
-          raw: 1
-          description: Defrost starting
-        in_progress:
-          raw: 2
-          description: Defrost in progress
-        ending:
-          raw: 3
-          description: Defrost ending
-      alt_names:
-        rev1: defrost_step
-      protocols:
-        rsp_0xc1_sub02:
-          frame: 0xC1 Sub-page 0x02
-          byte: byte[17] (defrost step 0-3)
-          decode:
-          - offset: 17
-            bits:
-            - 7
-            - 0
-          direction: response
-          section: §4.3
-      note: Only available via extended C1 sub-page 0x02 (Group 5). Not in standard C0 response.
-      confidence: hypothesis
     discharge_pipe_temp:
       description: Compressor discharge pipe temperature (Tp thermistor). High values indicate active compression.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: uint8
@@ -6206,6 +6258,7 @@ fields:
       - cross-bus validation
     down_no_wind_feel:
       description: Lower vane no-wind-feel mode. Prevents direct airflow from lower louver.
+      signoff: tbd
       field_class: sensor
       data_type: bool
       device_context: indoor_unit
@@ -6242,6 +6295,7 @@ fields:
       - serial_protocol.md §3.4
     dust_full:
       description: 'Dust full indicator: filter needs cleaning.'
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: bool
@@ -6265,6 +6319,7 @@ fields:
       - serial_protocol.md §4.1
     eev_position:
       description: 'Electronic expansion valve position. Encoding: raw x 8 = steps.'
+      signoff: tbd
       field_class: sensor
       feature_available: readable-opt
       data_type: uint8
@@ -6297,6 +6352,7 @@ fields:
       - VRF manual
     eev_target_angle:
       description: 'Electronic expansion valve target position. Encoding: raw x 8 = steps.'
+      signoff: tbd
       field_class: sensor
       feature_available: readable-opt
       data_type: uint8
@@ -6325,6 +6381,7 @@ fields:
       confidence: hypothesis
     error_code:
       description: Device error/fault code (0-33). 0 = no error.
+      signoff: tbd
       label: "Error Code"
       field_class: sensor
       feature_available: readable
@@ -6418,6 +6475,7 @@ fields:
       - node-mideahvac — error code 0..33 lookup table
     fresh_air_temp:
       description: Fresh air intake temperature reading from the ventilation system.
+      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: uint8
@@ -6511,6 +6569,7 @@ fields:
       confidence: consistent
     error_detected:
       description: 'Error flag: indicates the unit has an active fault condition.'
+      signoff: tbd
       label: "Error Detected"
       field_class: binary_sensor
       feature_available: readable
@@ -6539,6 +6598,7 @@ fields:
       - serial_protocol.md §4.1
     indoor_fan_stator_flux:
       description: Indoor fan motor stator flux (raw sensor value).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -6562,6 +6622,7 @@ fields:
     indoor_operating_mode:
       description: Indoor unit actual operating mode as reported in C1 Group 1. Uses the same encoding as the C0 operating_mode
         field.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -6571,19 +6632,19 @@ fields:
       values:
         auto:
           raw: 1
-          description: Automatic mode
+          description: Automatic mode (1)
         cool:
           raw: 2
-          description: Cooling
+          description: Cooling (2)
         dry:
           raw: 3
-          description: Dehumidification
+          description: Dehumidification (3)
         heat:
           raw: 4
-          description: Heating
+          description: Heating (4)
         fan:
           raw: 5
-          description: Fan only
+          description: Fan only (5)
       alt_names:
         rev1: indoor_mode
       protocols:
@@ -6606,6 +6667,7 @@ fields:
     indoor_temperature:
       description: Current room temperature measured by the indoor unit thermistor. When Follow Me is active, reports the
         remote sensor value instead.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: float
@@ -6666,6 +6728,7 @@ fields:
       confidence: disputed
     light_adc_value:
       description: Ambient light sensor raw ADC value.
+      signoff: tbd
       field_class: sensor
       feature_available: readable-opt
       data_type: uint8
@@ -6712,6 +6775,7 @@ fields:
       confidence: hypothesis
     max_bus_voltage:
       description: Maximum recorded DC bus voltage on the inverter rail.
+      signoff: tbd
       field_class: sensor
       feature_available: readable-opt
       data_type: uint8
@@ -6741,6 +6805,7 @@ fields:
       confidence: hypothesis
     min_bus_voltage:
       description: Minimum recorded DC bus voltage on the inverter rail.
+      signoff: tbd
       field_class: sensor
       feature_available: readable-opt
       data_type: uint8
@@ -6769,6 +6834,7 @@ fields:
       confidence: hypothesis
     indoor_fan_runtime:
       description: Indoor fan total runtime (LE 16-bit minutes — body[6] low byte, body[7] high byte).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: uint16
@@ -6798,16 +6864,23 @@ fields:
       confidence: confirmed
       sources:
       - own probe 2026-04-10 Session 15
-    defrost_step:
-      description: 'Current defrost cycle stage: 0=none, 1=start, 2=in progress, 3=ending.'
+    defrost_status:
+      description: Defrost cycle stage of the outdoor unit. 0=inactive, 1=starting, 2=defrosting, 3=ending.
       field_class: sensor
       feature_available: readable
       ha:
         entity_category: diagnostic
-      data_type: uint8
+      data_type: enum
       device_context: outdoor_unit
+      values:
+        inactive:    { raw: 0, description: "Inactive (0)" }
+        starting:    { raw: 1, description: "Starting (1)" }
+        defrosting:  { raw: 2, description: "Defrosting (2)" }
+        ending:      { raw: 3, description: "Ending (3)" }
       alt_names:
         rev32: defrostingStep
+        rev33: defrost_step
+        rev34: defrost_state
       protocols:
         rsp_0xc1_group5:
           frame: 0xC1 Group 5
@@ -6824,6 +6897,7 @@ fields:
       - own probe 2026-04-10 Session 15 (value=0, no defrost)
     compressor_cumul_hours:
       description: Compressor cumulative runtime hours (LE 16-bit — body[14] low byte, body[15] high byte).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: uint16
@@ -6855,6 +6929,7 @@ fields:
       - own probe 2026-04-10 Session 15
     natural_wind:
       description: 'Natural wind / natural breeze: simulates outdoor wind with variable fan speed.'
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -6882,6 +6957,7 @@ fields:
       - serial_protocol.md §4.1 body[9]
     nest_filter_check:
       description: Nest/filter check and maintenance reminder capability.
+      signoff: tbd
       field_class: sensor
       _migration:
         _reclassified_from: unknown
@@ -6939,6 +7015,7 @@ fields:
       - dudanov
     outdoor_dc_bus_voltage:
       description: Outdoor unit DC bus voltage. Raw value in volts.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: uint8
@@ -6967,6 +7044,7 @@ fields:
       confidence: hypothesis
     outdoor_fan_stator_flux:
       description: Outdoor fan motor stator flux (raw sensor value).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -6989,6 +7067,7 @@ fields:
       - dissector observation (C1G1 body[15])
     outdoor_voltage_2:
       description: Secondary outdoor voltage reading (raw, unit unclear).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7011,6 +7090,7 @@ fields:
       - dissector observation (C1G1 body[16])
     outdoor_fan_speed:
       description: 'Outdoor unit DC fan speed. Encoding: raw x 8 = RPM.'
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7038,6 +7118,7 @@ fields:
       - 648 own frames
     outdoor_fan_target_speed:
       description: 'Outdoor fan target speed. Encoding: raw x 8 = RPM.'
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7085,6 +7166,7 @@ fields:
       confidence: hypothesis
     outdoor_supply_voltage:
       description: Outdoor unit supply voltage. Raw byte = volts AC (European 230 V nominal; observed 231 V on own unit).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: uint8
@@ -7112,6 +7194,7 @@ fields:
       confidence: hypothesis
     outdoor_target_compressor_freq:
       description: Outdoor target compressor frequency (from outdoor controller perspective).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7136,6 +7219,7 @@ fields:
       confidence: hypothesis
     outdoor_temperature:
       description: Current outdoor ambient temperature reported by the outdoor unit sensor.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: float
@@ -7176,6 +7260,7 @@ fields:
       - protocol_shared.md §5
     outdoor_total_current:
       description: Outdoor unit total current. Raw value multiplied by 4.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7199,6 +7284,7 @@ fields:
       confidence: hypothesis
     peak_elec:
       description: Peak electricity / demand response flag.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7249,6 +7335,7 @@ fields:
       confidence: consistent
     pmv_index:
       description: PMV (Predicted Mean Vote) thermal comfort index. ISO 7730 / ASHRAE 55 scale.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7277,6 +7364,7 @@ fields:
       - serial_protocol.md §4.1
     power_realtime_kw:
       description: Instantaneous power draw in kW.
+      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: float
@@ -7345,6 +7433,7 @@ fields:
       - Session 8 (381.4 W at 80 Hz)
     run_status:
       description: Whether the compressor / indoor fan is currently running (not just powered on).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7372,6 +7461,7 @@ fields:
       - protocol_xye.md byte[19]
     t1_indoor_coil:
       description: Indoor heat exchanger coil temperature (T1 thermistor).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: float
@@ -7405,6 +7495,7 @@ fields:
       - Session 6 (raw 0x42 → 18°C)
     t2_indoor_temp:
       description: Indoor heat exchanger intermediate temperature (T2 thermistor). Offset 30.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7434,6 +7525,7 @@ fields:
       - Session 11 (raw=90->30C, service menu T2=29, +/-1C drift)
     t3_outdoor_coil_temp:
       description: Outdoor coil temperature (T3 thermistor). Offset 50.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7463,6 +7555,7 @@ fields:
       - Session 6
     t4_outdoor_ambient_temp:
       description: Outdoor ambient air temperature (T4 thermistor). Offset 50.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: float
@@ -7497,6 +7590,7 @@ fields:
       - Session 6
     power_total_kwh:
       description: Cumulative lifetime energy consumption in kWh. Monotonically increasing counter.
+      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: float
@@ -7587,6 +7681,7 @@ fields:
       - Sessions 1+8 cross-validation
     power_total_run_kwh:
       description: Cumulative run-mode energy in kWh. Separate from power_total_kwh (which includes standby).
+      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: float
@@ -7661,6 +7756,7 @@ fields:
       - Sessions 1-9 (always 0)
     up_no_wind_feel:
       description: Upper vane no-wind-feel mode. Prevents direct airflow from upper louver.
+      signoff: tbd
       field_class: sensor
       data_type: bool
       device_context: indoor_unit
@@ -7697,6 +7793,7 @@ fields:
       - serial_protocol.md §3.4
     aqua_wash_stage:
       description: Evaporator aqua-clean current cycle stage (read-only status).
+      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: uint8
@@ -7720,6 +7817,7 @@ fields:
       - serial_protocol.md §3.5
     lifetime_max_current:
       description: Lifetime maximum current draw recorded by the unit.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7745,6 +7843,7 @@ fields:
       - own probe 2026-04-10 Session 15 (UART, 2 runs)
     lifetime_max_t4_raw:
       description: Lifetime maximum T4 outdoor ambient temperature (raw sensor value).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7769,6 +7868,7 @@ fields:
       - own probe 2026-04-10 Session 15
     lifetime_min_t4_raw:
       description: Lifetime minimum T4 outdoor ambient temperature (raw sensor value).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7793,6 +7893,7 @@ fields:
       - own probe 2026-04-10 Session 15
     total_error_count:
       description: Cumulative error/fault count since installation.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7817,6 +7918,7 @@ fields:
       - own probe 2026-04-10 Session 15
     compressor_flux:
       description: Compressor motor magnetic flux (raw x 8).
+      signoff: tbd
       field_class: sensor
       feature_available: readable-opt
       ha:
@@ -7841,6 +7943,7 @@ fields:
       - own probe 2026-04-10 Session 15
     fan_flux:
       description: Fan motor magnetic flux (raw x 8).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7864,7 +7967,8 @@ fields:
       sources:
       - own probe 2026-04-10 Session 15
     d_axis_current:
-      description: Compressor motor d-axis current (raw x 64). Signed per JS comment.
+      description: Compressor motor d-axis (FOC) current. Raw uint8 byte exposed as-is; sign and /64 scaling not applied due to source uncertainty.
+      signoff: Sign + /64 amperes scaling deferred — source docs contradict themselves; needs a ground-truth amp measurement on the dev unit to settle int8-vs-uint8 and the scale direction before promoting.
       field_class: sensor
       feature_available: readable-opt
       ha:
@@ -7889,7 +7993,8 @@ fields:
       sources:
       - own probe 2026-04-10 Session 15
     q_axis_current:
-      description: Compressor motor q-axis current (raw x 64). Signed per JS comment.
+      description: Compressor motor q-axis (FOC) current. Raw uint8 byte exposed as-is; sign and /64 scaling not applied due to source uncertainty.
+      signoff: Sign + /64 amperes scaling deferred — source docs contradict themselves; needs a ground-truth amp measurement on the dev unit to settle int8-vs-uint8 and the scale direction before promoting.
       field_class: sensor
       feature_available: readable-opt
       ha:
@@ -7915,6 +8020,7 @@ fields:
       - own probe 2026-04-10 Session 15
     compressor_peak_current:
       description: Compressor motor peak current.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7940,6 +8046,7 @@ fields:
       - own probe 2026-04-10 Session 15
     pfc_peak_current:
       description: PFC (Power Factor Correction) circuit peak current.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7965,6 +8072,7 @@ fields:
       - own probe 2026-04-10 Session 15
     fan_peak_current:
       description: Fan motor peak current.
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -7990,6 +8098,7 @@ fields:
       - own probe 2026-04-10 Session 15
     torque_compensation_angle:
       description: Motor torque compensation angle (LE 16-bit — body[15] low byte, body[16] high byte).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -8016,6 +8125,7 @@ fields:
       - own probe 2026-04-10 Session 15
     torque_compensation_value:
       description: Motor torque compensation magnitude (raw x 8).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -8040,6 +8150,7 @@ fields:
       - own probe 2026-04-10 Session 15
     ad_calibration_voltage:
       description: AD calibration voltage (raw x 16).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -8284,6 +8395,7 @@ fields:
       - own probe 2026-04-10 Session 15 (stable at 240 across runs)
     indoor_fan_set_speed:
       description: Indoor fan set speed (raw value; consumer multiplies by 8 for RPM).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -8309,6 +8421,7 @@ fields:
       - own probe 2026-04-10 Session 15 (103→127 raw across runs)
     indoor_fan_actual_speed:
       description: Indoor fan actual speed (raw value; consumer multiplies by 8 for RPM).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -8332,6 +8445,7 @@ fields:
       - own probe 2026-04-10 Session 15
     indoor_fault_flags_1:
       description: Indoor unit fault state byte 1 (8 individual fault bits).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -8356,6 +8470,7 @@ fields:
       - own probe 2026-04-10 Session 15 (all zeros — no faults)
     indoor_fault_flags_2:
       description: Indoor unit fault state byte 2 (8 individual fault bits).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -8380,6 +8495,7 @@ fields:
       - own probe 2026-04-10 Session 15
     indoor_fault_flags_3:
       description: Indoor unit fault state byte 3 (8 individual fault bits).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -8404,6 +8520,7 @@ fields:
       - own probe 2026-04-10 Session 15
     indoor_load_flags_1:
       description: Indoor unit load state byte 1 (8 individual state bits).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -8428,6 +8545,7 @@ fields:
       - own probe 2026-04-10 Session 15 (0x40 = bit 6 set)
     indoor_load_flags_2:
       description: Indoor unit load state byte 2 (8 individual state bits).
+      signoff: tbd
       field_class: sensor
       feature_available: readable
       ha:
@@ -8903,6 +9021,7 @@ fields:
       - own probe 2026-04-10 Session 15 (constant 0x0F)
     mode_query_value:
       description: Current operating mode echo via property query (separate from C0 mode field).
+      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: uint8
@@ -8924,6 +9043,7 @@ fields:
       confidence: hypothesis
     indoor_humidity:
       description: Current indoor relative humidity (%).
+      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: uint8
@@ -8945,6 +9065,7 @@ fields:
       confidence: hypothesis
     has_icheck:
       description: iCheck capability flag.
+      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: bool
@@ -8990,6 +9111,7 @@ fields:
       confidence: hypothesis
     dr_time_minutes:
       description: DR (demand response) time minutes byte.
+      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: uint8
@@ -9011,6 +9133,7 @@ fields:
       confidence: hypothesis
     dr_time_hours:
       description: DR (demand response) time hours byte.
+      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: uint8
@@ -9032,6 +9155,7 @@ fields:
       confidence: hypothesis
     remote_control_value:
       description: Remote control auxiliary value byte.
+      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: uint8
@@ -9053,6 +9177,7 @@ fields:
       confidence: hypothesis
     pm25_value:
       description: Indoor PM2.5 concentration (16-bit LE, µg/m³).
+      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: uint16
@@ -9076,6 +9201,7 @@ fields:
       confidence: hypothesis
     operating_time_total:
       description: Total operating time (24-bit LE).
+      signoff: tbd
       field_class: sensor
       feature_available: capability
       ha:
@@ -9100,6 +9226,7 @@ fields:
       confidence: hypothesis
     fresh_air:
       description: Whether the unit has a fresh-air intake module.
+      signoff: tbd
       field_class: sensor
       data_type: bool
       device_context: indoor_unit
@@ -9135,6 +9262,7 @@ fields:
       - serial_protocol.md §3.4
     parent_control:
       description: Whether the parental-lock feature is available.
+      signoff: tbd
       field_class: sensor
       data_type: bool
       device_context: indoor_unit
@@ -9170,6 +9298,7 @@ fields:
       - serial_protocol.md §3.4
     prevent_straight_wind_select:
       description: Whether the unit offers a selector between anti-direct-wind variants. Distinct from 0x42/simple breezeless and B1 property 0x58,0x00 prevent_straight_wind_lr.
+      signoff: tbd
       field_class: sensor
       data_type: bool
       device_context: indoor_unit
@@ -9205,6 +9334,7 @@ fields:
       - serial_protocol.md §3.4
     wind_around:
       description: Whether a wrap-around wind-diffusion mode is available.
+      signoff: tbd
       field_class: sensor
       data_type: bool
       device_context: indoor_unit
@@ -9240,6 +9370,7 @@ fields:
       - serial_protocol.md §3.4
     aux_mode_fan_speed_adjustable:
       description: Whether fan speed is user-adjustable while the unit runs in auxiliary-heat mode. Sibling to 0x94/simple aux_heat_mode_fan_speed_adjustable.
+      signoff: tbd
       field_class: sensor
       data_type: bool
       device_context: indoor_unit
@@ -9275,6 +9406,7 @@ fields:
       - serial_protocol.md §3.4
     aux_heat_mode_fan_speed_adjustable:
       description: Whether fan speed is user-adjustable while the unit runs in the combined auxiliary-heat + heat mode. Sibling to 0x93/simple aux_mode_fan_speed_adjustable.
+      signoff: tbd
       field_class: sensor
       data_type: bool
       device_context: indoor_unit
@@ -9310,6 +9442,7 @@ fields:
       - serial_protocol.md §3.4
     filter_check:
       description: Whether the unit reports a filter-inspection indicator distinct from the filter-change reminder at 0x17/extended nest_filter_check.
+      signoff: tbd
       field_class: sensor
       data_type: bool
       device_context: indoor_unit
@@ -9345,6 +9478,7 @@ fields:
       - serial_protocol.md §3.4
     main_horizontal_guide_strip_1:
       description: Primary horizontal louver variant identifier. Non-zero values select the installed upper-band louver hardware variant.
+      signoff: tbd
       field_class: stateful_enum
       data_type: uint8
       device_context: indoor_unit
@@ -9383,6 +9517,7 @@ fields:
       - serial_protocol.md §3.4
     sup_horizontal_guide_strip_1:
       description: Supplementary horizontal louver variant identifier. When non-zero, the unit has a second independently addressable horizontal louver.
+      signoff: tbd
       field_class: stateful_enum
       data_type: uint8
       device_context: indoor_unit
@@ -9421,6 +9556,7 @@ fields:
       - serial_protocol.md §3.4
     twins_machine:
       description: Whether the unit advertises a twin-machine (paired indoor unit) configuration.
+      signoff: tbd
       field_class: sensor
       data_type: bool
       device_context: indoor_unit
@@ -9456,6 +9592,7 @@ fields:
       - serial_protocol.md §3.4
     guide_strip_type:
       description: Horizontal-louver geometry identifier. Non-zero values select the installed louver configuration; the concrete mapping from value to hardware is out of scope of this project until observed on a live unit.
+      signoff: tbd
       field_class: stateful_enum
       data_type: uint8
       device_context: indoor_unit

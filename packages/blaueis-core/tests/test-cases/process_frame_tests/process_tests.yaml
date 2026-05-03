@@ -502,11 +502,11 @@ tests:
     assert:
       value: 7146
 
-  - name: "G5: defrost_step=0"
+  - name: "G5: defrost_status=0 (none)"
     action: frame_no_b5
     source: "../session15_probe/c1g5_frames.yaml"
     index: 0
-    check_field: defrost_step
+    check_field: defrost_status
     assert:
       value: 0
 
