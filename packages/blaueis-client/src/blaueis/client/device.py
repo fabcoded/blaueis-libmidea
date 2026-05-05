@@ -271,6 +271,40 @@ class Device:
     def capabilities_received(self) -> bool:
         return self._status["meta"].get("b5_received", False)
 
+    @property
+    def last_ingest_at(self) -> str | None:
+        """ISO-8601 UTC timestamp of the most recent successful frame
+        ingest (B5 / C0 / C1 / A1 / B1), or None before the first.
+        Updated by ``blaueis.core.process``."""
+        return self._status["meta"].get("last_ingest_at")
+
+    def is_fresh(self, staleness_factor: float = 2.0) -> bool:
+        """Return True if the device's data is recent enough.
+
+        ``staleness_factor`` × ``poll_interval`` is the window: any
+        ingest within that window passes. A device that hasn't ingested
+        anything yet (``last_ingest_at is None``) is treated as not
+        fresh — callers should fall back to ``connected`` for the
+        pre-first-frame phase.
+
+        Default factor 2 tolerates one missed cycle without flickering
+        entities; a single-cycle hiccup is normal (gateway re-queues,
+        WS jitter), two cycles silent is genuinely stale.
+        """
+        from datetime import UTC, datetime
+
+        ts = self.last_ingest_at
+        if ts is None:
+            return False
+        try:
+            ingested = datetime.fromisoformat(ts)
+        except ValueError:
+            return False
+        if ingested.tzinfo is None:
+            ingested = ingested.replace(tzinfo=UTC)
+        delta = (datetime.now(UTC) - ingested).total_seconds()
+        return delta < self.poll_interval * staleness_factor
+
     def field_gdef(self, name: str) -> dict | None:
         """Return the full glossary definition for a field (or None).
 

@@ -135,6 +135,7 @@ def process_b5(status: dict, body: bytes, glossary: dict, timestamp: str | None 
     status["meta"]["b5_received"] = True
     status["meta"]["phase"] = "post_b5"
     status["meta"]["frame_counts"]["rsp_0xb5"] = status["meta"]["frame_counts"].get("rsp_0xb5", 0) + 1
+    status["meta"]["last_ingest_at"] = timestamp or datetime.now(UTC).isoformat()
 
     return next_frame
 
@@ -200,6 +201,7 @@ def process_data_frame(
     # reflects the current frame index.
     new_count = status["meta"]["frame_counts"].get(protocol_key, 0) + 1
     status["meta"]["frame_counts"][protocol_key] = new_count
+    status["meta"]["last_ingest_at"] = ts
 
     suppression_counts: dict[str, int] = {}
     for field_name, result in decoded.items():
