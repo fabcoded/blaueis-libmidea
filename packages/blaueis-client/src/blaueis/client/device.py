@@ -346,6 +346,15 @@ class Device:
         the query frames needed to populate them.
 
         This is the single source of truth — no external registration needed.
+
+        B0/B1 fields ride this loop too: ``process.process_b5`` upgrades
+        ``feature_available`` from ``capability`` → ``always`` /
+        ``readable`` once the cap is confirmed, and every confirmed
+        field with an ``rsp_0xb1.decode[]`` block contributes its
+        ``property_id`` to ``b1_prop_ids``. The result becomes one or
+        more ``cmd_0xb1_batch_N`` query keys fired every cycle alongside
+        ``cmd_0x41``. There is no separate "active poll" path for
+        B0/B1; every confirmed field refreshes on the same cadence.
         """
         needed: set[str] = set()
         all_fields = self._db.field_flat

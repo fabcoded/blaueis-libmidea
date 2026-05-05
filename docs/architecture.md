@@ -148,6 +148,22 @@ caps loaded once, never cleared. Supervisor restarts dead loops without
 touching state. Per flight_recorder.md §1.1 — every received frame is
 processed regardless of correlation.
 
+**Polling.** The poll loop calls `_compute_required_queries()` each
+cycle and dispatches one frame per query key. The set is derived
+from the live `_status["fields"]` — for every field whose
+`feature_available` is *confirmed* (i.e. not `never` / `capability` /
+`capability-opt`), each `rsp_*` protocol with `direction: response`
+contributes a corresponding query. Crucially this includes
+`rsp_0xb1` fields — their `property_id` decode entries are collected
+into `b1_prop_ids` and emitted as one or more `cmd_0xb1_batch_N`
+queries on the same cadence as `cmd_0x41`. The promotion happens in
+`process.process_b5`, which rewrites `feature_available` from
+`capability` → `always` / `readable` once the cap matches an enabled
+state in B5. Net effect: every B5-confirmed field — whether it lives
+in C0/C1 broadcasts or in B0/B1 property TLVs — refreshes once per
+poll cycle, and consumers can treat the cycle period as the staleness
+window for any confirmed field.
+
 **Logger:** `blaueis.device`.
 
 ---
