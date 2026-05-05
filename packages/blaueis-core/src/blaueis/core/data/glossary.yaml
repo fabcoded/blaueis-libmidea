@@ -6673,6 +6673,9 @@ fields:
       data_type: float
       device_context: indoor_unit
       unit: °C
+      sentinel_values:
+      - 0
+      - 255
       ha:
         device_class: temperature
         state_class: measurement
@@ -7225,6 +7228,9 @@ fields:
       data_type: float
       device_context: outdoor_unit
       unit: °C
+      sentinel_values:
+      - 0
+      - 255
       ha:
         device_class: temperature
         state_class: measurement

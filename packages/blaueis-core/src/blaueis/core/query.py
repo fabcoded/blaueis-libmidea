@@ -114,7 +114,7 @@ def read_field(status: dict, name: str, priority: list[str] | None = None) -> di
         if winner is None:
             continue
         slot_key, slot = winner
-        return {
+        result = {
             "value": slot["value"],
             "ts": slot["ts"],
             "source": slot_key,
@@ -122,6 +122,13 @@ def read_field(status: dict, name: str, priority: list[str] | None = None) -> di
             "scope_matched": scope,
             "disagreements": _list_disagreements(sources, slot_key, slot["value"]),
         }
+        # Surface suppression metadata when the winning slot was a
+        # sentinel hit or out-of-range trip — the HA sensor entity
+        # reads this to populate `extra_state_attributes`. Absent
+        # otherwise, so the read API stays minimal for the common path.
+        if "suppression" in slot:
+            result["suppression"] = slot["suppression"]
+        return result
 
     return None
 
@@ -154,6 +161,7 @@ def write_field(
     """
     if ts is None:
         from datetime import UTC, datetime
+
         ts = datetime.now(UTC).isoformat()
     fields = status.setdefault("fields", {})
     field = fields.setdefault(name, {"sources": {}})

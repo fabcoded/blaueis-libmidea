@@ -374,6 +374,11 @@
           "type": "array",
           "description": "[min, max] of the decoded value in physical units."
         },
+        "sentinel_values": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0, "maximum": 255 },
+          "description": "Wire-byte values the firmware emits to mean 'no valid reading' for this field. When the byte at the active decode step's offset matches one of these, the codec suppresses the field (yields None / HA `unknown`) instead of applying the decode formula. Pre-decode and byte-level — distinct from `range:`, which validates the post-decode value in physical units. Both keys are optional and independent: presence of `sentinel_values:` does not require `range:`, and vice versa."
+        },
         "values": {
           "type": "object",
           "description": "For enum/bitmask types: map of symbolic name → {raw, description}.",

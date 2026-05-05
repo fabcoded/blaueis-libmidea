@@ -61,6 +61,15 @@ RECONNECT_FOREVER_INTERVAL = 60  # after exhausting backoff
 # (powered off at the breaker, gateway up but UART quiet, etc.).
 INITIAL_STATUS_TIMEOUT = 3.0  # seconds
 
+# Wire-envelope rejection codes — the AC mainboard signals a request was
+# refused at the frame level (vs the per-property B0/B1 status byte, which
+# lives inside the body). 0x06 is a header-level rejection; 0x0A indicates
+# the body shape was wrong for the requested op-code. Routing these
+# through the normal data-frame path would let the body[0] tag be
+# misinterpreted as a status reply and stamp stale or fabricated values
+# onto fields. The dispatcher gates them out instead.
+NAK_MSG_TYPES = (0x06, 0x0A)
+
 
 def _parse_b1_property_id(raw) -> tuple[int, int] | None:
     """Normalise a glossary ``property_id`` into a ``(lo, hi)`` tuple.
@@ -426,8 +435,7 @@ class Device:
         # Start supervisor (restarts loops if they die)
         self._supervisor_task = asyncio.create_task(self._supervisor())
 
-        log.info("Device started: %s:%d (%d available fields)",
-                 self.host, self.port, len(self.available_fields))
+        log.info("Device started: %s:%d (%d available fields)", self.host, self.port, len(self.available_fields))
 
     async def stop(self):
         """Stop supervisor and all loops, disconnect."""
@@ -468,9 +476,7 @@ class Device:
         after the first C0 has been ingested (entities have real values
         instead of None at the moment of availability).
         """
-        self._client = HvacClient(
-            self.host, self.port, psk=self._psk_bytes, no_encrypt=self._no_encrypt
-        )
+        self._client = HvacClient(self.host, self.port, psk=self._psk_bytes, no_encrypt=self._no_encrypt)
         await self._client.connect()
         self._client.add_listener(self._on_gateway_message)
 
@@ -485,8 +491,7 @@ class Device:
         while self._running:
             attempt += 1
             delay = delays.pop(0) if delays else RECONNECT_FOREVER_INTERVAL
-            log.info("Reconnecting to %s:%d (attempt %d, wait %ds)...",
-                     self.host, self.port, attempt, delay)
+            log.info("Reconnecting to %s:%d (attempt %d, wait %ds)...", self.host, self.port, attempt, delay)
             await asyncio.sleep(delay)
 
             if not self._running:
@@ -503,14 +508,9 @@ class Device:
                 # is the one consuming the WS frames we need to ingest.
                 # Spawn it as a task so it runs after _reconnect returns
                 # and the listen loop resumes consuming frames.
-                if (
-                    self._post_connect_task
-                    and not self._post_connect_task.done()
-                ):
+                if self._post_connect_task and not self._post_connect_task.done():
                     self._post_connect_task.cancel()
-                self._post_connect_task = asyncio.create_task(
-                    self._post_connect_init()
-                )
+                self._post_connect_task = asyncio.create_task(self._post_connect_init())
                 return
             except Exception as e:
                 log.warning("Reconnect attempt %d failed: %s", attempt, e)
@@ -671,8 +671,7 @@ class Device:
         self._b5_state = "done"
         self._b5_response_event = None
         finalize_capabilities(self._status, self._glossary)
-        log.info("B5 complete: %d pages, %d available fields",
-                 page + 1, len(self.available_fields))
+        log.info("B5 complete: %d pages, %d available fields", page + 1, len(self.available_fields))
 
     async def _query_gateway_info(self):
         """Request gateway version/name. Called once during start()."""
@@ -689,10 +688,12 @@ class Device:
             if self.gateway_info.get("version") != "unknown":
                 break
 
-        log.info("Gateway: %s (instance=%s, version=%s)",
-                 self.gateway_info.get("device_name"),
-                 self.gateway_info.get("instance"),
-                 self.gateway_info.get("version"))
+        log.info(
+            "Gateway: %s (instance=%s, version=%s)",
+            self.gateway_info.get("device_name"),
+            self.gateway_info.get("instance"),
+            self.gateway_info.get("version"),
+        )
 
     async def _query_initial_status(self) -> bool:
         """Send one cmd_0x41 and wait for the next C0 ingest to complete.
@@ -723,8 +724,7 @@ class Device:
                 return True
             except asyncio.TimeoutError:
                 log.warning(
-                    "Initial status query timed out after %.1fs — "
-                    "AC may be silent (e.g. powered off at breaker)",
+                    "Initial status query timed out after %.1fs — AC may be silent (e.g. powered off at breaker)",
                     INITIAL_STATUS_TIMEOUT,
                 )
                 return False
@@ -817,13 +817,21 @@ class Device:
 
         B5 capability frames are processed synchronously (one-time
         bootstrap). Data frames (C0/C1/B1) are routed through StatusDB's
-        async ingest for lock-protected processing.
+        async ingest for lock-protected processing. Wire-envelope NAK
+        frames (msg_type ∈ NAK_MSG_TYPES) are diverted to a dedicated
+        handler before any body decoding so a NAK body whose first byte
+        happens to match a status-frame tag cannot be mis-decoded.
         """
         try:
             raw = bytes.fromhex(hex_str.replace(" ", ""))
             parsed = parse_frame(raw)
             body = parsed["body"]
+            msg_type = parsed["msg_type"]
             ts = datetime.now(UTC).isoformat()
+
+            if msg_type in NAK_MSG_TYPES:
+                self._handle_nak_frame(msg_type, body, ts)
+                return
 
             protocol_key = identify_frame(body)
 
@@ -849,9 +857,7 @@ class Device:
                     if self._b5_response_event:
                         self._b5_response_event.set()
             else:
-                asyncio.create_task(
-                    self._ingest_and_signal(body, protocol_key, ts)
-                )
+                asyncio.create_task(self._ingest_and_signal(body, protocol_key, ts))
                 if protocol_key == "rsp_0xc0" and self._follow_me_shadow is not None:
                     fm = read_field(self._status, "follow_me")
                     fm_val = fm["value"] if fm else None
@@ -860,9 +866,41 @@ class Device:
         except Exception as e:
             log.debug("Frame decode error: %s", e)
 
-    async def _ingest_and_signal(
-        self, body: bytes, protocol_key: str, ts: str
-    ) -> None:
+    def _handle_nak_frame(self, msg_type: int, body: bytes, ts: str) -> None:
+        """Record a wire-envelope NAK and notify observers.
+
+        Bumps the per-msg_type frame counter on the status meta so a
+        diagnostics dump shows how many rejections have arrived. Fans
+        out to frame observers under a sentinel protocol_key
+        (``"nak_0xNN"``) — observers correlating outgoing writes to
+        replies see the NAK without having to peek at the wire-envelope
+        themselves. Does not touch field state: a NAK by definition
+        carries no decoded values.
+        """
+        sentinel_key = f"nak_0x{msg_type:02X}"
+        meta = self._status.setdefault("meta", {})
+        counts = meta.setdefault("frame_counts", {})
+        counts[sentinel_key] = counts.get(sentinel_key, 0) + 1
+        meta["last_nak"] = {
+            "msg_type": msg_type,
+            "body_hex": bytes(body).hex(),
+            "ts": ts,
+        }
+        log.info(
+            "RX wire-envelope NAK msg_type=0x%02X body=%s (count=%d)",
+            msg_type,
+            bytes(body).hex(),
+            counts[sentinel_key],
+        )
+        if self._frame_observers:
+            body_copy = bytes(body)
+            for obs in list(self._frame_observers):
+                try:
+                    obs(sentinel_key, body_copy)
+                except Exception as e:
+                    log.debug("frame observer %r raised on NAK: %s", obs, e)
+
+    async def _ingest_and_signal(self, body: bytes, protocol_key: str, ts: str) -> None:
         """Ingest a non-B5 frame and signal initial-status if applicable.
 
         The signal fires AFTER ``_db.ingest`` completes, so by the time
@@ -871,14 +909,12 @@ class Device:
         values. Fan-out from ``_process_frame`` via ``create_task``.
         """
         await self._db.ingest(
-            body, protocol_key,
+            body,
+            protocol_key,
             timestamp=ts,
             available_fields=self.available_fields,
         )
-        if (
-            protocol_key == "rsp_0xc0"
-            and self._initial_status_event is not None
-        ):
+        if protocol_key == "rsp_0xc0" and self._initial_status_event is not None:
             self._initial_status_event.set()
 
     # ── Query frame builder ────────────────────────────────
@@ -889,7 +925,8 @@ class Device:
                 frame = self._build_follow_me_query(self._follow_me_shadow["celsius"])
                 log.debug(
                     "TRACE cmd_0x41 → Follow Me frame (%dB): %s",
-                    len(frame), frame.hex(" "),
+                    len(frame),
+                    frame.hex(" "),
                 )
                 return frame
             return build_status_query()
@@ -898,6 +935,7 @@ class Device:
         if query_key.startswith("cmd_0xc1_group"):
             try:
                 from blaueis.core.frame import build_group_query
+
                 group_num = int(query_key.split("group")[1])
                 page = 0x40 + group_num
                 return build_group_query(page=page)
@@ -907,6 +945,7 @@ class Device:
         if query_key.startswith("cmd_0xb1_batch_"):
             try:
                 from blaueis.core.frame import build_b1_property_query
+
                 batch = int(query_key.rsplit("_", 1)[1])
                 start = batch * self._B1_BATCH_SIZE
                 end = start + self._B1_BATCH_SIZE
@@ -931,8 +970,9 @@ class Device:
         celsius = max(0.0, min(50.0, float(celsius)))
         raw = int(round(celsius * 2 + 50))
         frame[14] = 0x01  # body[4] = optCommand Follow Me
-        frame[15] = raw   # body[5] = temperature
+        frame[15] = raw  # body[5] = temperature
         from blaueis.core.frame import crc8, frame_checksum
+
         body_end = len(frame) - 2
         frame[-2] = crc8(frame[10:body_end])
         frame[-1] = frame_checksum(frame)
@@ -989,6 +1029,7 @@ class Device:
         if not self._client or not self._client._ws:
             raise RuntimeError("Device not connected")
         from blaueis.core.frame import build_display_toggle_frame
+
         frame = build_display_toggle_frame()
         async with self._write_lock:
             await self._client.send_frame(frame.hex(" "))
@@ -1006,6 +1047,7 @@ class Device:
         if not self._client or not self._client._ws:
             raise RuntimeError("Device not connected")
         from blaueis.core.frame import build_status_query
+
         frame = build_status_query()
         async with self._write_lock:
             await self._client.send_frame(frame.hex(" "))

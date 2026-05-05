@@ -10,6 +10,7 @@ Usage:
 """
 
 import json
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -25,6 +26,8 @@ from blaueis.core.codec import (
     parse_b5_tlv,
     walk_fields,
 )
+
+log = logging.getLogger("blaueis.process")
 
 # ── B5 capability processing ─────────────────────────────────────────────
 
@@ -71,8 +74,7 @@ def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict) -> 
                     status_field["feature_available"] = cap_fa
 
                 ac = {}
-                for k in ("valid_range", "valid_set", "step", "correction",
-                          "slider", "values", "custom_value"):
+                for k in ("valid_range", "valid_set", "step", "correction", "slider", "values", "custom_value"):
                     if k in decoded:
                         ac[k] = decoded[k]
                 if ac:
@@ -181,8 +183,14 @@ def process_data_frame(
     for one-shot / CLI callers — the decode path rebuilds automatically.
     """
     cap_records = status.get("capabilities_raw")
+    rejections: list[dict] = []
     decoded = decode_frame_fields(
-        body, protocol_key, glossary, cap_records=cap_records, field_map=field_map
+        body,
+        protocol_key,
+        glossary,
+        cap_records=cap_records,
+        field_map=field_map,
+        rejections_out=rejections,
     )
 
     ts = timestamp or datetime.now(UTC).isoformat()
@@ -193,6 +201,7 @@ def process_data_frame(
     new_count = status["meta"]["frame_counts"].get(protocol_key, 0) + 1
     status["meta"]["frame_counts"][protocol_key] = new_count
 
+    suppression_counts: dict[str, int] = {}
     for field_name, result in decoded.items():
         status_field = status["fields"].get(field_name)
         if not status_field:
@@ -203,13 +212,72 @@ def process_data_frame(
         if status_field["feature_available"] in ("never", "capability", "capability-opt"):
             continue
 
-        status_field.setdefault("sources", {})[protocol_key] = {
+        suppression = result.get("suppression")
+        slot = {
             "value": result["value"],
             "raw": result.get("raw"),
             "frame_no": new_count,
             "ts": ts,
             "generation": generation,
         }
+        if suppression:
+            # Sentinel and out-of-range overwrite the slot's value with
+            # None — the device's *current* answer is "no data". A
+            # sibling `suppression` dict carries the reason and the
+            # underlying byte (sentinel) or decoded number (range) so
+            # downstream consumers (HA entity attributes, diagnostics
+            # bundle) can show why.
+            slot["suppression"] = {
+                "reason": suppression,
+                "raw": result.get("raw"),
+                "frame_no": new_count,
+                "ts": ts,
+            }
+            suppression_counts[suppression] = suppression_counts.get(suppression, 0) + 1
+            if suppression == "out_of_range":
+                log.warning(
+                    "Field %s on %s decoded %r outside declared range — possible decoder/firmware drift",
+                    field_name,
+                    protocol_key,
+                    result.get("raw"),
+                )
+            else:  # sentinel
+                log.debug(
+                    "Field %s on %s suppressed (sentinel byte 0x%02X)",
+                    field_name,
+                    protocol_key,
+                    result.get("raw") or 0,
+                )
+        status_field.setdefault("sources", {})[protocol_key] = slot
+
+    for reason, count in suppression_counts.items():
+        ck = f"{protocol_key}_{reason}_suppressions"
+        status["meta"]["frame_counts"][ck] = status["meta"]["frame_counts"].get(ck, 0) + count
+
+    # Surface per-field rejection metadata without overwriting the prior
+    # good reading. The integration's write-confirmation reconcile reads
+    # `sources[protocol_key]["rejection"]` to decide whether the next
+    # status broadcast confirms a pending write or rejects it.
+    rejection_count = 0
+    for rec in rejections:
+        status_field = status["fields"].get(rec["field"])
+        if not status_field:
+            continue
+        if status_field["feature_available"] in ("never", "capability", "capability-opt"):
+            continue
+        slot = status_field.setdefault("sources", {}).setdefault(protocol_key, {})
+        slot["rejection"] = {
+            "outcome": rec["outcome"],
+            "status": rec["status"],
+            "data_len": rec["data_len"],
+            "property_id": rec["property_id"],
+            "frame_no": new_count,
+            "ts": ts,
+        }
+        rejection_count += 1
+    if rejection_count:
+        rk = f"{protocol_key}_rejections"
+        status["meta"]["frame_counts"][rk] = status["meta"]["frame_counts"].get(rk, 0) + rejection_count
 
     # Phase transition: first C0 after B5 → steady_state
     if status["meta"]["phase"] == "post_b5" and protocol_key == "rsp_0xc0":

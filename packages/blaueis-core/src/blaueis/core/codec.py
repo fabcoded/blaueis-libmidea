@@ -85,6 +85,8 @@ def _check_field(result, name, fdef, protocol_key):
             "data_type": fdef.get("data_type"),
             "capability": fdef.get("capability"),
             "default_value": fdef.get("default_value"),
+            "sentinel_values": fdef.get("sentinel_values"),
+            "value_range": fdef.get("range"),
         }
     )
 
@@ -295,11 +297,31 @@ def decode_field(
     encodings: dict,
     capability: dict | None = None,
     cap_records: list | None = None,
+    sentinel_values: list[int] | None = None,
+    value_range: list[float] | None = None,
 ) -> dict:
     """Decode a field from a frame body using the glossary decode array.
 
     Generic decoder -- no field-name-specific logic. Processes the decode
     chain in priority order; first step whose condition is met wins.
+
+    Two optional value-suppression gates apply when the field's glossary
+    entry declares them:
+
+    * ``sentinel_values`` — pre-decode, byte-level. Before extracting
+      bits from the active step's offset, if the wire byte at that
+      offset is in this set, the field is suppressed and the formula
+      never runs. Used for firmware "no valid reading" markers
+      (e.g. ``0x00`` / ``0xFF`` on the temperature integer-degree byte).
+    * ``value_range`` — post-decode, physical-units. After all encoding
+      / tenths_nibble / half_bit transforms, if the final numeric value
+      falls outside ``[lo, hi]``, the field is suppressed. Used as a
+      sanity tripwire against codec or firmware drift.
+
+    Both gates are independently optional. When suppressed, the return
+    dict carries ``{"value": None, "raw": <byte or decoded number>,
+    "suppression": <reason>}`` so callers can distinguish "no data"
+    from a normal zero / null reading.
     """
     if not decode_steps:
         return {"value": None, "note": "no decode steps"}
@@ -324,6 +346,19 @@ def decode_field(
 
             if offset >= len(body):
                 continue
+
+            # Pre-decode sentinel gate. The wire byte at this step's
+            # offset is checked against the field-level sentinel set
+            # *before* bit-extraction or any downstream transform —
+            # the firmware uses the byte value itself to signal
+            # "no data", and decoding it would produce a number that
+            # may legitimately fall inside the valid range.
+            if sentinel_values and body[offset] in sentinel_values:
+                return {
+                    "value": None,
+                    "raw": body[offset],
+                    "suppression": "sentinel",
+                }
 
             val = extract_bits(body[offset], bits)
 
@@ -370,6 +405,24 @@ def decode_field(
 
             if data_type == "bool" and bits[0] == bits[1]:
                 val = bool(val)
+
+            # Post-decode range gate. If the field declares a physical
+            # range and the final value falls outside it, treat as a
+            # decoder / firmware-drift signal: suppress and let the
+            # process layer log it. Booleans never enter this branch
+            # because a list-of-numbers range is meaningless for bool.
+            if (
+                value_range is not None
+                and isinstance(val, (int, float))
+                and not isinstance(val, bool)
+                and len(value_range) == 2
+                and (val < value_range[0] or val > value_range[1])
+            ):
+                return {
+                    "value": None,
+                    "raw": val,
+                    "suppression": "out_of_range",
+                }
 
             return {"value": val}
 
@@ -428,12 +481,53 @@ def parse_b5_tlv(body: bytes) -> dict:
     return {"records": records, "next_frame": next_frame}
 
 
+# ── B0/B1 per-property status codes ──────────────────────────────────────
+#
+# The third byte of every B0/B1 TLV is the firmware's per-property status
+# byte — distinct from the wire-envelope msg_type and from the field-level
+# Python data_type. Five values observed on the 0xAC family; treat any
+# other byte as ``unknown`` and skip the decode pending investigation.
+
+B0B1_STATUS_OK = 0x00  # property decoded normally
+B0B1_STATUS_IN_PROGRESS = 0x01  # firmware will follow up; skip this round
+B0B1_STATUS_FAILED = 0x10  # query/write rejected
+B0B1_STATUS_INVALID_ATTR = 0x11  # property ID not implemented
+B0B1_STATUS_VALUE_ERROR = 0x12  # supplied value out of domain
+
+
+def classify_b0b1_record(status: int, data_len: int) -> str:
+    """Classify a B0/B1 TLV record by its status byte and data length.
+
+    Returns one of:
+        ``ok``           — status=0x00, data_len>0. Normal decode.
+        ``empty``        — status=0x00, data_len=0; firmware acknowledged
+                           the property exists but returned no value bytes.
+        ``in_progress``  — status=0x01. Firmware will follow up.
+        ``rejected``     — status ∈ {0x10, 0x11, 0x12}; firmware refused
+                           the read or write.
+        ``unknown``      — any other status byte. Investigate; skip decode.
+    """
+    if status == B0B1_STATUS_OK:
+        return "ok" if data_len > 0 else "empty"
+    if status == B0B1_STATUS_IN_PROGRESS:
+        return "in_progress"
+    if status in (B0B1_STATUS_FAILED, B0B1_STATUS_INVALID_ATTR, B0B1_STATUS_VALUE_ERROR):
+        return "rejected"
+    return "unknown"
+
+
 def parse_b0b1_tlv(body: bytes) -> list[dict]:
     """Parse a B0/B1 property frame body into TLV records.
 
     Body layout: body[0]=0xB0 or 0xB1, body[1]=record_count, body[2..]=records.
-    Each record: prop_id_lo(1) + prop_id_hi(1) + data_type(1) + data_len(1) + data(N).
+    Each record: prop_id_lo(1) + prop_id_hi(1) + status(1) + data_len(1) + data(N).
     Cursor advances by (4 + data_len) per record.
+
+    The third byte is the firmware's per-property status — see
+    :func:`classify_b0b1_record` for the value space. ``is_readable`` is True
+    only when the record carries a usable value (status=OK and data_len>0);
+    everything else (rejected, empty, in-progress, unknown) sets it False so
+    callers can skip decode and surface the rejection independently.
     """
     record_count = body[1]
     records = []
@@ -444,16 +538,19 @@ def parse_b0b1_tlv(body: bytes) -> list[dict]:
             break
         prop_id_lo = body[pos]
         prop_id_hi = body[pos + 1]
-        data_type = body[pos + 2]
+        status = body[pos + 2]
         data_len = body[pos + 3]
         if pos + 4 + data_len > len(body):
             break
         data = body[pos + 4 : pos + 4 + data_len]
         prop_key = f"0x{prop_id_lo:02X},0x{prop_id_hi:02X}"
+        outcome = classify_b0b1_record(status, data_len)
         records.append(
             {
                 "property_id": prop_key,
-                "data_type": data_type,
+                "status": status,
+                "outcome": outcome,
+                "is_readable": outcome == "ok",
                 "data_len": data_len,
                 "data": list(data),
             }
@@ -473,9 +570,15 @@ def decode_enum_cap(cap_def: dict, raw_value: int) -> dict:
         if vdef.get("raw") == raw_value:
             result = {"decoded_key": sym_name, "raw": raw_value}
             for k in (
-                "valid_range", "valid_set", "step", "correction",
-                "ui_gate", "feature_available",
-                "slider", "values", "custom_value",
+                "valid_range",
+                "valid_set",
+                "step",
+                "correction",
+                "ui_gate",
+                "feature_available",
+                "slider",
+                "values",
+                "custom_value",
             ):
                 if k in vdef:
                     result[k] = vdef[k]
@@ -561,19 +664,33 @@ def decode_frame_fields(
     glossary: dict,
     cap_records: list | None = None,
     field_map: list[dict] | None = None,
+    rejections_out: list | None = None,
 ) -> dict[str, dict]:
     """Decode all fields from a frame body for the given protocol key.
 
     For B0/B1 property frames, TLV records are parsed first. Fields whose
     decode steps carry a ``property_id`` are matched to the corresponding
     TLV record; ``offset``/``bits`` then apply relative to the record's
-    data bytes rather than the frame body.
+    data bytes rather than the frame body. TLV records whose firmware-
+    reported status is non-OK (rejected, empty payload, in-progress,
+    unknown) are skipped — the field is dropped from the result rather
+    than decoded against garbage / empty bytes.
 
     ``field_map`` (optional): pre-built output of
     :func:`build_field_map`. Callers decoding many frames for the same
     ``(glossary, protocol_key)`` can amortise the ``build_field_map``
     O(fields) walk by computing it once and passing it in. If omitted
     we rebuild on every call (the CLI / one-shot path).
+
+    ``rejections_out`` (optional): if provided, every B0/B1 field whose
+    matching TLV record exists but is not readable gets a record
+    appended of the form ``{"field": str, "property_id": str,
+    "status": int, "data_len": int, "outcome": str}``. Callers that
+    need to surface the rejection (e.g. ``process_data_frame``) pass a
+    fresh list and read it after; callers that only care about decoded
+    values leave it as ``None`` and the rejections are silently
+    dropped. The list is appended in field-map iteration order; one
+    entry per (skipped) field.
 
     Cache-invalidation contract: the caller owns ``field_map``
     lifetime. When the glossary is replaced (HA config-entry reload)
@@ -589,25 +706,45 @@ def decode_frame_fields(
     if field_map is None:
         field_map = build_field_map(glossary, protocol_key)
 
-    # Pre-parse TLV for property-protocol frames
-    record_by_prop: dict[str, bytes] | None = None
+    # Pre-parse TLV for property-protocol frames. Index by lowercase
+    # property_id so we can also flag is_readable / outcome from the
+    # record on the skip path.
+    record_by_prop: dict[str, dict] | None = None
     if protocol_key in ("rsp_0xb1", "rsp_0xb0", "cmd_0xb0"):
         records = parse_b0b1_tlv(body)
-        record_by_prop = {r["property_id"].lower(): bytes(r["data"]) for r in records}
+        record_by_prop = {r["property_id"].lower(): r for r in records}
 
     result = {}
     for field in field_map:
         decode_steps = field["decode"]
 
-        # Determine the effective byte array for this field
+        # Determine the effective byte array for this field.
         effective_body = body
         if record_by_prop is not None and decode_steps:
             prop_id = decode_steps[0].get("property_id")
             if prop_id:
-                prop_data = record_by_prop.get(prop_id.lower())
-                if prop_data is None:
+                record = record_by_prop.get(prop_id.lower())
+                if record is None:
                     continue  # property not present in this frame
-                effective_body = prop_data
+                if not record["is_readable"]:
+                    # Firmware acknowledged the property but rejected
+                    # the read (status≠OK) or returned an empty payload
+                    # (status=OK, data_len=0). Decoding the data bytes
+                    # would either raise IndexError on an empty buffer
+                    # or interpret garbage. Drop the field; surface the
+                    # rejection separately for callers that asked.
+                    if rejections_out is not None:
+                        rejections_out.append(
+                            {
+                                "field": field["name"],
+                                "property_id": record["property_id"],
+                                "status": record["status"],
+                                "data_len": record["data_len"],
+                                "outcome": record["outcome"],
+                            }
+                        )
+                    continue
+                effective_body = bytes(record["data"])
 
         decoded = decode_field(
             field["name"],
@@ -617,8 +754,14 @@ def decode_frame_fields(
             encodings,
             capability=field.get("capability"),
             cap_records=cap_records,
+            sentinel_values=field.get("sentinel_values"),
+            value_range=field.get("value_range"),
         )
-        if decoded.get("value") is not None:
+        # Suppression results carry value=None plus a "suppression"
+        # key — surface them so the process layer can stamp the slot
+        # and bump counters. Today's "value is None and no suppression"
+        # path (no decode step matched, decode error) stays silent.
+        if decoded.get("value") is not None or "suppression" in decoded:
             result[field["name"]] = decoded
     return result
 
