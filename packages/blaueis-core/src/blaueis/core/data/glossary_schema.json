@@ -379,6 +379,27 @@
           "items": { "type": "integer", "minimum": 0, "maximum": 255 },
           "description": "Wire-byte values the firmware emits to mean 'no valid reading' for this field. When the byte at the active decode step's offset matches one of these, the codec suppresses the field (yields None / HA `unknown`) instead of applying the decode formula. Pre-decode and byte-level — distinct from `range:`, which validates the post-decode value in physical units. Both keys are optional and independent: presence of `sentinel_values:` does not require `range:`, and vice versa."
         },
+        "valid_modes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Operating-mode tokens for which this field is writable. When set, a write attempted while the device's current `operating_mode` is not in this list raises ServiceValidationError before reaching the wire, and the entity reports `available=False` in non-listed modes so the UI hides the slider/control. Optional — absence means the field is mode-agnostic. Tokens match the `values:` keys of the `operating_mode` field (e.g. cool, heat, dry, auto, fan_only, smart_dry)."
+        },
+        "label_i18n": {
+          "type": "object",
+          "description": "Per-language overrides for the field's user-facing label. Keys are language codes (e.g. 'en', 'de', 'fr'); values are the translated label string. The integration resolves at entity creation time: `label_i18n[hass.config.language]` → `label_i18n.en` → field-level `label:` → auto-derived title-case. Translation files (`translations/<lang>.json`) carry only field-agnostic chrome (config flow titles, error templates); per-field labels live here so the glossary is the single source of truth.",
+          "patternProperties": {
+            "^[a-z]{2}(-[A-Z]{2})?$": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "description_i18n": {
+          "type": "object",
+          "description": "Per-language overrides for the field's description string. Same key shape and resolution chain as `label_i18n`. Used where the integration surfaces field descriptions in the UI (e.g. tooltip / entity card).",
+          "patternProperties": {
+            "^[a-z]{2}(-[A-Z]{2})?$": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
         "values": {
           "type": "object",
           "description": "For enum/bitmask types: map of symbolic name → {raw, description}.",
