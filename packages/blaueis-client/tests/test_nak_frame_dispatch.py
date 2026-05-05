@@ -32,6 +32,7 @@ def _bare_device() -> Device:
     dev._b5_next_frame = False
     dev._follow_me_shadow = None
     dev._initial_status_event = None
+    dev._test_suppression_until = None
     return dev
 
 

@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 
@@ -220,6 +221,15 @@ class Device:
         self._write_lock = asyncio.Lock()
         self._poll_task: asyncio.Task | None = None
 
+        # ── Test suppression ───────────────────────────────
+        # Debugging-only flag: when set, ``_process_frame`` drops every
+        # incoming frame until ``time.monotonic() >= _test_suppression_until``.
+        # Used to verify staleness behaviour on a live AC without
+        # disconnecting it — set the suppression for N seconds, watch
+        # ``last_ingest_at`` go stale and entity availability fade,
+        # then it auto-clears. See ``set_test_suppression``.
+        self._test_suppression_until: float | None = None
+
     # ── Properties ──────────────────────────────────────────
 
     @property
@@ -304,6 +314,50 @@ class Device:
             ingested = ingested.replace(tzinfo=UTC)
         delta = (datetime.now(UTC) - ingested).total_seconds()
         return delta < self.poll_interval * staleness_factor
+
+    # ── Test suppression ────────────────────────────────────
+
+    MAX_TEST_SUPPRESSION_S = 600.0  # hard cap so accidental forever-suppress can't happen
+
+    def set_test_suppression(self, duration_s: float) -> float:
+        """Drop every incoming frame for ``duration_s`` seconds.
+
+        Debugging-only. Used to verify staleness behaviour on a live
+        AC without disconnecting it: set the suppression, wait until
+        ``is_fresh()`` flips False (~poll_interval × 2), confirm the
+        consumer (HA entity availability, CLI status, etc.) reacts as
+        expected, then it auto-clears.
+
+        Re-calling extends or shortens the window — the new value
+        replaces the old. Pass ``0`` (or any non-positive) to clear
+        immediately. Capped at :data:`MAX_TEST_SUPPRESSION_S` so an
+        accidental long-press / runaway loop can't blackhole the
+        device indefinitely.
+
+        Returns the effective duration applied (after cap / floor).
+        """
+        if duration_s <= 0:
+            self._test_suppression_until = None
+            log.warning("Test suppression cleared")
+            return 0.0
+        capped = min(float(duration_s), self.MAX_TEST_SUPPRESSION_S)
+        self._test_suppression_until = time.monotonic() + capped
+        log.warning(
+            "Test suppression active for %.1fs — frames dropped, "
+            "entity availability will fade",
+            capped,
+        )
+        return capped
+
+    def is_test_suppressed(self) -> bool:
+        """True while ``set_test_suppression`` is in effect. Auto-clears
+        when the timer expires."""
+        if self._test_suppression_until is None:
+            return False
+        if time.monotonic() >= self._test_suppression_until:
+            self._test_suppression_until = None
+            return False
+        return True
 
     def field_gdef(self, name: str) -> dict | None:
         """Return the full glossary definition for a field (or None).
@@ -865,6 +919,12 @@ class Device:
         handler before any body decoding so a NAK body whose first byte
         happens to match a status-frame tag cannot be mis-decoded.
         """
+        # Test-suppression hatch: drop every frame while active so
+        # ``last_ingest_at`` stops advancing and the consumer's
+        # staleness rule fires naturally. See ``set_test_suppression``.
+        if self.is_test_suppressed():
+            log.debug("Frame dropped (test suppression active)")
+            return
         try:
             raw = bytes.fromhex(hex_str.replace(" ", ""))
             parsed = parse_frame(raw)
