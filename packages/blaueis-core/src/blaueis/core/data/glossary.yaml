@@ -2777,7 +2777,7 @@ fields:
     power_off_time_value:
       description: 'Power-off countdown timer value in minutes (0-1440). Derived composite: synthesised from three sub-fields
         packed into body[5] and body[6]. Only meaningful when power_off_timer is ON; value is undefined when the timer switch
-        is OFF.'
+        is OFF. Excluded from the integration — companion to power_off_timer, which is itself excluded.'
       signoff: tbd
       field_class: complex_function
       _migration:
@@ -2785,7 +2785,7 @@ fields:
         _inferred_reason: Pure derived field with no wire position of its own — user-visible value is synthesised from close_hour,
           close_step_minutes, and close_min_raw via a multi-input formula. Worked example in serial_glossary_guide.md Part
           3.
-      feature_available: readable
+      feature_available: never
       data_type: uint16
       device_context: indoor_unit
       unit: minute
@@ -2872,14 +2872,15 @@ fields:
       - 'Session 11 (timer OFF verified: body[5]=0x7F, body[6]=0x00)'
     power_off_timer:
       description: Power-off timer enable/disable switch. When ON, the unit will automatically power off after the countdown
-        set by power_off_time_value.
+        set by power_off_time_value. Excluded from the integration — HA's own scheduler / automations supersede an AC-side
+        countdown for any HA-driven setup, and exposing the switch creates duplicate sources of truth.
       signoff: tbd
       field_class: stateful_bool
       _migration:
         _inferred_class: stateful_bool
         _inferred_reason: Boolean switch gating the power_off_time_value derived field. Owns bit 7 of body[5]; remaining bits
           belong to the time value's sub-fields.
-      feature_available: readable
+      feature_available: never
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -2922,14 +2923,14 @@ fields:
     power_on_time_value:
       description: 'Power-on countdown timer value in minutes (0-1440). Derived composite: synthesised from three sub-fields
         packed into body[4] and body[6]. Mirror of power_off_time_value for the power-on direction. Only meaningful when power_on_timer
-        is ON.'
+        is ON. Excluded from the integration — companion to power_on_timer, which is itself excluded.'
       signoff: tbd
       field_class: complex_function
       _migration:
         _inferred_class: complex_function
         _inferred_reason: Pure derived field — mirror of power_off_time_value for the power-on timer. Same composite/derived/decompose
           pattern.
-      feature_available: readable
+      feature_available: never
       data_type: uint16
       device_context: indoor_unit
       unit: minute
@@ -3013,14 +3014,15 @@ fields:
       - 'Session 11 (timer OFF verified: body[4]=0x7F, body[6]=0x00)'
     power_on_timer:
       description: Power-on timer enable/disable switch. When ON, the unit will automatically power on after the countdown
-        set by power_on_time_value.
+        set by power_on_time_value. Excluded from the integration — HA's own scheduler / automations supersede an AC-side
+        countdown for any HA-driven setup, and exposing the switch creates duplicate sources of truth.
       signoff: tbd
       field_class: stateful_bool
       _migration:
         _inferred_class: stateful_bool
         _inferred_reason: Boolean switch gating the power_on_time_value derived field. Mirror of power_off_timer. Owns bit
           7 of body[4].
-      feature_available: readable
+      feature_available: never
       data_type: bool
       device_context: indoor_unit
       alt_names:
