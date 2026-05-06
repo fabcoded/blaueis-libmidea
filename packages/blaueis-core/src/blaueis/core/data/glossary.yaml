@@ -776,6 +776,7 @@ fields:
   control:
     alarm_sleep:
       description: Alarm sleep / wake-up timer function.
+      note: 'AC-internal wake-up alarm/timer whose function HA''s automation engine, schedule helpers, and alarm-clock entities supersede. Usage cannot be guaranteed in mixed setups — when both an AC alarm and an HA automation target the same wake-up outcome, the two fire independently and state may diverge. Surfaced for users who prefer the AC-side handler; HA-driven setups should disable this entity and drive `climate.turn_on` from a time-triggered automation instead. See docs/disabled_fields.md §5.1 for the broader supersede rule.'
       signoff: tbd
       field_class: stateful_bool
       _migration:
@@ -1380,6 +1381,7 @@ fields:
       description: 'Comfort sleep mode. Multi-key composite: the user-visible state is determined by the combination of comfortableSleepValue
         (body[8] bits[1:0]) and comfortableSleepSwitch (body[9] bit 6). A third sub-field, comfortableSleepTime (body[17]
         bits[4:0]), carries the sleep duration and is destructively overwritten to 0x0A when transitioning to ON.'
+      note: 'AC-internal multi-key sleep composite (switch + value + duration timer) whose function an HA automation can replicate via target_temperature ramps and time triggers. Usage cannot be guaranteed in mixed setups — the AC''s destructive write of the sleep_time sub-field on switch transitions can conflict with HA-side state restoration, and concurrent HA temp-ramp automations will compete with the AC''s vendor curve. Surfaced for users who prefer the AC-side composite; HA-driven setups should disable this entity. See docs/disabled_fields.md §5.1 for the broader supersede rule.'
       signoff: tbd
       field_class: complex_function
       _migration:
@@ -2467,6 +2469,7 @@ fields:
       - serial_protocol.md §3.2/§4.1
     night_light:
       description: 'Night light / LED dimmer: reduces display brightness during sleep.'
+      note: 'AC-internal display LED dimming during configured sleep hours whose function HA''s time-triggered automation against the existing screen_display select supersedes. Usage cannot be guaranteed in mixed setups — when both the AC''s sleep-hours timer and an HA automation target display brightness, the two compete. Surfaced for users who prefer the AC-side handler; HA-driven setups should disable this entity in favor of an HA automation toggling screen_display. See docs/disabled_fields.md §5.1 for the broader supersede rule.'
       signoff: tbd
       field_class: stateful_bool
       feature_available: always
@@ -3620,6 +3623,7 @@ fields:
       - dudanov
     sleep_mode:
       description: 'Sleep mode: adjusts temperature gradually during sleep for comfort.'
+      note: 'AC-internal temperature-curve-during-sleep whose function an HA automation can replicate (ramp target_temperature on a custom curve, with HA-aware off conditions). Usage cannot be guaranteed in mixed setups — concurrent AC sleep_mode and HA temp-ramp automation will compete and the resulting setpoint may oscillate. Surfaced for users who prefer the AC''s vendor-tuned curve; HA-driven setups should disable this entity. See docs/disabled_fields.md §5.1 for the broader supersede rule.'
       signoff: tbd
       field_class: stateful_bool
       feature_available: always
