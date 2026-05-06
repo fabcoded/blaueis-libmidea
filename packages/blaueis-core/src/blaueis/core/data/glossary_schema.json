@@ -206,7 +206,7 @@
     },
     "data_type": {
       "type": "string",
-      "enum": ["bool", "uint8", "uint16", "int8", "float", "enum", "bitmask", "bcd"],
+      "enum": ["bool", "uint8", "uint16", "uint32", "int8", "float", "enum", "bitmask", "bcd"],
       "description": "Wire-level data type of the field."
     },
     "device_context": {

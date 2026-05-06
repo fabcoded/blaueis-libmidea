@@ -98,6 +98,6 @@ def default_for_masked_field(field_gdef: dict | None) -> Any:
     dt = field_gdef.get("data_type", "")
     if dt == "bool":
         return False
-    if dt in ("uint8", "uint16", "int8", "int16", "float"):
+    if dt in ("uint8", "uint16", "uint32", "int8", "int16", "float"):
         return 0
     return 0

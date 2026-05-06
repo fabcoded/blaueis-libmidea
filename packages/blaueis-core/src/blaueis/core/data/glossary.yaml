@@ -36,7 +36,7 @@
 # ── How to read a field entry ─────────────────────────────────────────────────
 #
 #   description:       One-line human summary of what this field represents.
-#   data_type:         bool | uint8 | uint16 | int8 | float | enum | bitmask | bcd
+#   data_type:         bool | uint8 | uint16 | uint32 | int8 | float | enum | bitmask | bcd
 #   field_class:       semantic shape:
 #                        sensor              — decode-only, no write path.
 #                        trigger             — fire-and-forget action.
@@ -9216,7 +9216,7 @@ fields:
       feature_available: capability
       ha:
         entity_category: diagnostic
-      data_type: uint16
+      data_type: uint32
       device_context: indoor_unit
       alt_names:
         rev85: operatingTime
