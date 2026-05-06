@@ -15,17 +15,8 @@ frames:
     timestamp: "2026-04-10T18:11:47Z"
     body_hex: "c1 21 01 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
     ground_truth:
-      # 16-bit day counters: BE16 (high<<8 | low) per uint16_be encoding
-      power_on_days: 0         # body[4..5] BE16
-      power_on_hours: 0        # body[6]
-      power_on_minutes: 0      # body[7]
-      power_on_seconds: 0      # body[8]
-      total_worked_days: 0     # body[9..10] BE16
-      total_worked_hours: 0    # body[11]
-      total_worked_minutes: 0  # body[12]
-      total_worked_seconds: 0  # body[13]
-      current_session_days: 0  # body[14..15] BE16
-      current_session_hours: 0 # body[16]
-      current_session_minutes: 0  # body[17]
-      current_session_seconds: 0  # body[18]
+      # Three synthesised aggregates (composite/derived_from): each = days*86400 + hours*3600 + minutes*60 + seconds
+      power_on_time: 0        # body[4..8]:   days(BE16) + h + m + s
+      total_worked_time: 0    # body[9..13]:  days(BE16) + h + m + s
+      current_session_time: 0 # body[14..18]: days(BE16) + h + m + s
     notes: "All zeros. Unit may not populate group 0 timers, or needs longer cumulative runtime."

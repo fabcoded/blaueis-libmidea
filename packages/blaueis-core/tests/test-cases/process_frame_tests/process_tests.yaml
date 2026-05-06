@@ -396,100 +396,30 @@ tests:
       value: 127
 
   # ── Session 15 probe: C1 Group 0 (runtime timers) ─────────────
-  - name: "G0: power_on_hours=0 (all-zero frame)"
+  # Probed unit returned all-zero counter bodies. Three aggregate fields
+  # synthesise (days*86400 + hours*3600 + minutes*60 + seconds) → 0.
+  # Component-level checks moved into oracle/codec parity tests.
+  - name: "G0: power_on_time=0 (all-zero frame)"
     action: frame_no_b5
     source: "../session15_probe/c1g0_frames.yaml"
     index: 0
-    check_field: power_on_hours
+    check_field: power_on_time
     assert:
       value: 0
 
-  - name: "G0: power_on_minutes=0"
+  - name: "G0: total_worked_time=0"
     action: frame_no_b5
     source: "../session15_probe/c1g0_frames.yaml"
     index: 0
-    check_field: power_on_minutes
+    check_field: total_worked_time
     assert:
       value: 0
 
-  - name: "G0: power_on_seconds=0"
+  - name: "G0: current_session_time=0"
     action: frame_no_b5
     source: "../session15_probe/c1g0_frames.yaml"
     index: 0
-    check_field: power_on_seconds
-    assert:
-      value: 0
-
-  - name: "G0: total_worked_hours=0"
-    action: frame_no_b5
-    source: "../session15_probe/c1g0_frames.yaml"
-    index: 0
-    check_field: total_worked_hours
-    assert:
-      value: 0
-
-  - name: "G0: total_worked_minutes=0"
-    action: frame_no_b5
-    source: "../session15_probe/c1g0_frames.yaml"
-    index: 0
-    check_field: total_worked_minutes
-    assert:
-      value: 0
-
-  - name: "G0: total_worked_seconds=0"
-    action: frame_no_b5
-    source: "../session15_probe/c1g0_frames.yaml"
-    index: 0
-    check_field: total_worked_seconds
-    assert:
-      value: 0
-
-  - name: "G0: current_session_hours=0"
-    action: frame_no_b5
-    source: "../session15_probe/c1g0_frames.yaml"
-    index: 0
-    check_field: current_session_hours
-    assert:
-      value: 0
-
-  - name: "G0: current_session_minutes=0"
-    action: frame_no_b5
-    source: "../session15_probe/c1g0_frames.yaml"
-    index: 0
-    check_field: current_session_minutes
-    assert:
-      value: 0
-
-  - name: "G0: current_session_seconds=0"
-    action: frame_no_b5
-    source: "../session15_probe/c1g0_frames.yaml"
-    index: 0
-    check_field: current_session_seconds
-    assert:
-      value: 0
-
-  # 16-bit BE day counters via uint16_be encoding
-  - name: "G0: power_on_days=0 (BE16 from body[4..5]=00 00)"
-    action: frame_no_b5
-    source: "../session15_probe/c1g0_frames.yaml"
-    index: 0
-    check_field: power_on_days
-    assert:
-      value: 0
-
-  - name: "G0: total_worked_days=0 (BE16 from body[9..10]=00 00)"
-    action: frame_no_b5
-    source: "../session15_probe/c1g0_frames.yaml"
-    index: 0
-    check_field: total_worked_days
-    assert:
-      value: 0
-
-  - name: "G0: current_session_days=0 (BE16 from body[14..15]=00 00)"
-    action: frame_no_b5
-    source: "../session15_probe/c1g0_frames.yaml"
-    index: 0
-    check_field: current_session_days
+    check_field: current_session_time
     assert:
       value: 0
 

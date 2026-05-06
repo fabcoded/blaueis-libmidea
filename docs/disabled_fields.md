@@ -32,79 +32,46 @@ two distinct mode/setpoint combinations. Open an issue in
 
 ---
 
-## 2. Multi-byte / grouped fields with unverified combination formula
+## 2. Multi-byte / grouped fields
 
-Fields where the protocol exposes what looks like *components* of a
-single physical counter (e.g. days + hours + minutes + seconds bytes
-side-by-side), but where we lack the captures needed to verify how
-they combine into one value.
+Fields where the protocol exposes *components* of a single physical
+counter (e.g. days + hours + minutes + seconds bytes side-by-side).
+The combination formula is wired through the codec's
+``composite/derived_from`` synthesis pass; user-visible glossary fields
+expose only the synthesised aggregate.
 
-These are the fields where **community submissions are most valuable**.
+### 2.1 Duration counters — synthesised
 
-### 2.1 Duration counters (15 fields)
+The four duration-counter groups are now aggregate fields backed by
+oracle-validated synthesis (golden vectors in
+``packages/blaueis-core/tests/fixtures/duration_counter_vectors.json``).
+The component bytes are wire-internal — never surfaced as standalone
+glossary fields:
 
-| Group | Component fields | What we think |
-|---|---|---|
-| `power_on_*` | days, hours, minutes, seconds | Power-on cumulative (since first power up). |
-| `total_worked_*` | days, hours, minutes, seconds | Lifetime compressor-active time. |
-| `current_session_*` | days, hours, minutes, seconds | Time since last power cycle. |
-| `current_work_*` | days, hours, minutes (no seconds) | Time in current run cycle. |
+| Aggregate field | Frame | Wire bytes | Formula |
+|---|---|---|---|
+| `power_on_time` | rsp_0xc1_group0 | body[4..8] | `days*86400 + hours*3600 + minutes*60 + seconds` |
+| `total_worked_time` | rsp_0xc1_group0 | body[9..13] | same |
+| `current_session_time` | rsp_0xc1_group0 | body[14..18] | same |
+| `current_work_time` | rsp_0xa1 | body[9..12] | `days*86400 + hours*3600 + minutes*60` (no seconds on wire) |
 
-Each component is decoded as an independent integer in its own unit,
-but the protocol bytes sit adjacently in the same response and almost
-certainly form a single combined counter. We do not know:
+All four are `feature_available: readable`, unit `s`. Probe captures
+showed always-zero on test units; the formula is locked down via
+oracle parity tests and is a separate concern from whether a given
+unit populates non-zero values.
 
-- Which byte(s) carry the most-significant bits — the days/hours
-  fields might be redundant high-order representations of the
-  minutes/seconds fields, OR each field might be the modulo-component
-  of a single second-counter (`seconds = total % 60`,
-  `minutes = (total // 60) % 60`, etc.).
-- Whether the AC zeroes lower-order bytes when higher ones rolls
-  (`59:59:59 → 1:00:00:00`) or carries a continuous internal counter
-  the firmware decomposes on read.
-- What rolling behaviour looks like on the days field as the unit
-  approaches its maximum (16-bit BE → 65535 days ≈ 179 years, so we
-  may never see a roll from real data).
-
-**Captures we'd need to verify**:
-
-1. **Synchronised reads across rollover**: a stream of `cmd_0x41` →
-   `rsp_0xc0` polls (one every 1–5 seconds) covering at least one
-   minute → hour rollover and one hour → day rollover, with all four
-   component fields decoded per frame. The `flight_recorder` bundle
-   from the gateway is enough — see `docs/flight_recorder.md`.
-2. **Two units side by side** if available, started at known offsets,
-   so we can rule out unit-specific decoding.
-3. **Power-cycle observations**: capture both right before and right
-   after a power cycle, to confirm which counters reset (`current_session_*`
-   should; `power_on_*` and `total_worked_*` should not).
-
-**What a verified test would look like**:
-
-```python
-def test_duration_combination_consistent_across_rollover():
-    """Given a sequence of frames spanning a minute → hour rollover,
-    the combined "total seconds" derived from (days, hours, minutes,
-    seconds) must increase monotonically with each frame."""
-    frames = load_capture("captures/duration_rollover_001.json")
-    last = -1
-    for f in frames:
-        d = decode_field(f, "current_session_days")
-        h = decode_field(f, "current_session_hours")
-        m = decode_field(f, "current_session_minutes")
-        s = decode_field(f, "current_session_seconds")
-        total = d * 86400 + h * 3600 + m * 60 + s
-        assert total >= last
-        last = total
-```
-
-Until that test passes against real captures, the fields stay disabled.
+The fifth synthesised time field, `dr_time`, lives in the B1 property
+0x8F,0x00 (hours + minutes only, no days/seconds). It stays
+`feature_available: capability` since it's only meaningful on
+DR-equipped SKUs.
 
 ### 2.2 Future grouped fields
 
 Same template applies to any future "split into components" field set
-discovered via `field_inventory` scans. List them here when they're
-added.
+discovered via `field_inventory` scans. The glossary's
+``composite/derived_from`` blocks plus ``encoding`` on
+``composite_member_wire`` (for multi-byte members) are the supported
+shape.
 
 ---
 

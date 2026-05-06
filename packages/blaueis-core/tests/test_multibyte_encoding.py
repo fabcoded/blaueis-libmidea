@@ -158,34 +158,34 @@ def test_torque_compensation_angle_from_real_frame():
 # ── Test 13-15: synthetic BE16 day counter decoding ─────────────────────
 
 
-def test_power_on_days_be16():
-    print("\n13. power_on_days BE16 from crafted body[4..5]=00 64")
+def test_power_on_time_aggregate_be16():
+    print("\n13. power_on_time aggregate (synthesised from BE16 days + h/m/s)")
     glossary = load_glossary()
-    # body[4..5] = 0x00 0x64 → BE16 = 0x0064 = 100
+    # body[4..5] = 0x00 0x64 → days = 100. h/m/s = 0. Aggregate = 100*86400 = 8640000s.
     body = bytes(4) + bytes([0x00, 0x64]) + bytes(15)
     decoded = decode_frame_fields(body, "rsp_0xc1_group0", glossary)
-    val = decoded.get("power_on_days", {}).get("value")
-    check("power_on_days = 100", val == 100, f"got {val}")
+    val = decoded.get("power_on_time", {}).get("value")
+    check("power_on_time = 100 days = 8640000s", val == 8640000, f"got {val}")
 
 
-def test_total_worked_days_be16():
-    print("\n14. total_worked_days BE16 from crafted body[9..10]=01 2C")
+def test_total_worked_time_aggregate_be16():
+    print("\n14. total_worked_time aggregate (synthesised from BE16 days + h/m/s)")
     glossary = load_glossary()
-    # body[9..10] = 0x01 0x2C → BE16 = 0x012C = 300
+    # body[9..10] = 0x01 0x2C → days = 300. Aggregate = 300*86400 = 25920000s.
     body = bytes(9) + bytes([0x01, 0x2C]) + bytes(10)
     decoded = decode_frame_fields(body, "rsp_0xc1_group0", glossary)
-    val = decoded.get("total_worked_days", {}).get("value")
-    check("total_worked_days = 300", val == 300, f"got {val}")
+    val = decoded.get("total_worked_time", {}).get("value")
+    check("total_worked_time = 300 days = 25920000s", val == 25920000, f"got {val}")
 
 
-def test_current_session_days_be16():
-    print("\n15. current_session_days BE16 from crafted body[14..15]=00 0F")
+def test_current_session_time_aggregate_be16():
+    print("\n15. current_session_time aggregate (synthesised from BE16 days + h/m/s)")
     glossary = load_glossary()
-    # body[14..15] = 0x00 0x0F → BE16 = 0x000F = 15
+    # body[14..15] = 0x00 0x0F → days = 15. Aggregate = 15*86400 = 1296000s.
     body = bytes(14) + bytes([0x00, 0x0F]) + bytes(5)
     decoded = decode_frame_fields(body, "rsp_0xc1_group0", glossary)
-    val = decoded.get("current_session_days", {}).get("value")
-    check("current_session_days = 15", val == 15, f"got {val}")
+    val = decoded.get("current_session_time", {}).get("value")
+    check("current_session_time = 15 days = 1296000s", val == 1296000, f"got {val}")
 
 
 # ── Test 16: cross-validation against Python stdlib (64 random patterns) ─
@@ -276,9 +276,9 @@ def main():
     test_indoor_fan_runtime_from_real_frame()
     test_compressor_cumul_hours_from_real_frame()
     test_torque_compensation_angle_from_real_frame()
-    test_power_on_days_be16()
-    test_total_worked_days_be16()
-    test_current_session_days_be16()
+    test_power_on_time_aggregate_be16()
+    test_total_worked_time_aggregate_be16()
+    test_current_session_time_aggregate_be16()
     test_cross_validate_against_stdlib()
     test_existing_bcd_linear_paths_unchanged()
 

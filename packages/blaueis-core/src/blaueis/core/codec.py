@@ -763,6 +763,121 @@ def decode_frame_fields(
         # path (no decode step matched, decode error) stays silent.
         if decoded.get("value") is not None or "suppression" in decoded:
             result[field["name"]] = decoded
+
+    # Pass 2: composite synthesis. Fields with composite + derived_from
+    # have no `decode` array in their protocols block (so build_field_map
+    # skipped them) — their value is computed from member byte positions
+    # via the formula evaluator. Body-relative members for plain frames
+    # (rsp_0xc0/c1/a1) read from `body` directly; property-frame members
+    # read from the matching TLV record's data bytes (same effective_body
+    # rule as the primary loop).
+    all_fields = walk_fields(glossary)
+    for fname, fdef in all_fields.items():
+        if fname in result:
+            continue
+        ploc = (fdef.get("protocols") or {}).get(protocol_key)
+        if ploc is None:
+            continue
+        if not (fdef.get("composite") and fdef.get("derived_from")):
+            continue
+        effective_body = body
+        if record_by_prop is not None:
+            prop_id = ploc.get("property_id")
+            if not prop_id:
+                for step in (ploc.get("decode") or []):
+                    if step.get("property_id"):
+                        prop_id = step["property_id"]
+                        break
+            if prop_id:
+                record = record_by_prop.get(prop_id.lower())
+                if record is None or not record["is_readable"]:
+                    continue
+                effective_body = bytes(record["data"])
+        synth_val = _synthesize_composite(fdef, effective_body, encodings)
+        if synth_val is not None:
+            result[fname] = {"value": synth_val, "raw": None}
+    return result
+
+
+# ── Composite synthesis (pass-2 of decode_frame_fields) ──────────────────
+
+
+def _decode_composite_member(body: bytes, wire_def: dict, encodings: dict) -> int:
+    """Decode one composite member's wire bytes to an integer.
+
+    Two shapes are supported on `wire_def["byte_position"]`:
+
+      - Single byte:  ``"bodyBytes[5]"`` (or any prefix) plus optional
+        ``bit_range: [hi, lo]`` to select bits within the byte.
+      - Multi-byte:   ``"bodyBytes[4..5]"`` plus ``encoding: uint16_be``
+        (or another multi-byte encoding name from the glossary's
+        ``encodings:`` table). The encoding's byte_count drives the read.
+
+    Raises ``IndexError`` / ``ValueError`` on malformed input or
+    out-of-range offsets — caller catches and skips synthesis.
+    """
+    bp = wire_def.get("byte_position", "")
+    if "[" not in bp or "]" not in bp:
+        raise ValueError(f"composite member byte_position {bp!r} missing []")
+    inside = bp[bp.index("[") + 1 : bp.rindex("]")]
+    if ".." in inside:
+        lo_str, hi_str = inside.split("..", 1)
+        lo = int(lo_str)
+        hi = int(hi_str)
+        encoding = wire_def.get("encoding")
+        if encoding:
+            return int(apply_encoding(0, encoding, encodings, body=body, offset=lo))
+        # No encoding declared: fall back to big-endian read of the
+        # byte range. Keeps the schema usable even when an explicit
+        # encoding name doesn't exist for an exotic width.
+        if hi + 1 > len(body):
+            raise IndexError(f"composite member {bp} past end of {len(body)}-byte body")
+        return int.from_bytes(body[lo : hi + 1], "big")
+    offset = int(inside)
+    if offset >= len(body):
+        raise IndexError(f"composite member offset {offset} past end of {len(body)}-byte body")
+    raw = body[offset]
+    bit_range = wire_def.get("bit_range")
+    if bit_range and len(bit_range) == 2:
+        return extract_bits(raw, bit_range)
+    return raw
+
+
+def _synthesize_composite(field_def: dict, body: bytes, encodings: dict):
+    """Compute a composite field's user-visible value via its
+    ``derived_from.formula`` over decoded ``composite.members``.
+
+    Returns the synthesised integer/float, or ``None`` if any member
+    can't be decoded or the formula can't be evaluated. Caller decides
+    whether to surface the field.
+    """
+    composite = field_def.get("composite") or {}
+    derived = field_def.get("derived_from") or {}
+    members = composite.get("members") or {}
+    formula = derived.get("formula")
+    if not (members and formula):
+        return None
+    inputs: dict[str, int] = {}
+    for mname, mdef in members.items():
+        wire = mdef.get("wire")
+        if isinstance(wire, list):
+            wire = wire[0] if wire else None
+        if not wire:
+            return None
+        try:
+            inputs[mname] = _decode_composite_member(body, wire, encodings)
+        except (IndexError, ValueError):
+            return None
+    # Local import to avoid a top-level cycle: formula imports nothing
+    # from codec, but other modules in the chain might.
+    from blaueis.core.formula import FormulaError, evaluate
+
+    try:
+        result = evaluate(formula, inputs)
+    except FormulaError:
+        return None
+    if isinstance(result, float) and result.is_integer():
+        return int(result)
     return result
 
 

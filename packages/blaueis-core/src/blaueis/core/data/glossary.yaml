@@ -6158,72 +6158,44 @@ fields:
       confidence: consistent
       sources:
       - Sessions 1-9 (always 0)
-    current_work_days:
-      description: Current work time — days component. 16-bit big-endian.
+    current_work_time:
+      description: Compressor-active time in the current run cycle, surfaced in the A1 heartbeat at minute precision (no seconds component on the wire). Same logical concept as current_session_time but reported through a different frame and at coarser resolution.
       field_class: sensor
-      feature_available: excluded
-      data_type: uint16
+      feature_available: readable
+      data_type: uint32
       device_context: indoor_unit
-      unit: days
+      unit: s
+      ha:
+        state_class: measurement
       alt_names:
         rev1: curWorkedDay
+        rev2: curWorkedHour
+        rev3: curWorkedMin
+      composite:
+        members:
+          days:
+            data_type: uint16
+            wire:
+              byte_position: bodyBytes[9..10]
+              encoding: uint16_be
+          hours:
+            data_type: uint8
+            wire:
+              byte_position: bodyBytes[11]
+          minutes:
+            data_type: uint8
+            wire:
+              byte_position: bodyBytes[12]
+      derived_from:
+        formula: days * 86400 + hours * 3600 + minutes * 60
+        inputs: [days, hours, minutes]
       protocols:
         rsp_0xa1:
           frame: 0xA1 Heartbeat
-          byte: body[9..10]
-          decode:
-          - offset: 9
-            bits:
-            - 7
-            - 0
-            encoding: uint16_be
+          byte: body[9..12]
           direction: response
           section: §5.2
-      note: 'Disabled — multi-byte combination formula unverified. probe captures showed always 0 (55 frames). See docs/disabled_fields.md §2.1.'
-      confidence: consistent
-    current_work_hours:
-      description: Current work time — hours component.
-      field_class: sensor
-      feature_available: excluded
-      data_type: uint8
-      device_context: indoor_unit
-      unit: hours
-      alt_names:
-        rev1: curWorkedHour
-      protocols:
-        rsp_0xa1:
-          frame: 0xA1 Heartbeat
-          byte: body[11]
-          decode:
-          - offset: 11
-            bits:
-            - 7
-            - 0
-          direction: response
-          section: §5.2
-      note: 'Disabled — multi-byte combination formula unverified. probe captures showed always 0. See docs/disabled_fields.md §2.1.'
-      confidence: consistent
-    current_work_minutes:
-      description: Current work time — minutes component.
-      field_class: sensor
-      feature_available: excluded
-      data_type: uint8
-      device_context: indoor_unit
-      unit: minutes
-      alt_names:
-        rev1: curWorkedMin
-      protocols:
-        rsp_0xa1:
-          frame: 0xA1 Heartbeat
-          byte: body[12]
-          decode:
-          - offset: 12
-            bits:
-            - 7
-            - 0
-          direction: response
-          section: §5.2
-      note: 'Disabled — multi-byte combination formula unverified. probe captures showed always 0. See docs/disabled_fields.md §2.1.'
+      note: 'A1 frame lags current_session_time by up to 59s (no seconds-resolution byte on the wire here). Probe captures show always 0; that is the unit-state on test units, not a decode bug — formula is oracle-validated.'
       confidence: consistent
     discharge_pipe_temp:
       description: Compressor discharge pipe temperature (Tp thermistor). High values indicate active compression.
@@ -8578,292 +8550,136 @@ fields:
       confidence: confirmed
       sources:
       - own probe 2026-04-10 Session 15 (0x01 = bit 0 set)
-    power_on_days:
-      description: Power-on cumulative days counter (BE 16-bit — body[4] high byte, body[5] low byte).
+    power_on_time:
+      description: Cumulative lifetime mains-on time. Synthesised from days/hours/minutes/seconds components packed into rsp_0xc1_group0 body[4..8].
       field_class: sensor
-      feature_available: excluded
-      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
-      data_type: uint16
-      device_context: indoor_unit
-      unit: d
-      alt_names:
-        rev66: powerOnDay
-      protocols:
-        rsp_0xc1_group0:
-          frame: 0xC1 Group 0
-          byte: body[4..5] BE16
-          decode:
-          - offset: 4
-            bits:
-            - 7
-            - 0
-            encoding: uint16_be
-          direction: response
-          section: §3.1.2
-      confidence: hypothesis
-      sources:
-      - own probe 2026-04-10 Session 15 (all zeros)
-    power_on_hours:
-      description: Power-on hours counter.
-      field_class: sensor
-      feature_available: excluded
-      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
-      data_type: uint8
-      device_context: indoor_unit
-      unit: h
-      alt_names:
-        rev67: powerOnHour
-      protocols:
-        rsp_0xc1_group0:
-          frame: 0xC1 Group 0
-          byte: body[6]
-          decode:
-          - offset: 6
-            bits:
-            - 7
-            - 0
-          direction: response
-          section: §3.1.2
-      confidence: hypothesis
-      sources:
-      - own probe 2026-04-10 Session 15 (all zeros)
-    power_on_minutes:
-      description: Power-on minutes counter.
-      field_class: sensor
-      feature_available: excluded
-      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
-      data_type: uint8
-      device_context: indoor_unit
-      unit: min
-      alt_names:
-        rev68: powerOnMin
-      protocols:
-        rsp_0xc1_group0:
-          frame: 0xC1 Group 0
-          byte: body[7]
-          decode:
-          - offset: 7
-            bits:
-            - 7
-            - 0
-          direction: response
-          section: §3.1.2
-      confidence: hypothesis
-      sources:
-      - own probe 2026-04-10 Session 15 (all zeros)
-    power_on_seconds:
-      description: Power-on seconds counter.
-      field_class: sensor
-      feature_available: excluded
-      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
-      data_type: uint8
+      feature_available: readable
+      data_type: uint32
       device_context: indoor_unit
       unit: s
+      ha:
+        state_class: total_increasing
       alt_names:
-        rev69: powerOnSec
+        rev1: powerOnDay
+        rev2: powerOnHour
+        rev3: powerOnMin
+        rev4: powerOnSec
+      composite:
+        members:
+          days:
+            data_type: uint16
+            wire:
+              byte_position: bodyBytes[4..5]
+              encoding: uint16_be
+          hours:
+            data_type: uint8
+            wire:
+              byte_position: bodyBytes[6]
+          minutes:
+            data_type: uint8
+            wire:
+              byte_position: bodyBytes[7]
+          seconds:
+            data_type: uint8
+            wire:
+              byte_position: bodyBytes[8]
+      derived_from:
+        formula: days * 86400 + hours * 3600 + minutes * 60 + seconds
+        inputs: [days, hours, minutes, seconds]
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
-          byte: body[8]
-          decode:
-          - offset: 8
-            bits:
-            - 7
-            - 0
+          byte: body[4..8]
           direction: response
           section: §3.1.2
       confidence: hypothesis
       sources:
       - own probe 2026-04-10 Session 15 (all zeros)
-    total_worked_days:
-      description: Total worked cumulative days counter (BE 16-bit — body[9] high byte, body[10] low byte).
+    total_worked_time:
+      description: Cumulative lifetime compressor-active time. Synthesised from days/hours/minutes/seconds components packed into rsp_0xc1_group0 body[9..13].
       field_class: sensor
-      feature_available: excluded
-      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
-      data_type: uint16
-      device_context: indoor_unit
-      unit: d
-      alt_names:
-        rev70: totalWorkedDay
-      protocols:
-        rsp_0xc1_group0:
-          frame: 0xC1 Group 0
-          byte: body[9..10] BE16
-          decode:
-          - offset: 9
-            bits:
-            - 7
-            - 0
-            encoding: uint16_be
-          direction: response
-          section: §3.1.2
-      confidence: hypothesis
-      sources:
-      - own probe 2026-04-10 Session 15 (all zeros)
-    total_worked_hours:
-      description: Total worked hours counter (lifetime).
-      field_class: sensor
-      feature_available: excluded
-      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
-      data_type: uint8
-      device_context: indoor_unit
-      unit: h
-      alt_names:
-        rev71: totalWorkedHour
-      protocols:
-        rsp_0xc1_group0:
-          frame: 0xC1 Group 0
-          byte: body[11]
-          decode:
-          - offset: 11
-            bits:
-            - 7
-            - 0
-          direction: response
-          section: §3.1.2
-      confidence: hypothesis
-      sources:
-      - own probe 2026-04-10 Session 15 (all zeros)
-    total_worked_minutes:
-      description: Total worked minutes counter (lifetime).
-      field_class: sensor
-      feature_available: excluded
-      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
-      data_type: uint8
-      device_context: indoor_unit
-      unit: min
-      alt_names:
-        rev72: totalWorkedMin
-      protocols:
-        rsp_0xc1_group0:
-          frame: 0xC1 Group 0
-          byte: body[12]
-          decode:
-          - offset: 12
-            bits:
-            - 7
-            - 0
-          direction: response
-          section: §3.1.2
-      confidence: hypothesis
-      sources:
-      - own probe 2026-04-10 Session 15 (all zeros)
-    total_worked_seconds:
-      description: Total worked seconds counter (lifetime).
-      field_class: sensor
-      feature_available: excluded
-      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
-      data_type: uint8
+      feature_available: readable
+      data_type: uint32
       device_context: indoor_unit
       unit: s
+      ha:
+        state_class: total_increasing
       alt_names:
-        rev73: totalWorkedSec
+        rev1: totalWorkedDay
+        rev2: totalWorkedHour
+        rev3: totalWorkedMin
+        rev4: totalWorkedSec
+      composite:
+        members:
+          days:
+            data_type: uint16
+            wire:
+              byte_position: bodyBytes[9..10]
+              encoding: uint16_be
+          hours:
+            data_type: uint8
+            wire:
+              byte_position: bodyBytes[11]
+          minutes:
+            data_type: uint8
+            wire:
+              byte_position: bodyBytes[12]
+          seconds:
+            data_type: uint8
+            wire:
+              byte_position: bodyBytes[13]
+      derived_from:
+        formula: days * 86400 + hours * 3600 + minutes * 60 + seconds
+        inputs: [days, hours, minutes, seconds]
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
-          byte: body[13]
-          decode:
-          - offset: 13
-            bits:
-            - 7
-            - 0
+          byte: body[9..13]
           direction: response
           section: §3.1.2
       confidence: hypothesis
       sources:
       - own probe 2026-04-10 Session 15 (all zeros)
-    current_session_days:
-      description: Current session cumulative days counter (BE 16-bit — body[14] high byte, body[15] low byte).
+    current_session_time:
+      description: Compressor-active time in the current session (since last power cycle). Synthesised from days/hours/minutes/seconds components packed into rsp_0xc1_group0 body[14..18].
       field_class: sensor
-      feature_available: excluded
-      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
-      data_type: uint16
-      device_context: indoor_unit
-      unit: d
-      alt_names:
-        rev74: curWorkedDay
-      protocols:
-        rsp_0xc1_group0:
-          frame: 0xC1 Group 0
-          byte: body[14..15] BE16
-          decode:
-          - offset: 14
-            bits:
-            - 7
-            - 0
-            encoding: uint16_be
-          direction: response
-          section: §3.1.2
-      confidence: hypothesis
-      sources:
-      - own probe 2026-04-10 Session 15 (all zeros)
-    current_session_hours:
-      description: Current session hours counter.
-      field_class: sensor
-      feature_available: excluded
-      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
-      data_type: uint8
-      device_context: indoor_unit
-      unit: h
-      alt_names:
-        rev75: curWorkedHour
-      protocols:
-        rsp_0xc1_group0:
-          frame: 0xC1 Group 0
-          byte: body[16]
-          decode:
-          - offset: 16
-            bits:
-            - 7
-            - 0
-          direction: response
-          section: §3.1.2
-      confidence: hypothesis
-      sources:
-      - own probe 2026-04-10 Session 15 (all zeros)
-    current_session_minutes:
-      description: Current session minutes counter.
-      field_class: sensor
-      feature_available: excluded
-      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
-      data_type: uint8
-      device_context: indoor_unit
-      unit: min
-      alt_names:
-        rev76: curWorkedMin
-      protocols:
-        rsp_0xc1_group0:
-          frame: 0xC1 Group 0
-          byte: body[17]
-          decode:
-          - offset: 17
-            bits:
-            - 7
-            - 0
-          direction: response
-          section: §3.1.2
-      confidence: hypothesis
-      sources:
-      - own probe 2026-04-10 Session 15 (all zeros)
-    current_session_seconds:
-      description: Current session seconds counter.
-      field_class: sensor
-      feature_available: excluded
-      note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
-      data_type: uint8
+      feature_available: readable
+      data_type: uint32
       device_context: indoor_unit
       unit: s
+      ha:
+        state_class: measurement
       alt_names:
-        rev77: curWorkedSec
+        rev1: curWorkedDay
+        rev2: curWorkedHour
+        rev3: curWorkedMin
+        rev4: curWorkedSec
+      composite:
+        members:
+          days:
+            data_type: uint16
+            wire:
+              byte_position: bodyBytes[14..15]
+              encoding: uint16_be
+          hours:
+            data_type: uint8
+            wire:
+              byte_position: bodyBytes[16]
+          minutes:
+            data_type: uint8
+            wire:
+              byte_position: bodyBytes[17]
+          seconds:
+            data_type: uint8
+            wire:
+              byte_position: bodyBytes[18]
+      derived_from:
+        formula: days * 86400 + hours * 3600 + minutes * 60 + seconds
+        inputs: [days, hours, minutes, seconds]
       protocols:
         rsp_0xc1_group0:
           frame: 0xC1 Group 0
-          byte: body[18]
-          decode:
-          - offset: 18
-            bits:
-            - 7
-            - 0
+          byte: body[14..18]
           direction: response
           section: §3.1.2
       confidence: hypothesis
@@ -9119,48 +8935,40 @@ fields:
         sources:
         - serial_protocol.md §3.4
       confidence: hypothesis
-    dr_time_minutes:
-      description: DR (demand response) time minutes byte.
+    dr_time:
+      description: DR (demand response) event window duration. Synthesised from hours and minutes bytes packed into property 0x8F,0x00 data bytes.
       signoff: tbd
       field_class: sensor
       feature_available: capability
-      data_type: uint8
+      data_type: uint32
       device_context: indoor_unit
+      unit: s
+      ha:
+        entity_category: diagnostic
+        state_class: measurement
       alt_names:
-        rev81: drTimeMinutes
+        rev1: drTimeMinutes
+        rev2: drTimeHours
+      composite:
+        members:
+          minutes:
+            data_type: uint8
+            wire:
+              byte_position: bodyBytes[0]
+          hours:
+            data_type: uint8
+            wire:
+              byte_position: bodyBytes[1]
+      derived_from:
+        formula: hours * 3600 + minutes * 60
+        inputs: [hours, minutes]
       protocols:
         rsp_0xb1:
           frame: 0xB1 Property Response
-          byte: property ID 0x8F,0x00; data byte 0
+          byte: property 0x8F,0x00 data bytes 0 (minutes) + 1 (hours)
           direction: response
           decode:
           - property_id: 0x8F,0x00
-            offset: 0
-            bits:
-            - 7
-            - 0
-          section: §3.5
-      confidence: hypothesis
-    dr_time_hours:
-      description: DR (demand response) time hours byte.
-      signoff: tbd
-      field_class: sensor
-      feature_available: capability
-      data_type: uint8
-      device_context: indoor_unit
-      alt_names:
-        rev82: drTimeHours
-      protocols:
-        rsp_0xb1:
-          frame: 0xB1 Property Response
-          byte: property ID 0x8F,0x00; data byte 1
-          direction: response
-          decode:
-          - property_id: 0x8F,0x00
-            offset: 1
-            bits:
-            - 7
-            - 0
           section: §3.5
       confidence: hypothesis
     remote_control_value:

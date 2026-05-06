@@ -192,7 +192,9 @@ def test_tier2_temperature():
 TIER3_CASES = [
     (0x4C, 0x00, [0x05, 0x02], {"extreme_wind_value": 5, "extreme_wind_level": 2}),
     (0x59, 0x00, [0x07, 0x03], {"wind_around_value": 7, "wind_around_ud_mode": 3}),
-    (0x8F, 0x00, [0x1E, 0x02], {"dr_time_minutes": 30, "dr_time_hours": 2}),
+    # dr_time is a synthesised aggregate (composite/derived_from): hours*3600 + minutes*60 seconds.
+    # data byte 0 = minutes (0x1E = 30), data byte 1 = hours (0x02 = 2) → 2*3600 + 30*60 = 9000s.
+    (0x8F, 0x00, [0x1E, 0x02], {"dr_time": 9000}),
     (0xE3, 0x00, [0x05, 0x01], {"ieco_number": 5, "ieco_switch": True}),
     (0x27, 0x02, [0x01, 0x42], {"remote_control_lock": True, "remote_control_value": 0x42}),
 ]
@@ -364,8 +366,7 @@ def test_field_invariants():
             "extreme_wind_level",
             "wind_around_value",
             "wind_around_ud_mode",
-            "dr_time_minutes",
-            "dr_time_hours",
+            "dr_time",
             "ieco_number",
             "ieco_switch",
             "remote_control_lock",
@@ -375,7 +376,7 @@ def test_field_invariants():
     )
 
     check(
-        f"all 36 bulk-added fields exist in glossary (got {sum(1 for n in new_fields if n in cat_index)}/36)",
+        f"all {len(new_fields)} bulk-added fields exist in glossary (got {sum(1 for n in new_fields if n in cat_index)}/{len(new_fields)})",
         all(n in cat_index for n in new_fields),
         f"missing: {[n for n in new_fields if n not in cat_index]}",
     )
@@ -470,7 +471,7 @@ def test_no_collisions():
     composite_owners = {
         "0x4C,0x00": {"extreme_wind_value", "extreme_wind_level"},
         "0x59,0x00": {"wind_around_value", "wind_around_ud_mode"},
-        "0x8F,0x00": {"dr_time_minutes", "dr_time_hours"},
+        "0x8F,0x00": {"dr_time"},
         "0xE3,0x00": {"ieco_number", "ieco_switch"},
         "0x27,0x02": {"remote_control_lock", "remote_control_value"},
     }

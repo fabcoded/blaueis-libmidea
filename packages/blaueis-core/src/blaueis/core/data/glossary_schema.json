@@ -624,7 +624,7 @@
       "properties": {
         "byte_position": {
           "type": "string",
-          "description": "Wire byte position string, e.g. 'bodyBytes[5]' or 'messageBytes[cursor + 3]'."
+          "description": "Wire byte position string. Single byte: 'bodyBytes[5]'. Multi-byte: 'bodyBytes[4..5]' (use with encoding key)."
         },
         "bit_range": {
           "type": "array",
@@ -636,6 +636,10 @@
         "bit_range_TODO": {
           "type": "boolean",
           "description": "True when the bit_range was inferred to exist but not yet hand-annotated. Skeleton marker; resolved during follow-up review."
+        },
+        "encoding": {
+          "type": "string",
+          "description": "Multi-byte encoding name (e.g. 'uint16_be', 'uint24_le') from the glossary's `encodings` table. Required when byte_position spans a range; ignored otherwise."
         }
       }
     },

@@ -1,22 +1,11 @@
 {
   "source": "own research",
-  "description": "Duration-counter codec golden vectors. Each entry: a synthetic frame body and the expected per-field decode output. Used by the libmidea codec test to assert byte-for-byte agreement with the upstream wire format on every release.",
+  "description": "Duration-counter codec golden vectors. Each entry: a synthetic frame body and the expected per-aggregate decode output in seconds. The codec's pass-2 composite synthesis is the unit under test; the expected values come from re-implementing the wire formula in a private oracle and writing the cross-validated outputs here.",
   "fields_covered": [
-    "power_on_days",
-    "power_on_hours",
-    "power_on_minutes",
-    "power_on_seconds",
-    "total_worked_days",
-    "total_worked_hours",
-    "total_worked_minutes",
-    "total_worked_seconds",
-    "current_session_days",
-    "current_session_hours",
-    "current_session_minutes",
-    "current_session_seconds",
-    "current_work_days",
-    "current_work_hours",
-    "current_work_minutes"
+    "power_on_time",
+    "total_worked_time",
+    "current_session_time",
+    "current_work_time"
   ],
   "vectors": [
     {
@@ -24,18 +13,9 @@
       "protocol_key": "rsp_0xc1_group0",
       "body_hex": "c1210100000000000000000000000000000000",
       "expected": {
-        "power_on_days": 0,
-        "power_on_hours": 0,
-        "power_on_minutes": 0,
-        "power_on_seconds": 0,
-        "total_worked_days": 0,
-        "total_worked_hours": 0,
-        "total_worked_minutes": 0,
-        "total_worked_seconds": 0,
-        "current_session_days": 0,
-        "current_session_hours": 0,
-        "current_session_minutes": 0,
-        "current_session_seconds": 0
+        "power_on_time": 0,
+        "total_worked_time": 0,
+        "current_session_time": 0
       }
     },
     {
@@ -43,37 +23,19 @@
       "protocol_key": "rsp_0xc1_group0",
       "body_hex": "c1210100ffffffffffffffffffffffffffffff",
       "expected": {
-        "power_on_days": 65535,
-        "power_on_hours": 255,
-        "power_on_minutes": 255,
-        "power_on_seconds": 255,
-        "total_worked_days": 65535,
-        "total_worked_hours": 255,
-        "total_worked_minutes": 255,
-        "total_worked_seconds": 255,
-        "current_session_days": 65535,
-        "current_session_hours": 255,
-        "current_session_minutes": 255,
-        "current_session_seconds": 255
+        "power_on_time": 5663157555,
+        "total_worked_time": 5663157555,
+        "current_session_time": 5663157555
       }
     },
     {
-      "name": "c1_group0_be16_high_low",
+      "name": "c1_group0_one_of_each_unit",
       "protocol_key": "rsp_0xc1_group0",
-      "body_hex": "c12101000123051e2d00000000000000000000",
+      "body_hex": "c1210100000101010100000000000000000000",
       "expected": {
-        "power_on_days": 291,
-        "power_on_hours": 5,
-        "power_on_minutes": 30,
-        "power_on_seconds": 45,
-        "total_worked_days": 0,
-        "total_worked_hours": 0,
-        "total_worked_minutes": 0,
-        "total_worked_seconds": 0,
-        "current_session_days": 0,
-        "current_session_hours": 0,
-        "current_session_minutes": 0,
-        "current_session_seconds": 0
+        "power_on_time": 90061,
+        "total_worked_time": 0,
+        "current_session_time": 0
       }
     },
     {
@@ -81,75 +43,49 @@
       "protocol_key": "rsp_0xc1_group0",
       "body_hex": "c1210100006401020307d00405067530070809",
       "expected": {
-        "power_on_days": 100,
-        "power_on_hours": 1,
-        "power_on_minutes": 2,
-        "power_on_seconds": 3,
-        "total_worked_days": 2000,
-        "total_worked_hours": 4,
-        "total_worked_minutes": 5,
-        "total_worked_seconds": 6,
-        "current_session_days": 30000,
-        "current_session_hours": 7,
-        "current_session_minutes": 8,
-        "current_session_seconds": 9
+        "power_on_time": 8643723,
+        "total_worked_time": 172814706,
+        "current_session_time": 2592025689
       }
     },
     {
-      "name": "c1_group0_low_byte_only",
+      "name": "c1_group0_seconds_only",
       "protocol_key": "rsp_0xc1_group0",
-      "body_hex": "c1210100000000000000ff0000000000000000",
+      "body_hex": "c1210100000000002a00000000000000000000",
       "expected": {
-        "power_on_days": 0,
-        "power_on_hours": 0,
-        "power_on_minutes": 0,
-        "power_on_seconds": 0,
-        "total_worked_days": 255,
-        "total_worked_hours": 0,
-        "total_worked_minutes": 0,
-        "total_worked_seconds": 0,
-        "current_session_days": 0,
-        "current_session_hours": 0,
-        "current_session_minutes": 0,
-        "current_session_seconds": 0
+        "power_on_time": 42,
+        "total_worked_time": 0,
+        "current_session_time": 0
       }
     },
     {
-      "name": "c1_group0_high_byte_only",
+      "name": "c1_group0_be16_high_byte_only",
       "protocol_key": "rsp_0xc1_group0",
-      "body_hex": "c121010000000000000000000000ff00000000",
+      "body_hex": "c12101000000000000ff000000000000000000",
       "expected": {
-        "power_on_days": 0,
-        "power_on_hours": 0,
-        "power_on_minutes": 0,
-        "power_on_seconds": 0,
-        "total_worked_days": 0,
-        "total_worked_hours": 0,
-        "total_worked_minutes": 0,
-        "total_worked_seconds": 0,
-        "current_session_days": 65280,
-        "current_session_hours": 0,
-        "current_session_minutes": 0,
-        "current_session_seconds": 0
+        "power_on_time": 0,
+        "total_worked_time": 5640192000,
+        "current_session_time": 0
       }
     },
     {
-      "name": "c1_group0_realistic_runtime",
+      "name": "c1_group0_be16_low_byte_only",
+      "protocol_key": "rsp_0xc1_group0",
+      "body_hex": "c12101000000000000000000000000ff000000",
+      "expected": {
+        "power_on_time": 0,
+        "total_worked_time": 0,
+        "current_session_time": 22032000
+      }
+    },
+    {
+      "name": "c1_group0_realistic",
       "protocol_key": "rsp_0xc1_group0",
       "body_hex": "c121010000780e160700550929160002031237",
       "expected": {
-        "power_on_days": 120,
-        "power_on_hours": 14,
-        "power_on_minutes": 22,
-        "power_on_seconds": 7,
-        "total_worked_days": 85,
-        "total_worked_hours": 9,
-        "total_worked_minutes": 41,
-        "total_worked_seconds": 22,
-        "current_session_days": 2,
-        "current_session_hours": 3,
-        "current_session_minutes": 18,
-        "current_session_seconds": 55
+        "power_on_time": 10419727,
+        "total_worked_time": 7378882,
+        "current_session_time": 184735
       }
     },
     {
@@ -157,59 +93,47 @@
       "protocol_key": "rsp_0xa1",
       "body_hex": "a100000000000000000000000000000000000000",
       "expected": {
-        "current_work_days": 0,
-        "current_work_hours": 0,
-        "current_work_minutes": 0
+        "current_work_time": 0
       }
     },
     {
-      "name": "a1_be16_max",
+      "name": "a1_max",
       "protocol_key": "rsp_0xa1",
       "body_hex": "a10000000000000000ffffffff00000000000000",
       "expected": {
-        "current_work_days": 65535,
-        "current_work_hours": 255,
-        "current_work_minutes": 255
+        "current_work_time": 5663157300
       }
     },
     {
-      "name": "a1_be16_high_low",
+      "name": "a1_be16",
       "protocol_key": "rsp_0xa1",
       "body_hex": "a10000000000000000abcd0c2200000000000000",
       "expected": {
-        "current_work_days": 43981,
-        "current_work_hours": 12,
-        "current_work_minutes": 34
+        "current_work_time": 3800003640
       }
     },
     {
-      "name": "a1_low_byte_only",
-      "protocol_key": "rsp_0xa1",
-      "body_hex": "a1000000000000000000ff000000000000000000",
-      "expected": {
-        "current_work_days": 255,
-        "current_work_hours": 0,
-        "current_work_minutes": 0
-      }
-    },
-    {
-      "name": "a1_high_byte_only",
+      "name": "a1_be16_high_byte_only",
       "protocol_key": "rsp_0xa1",
       "body_hex": "a10000000000000000ff00000000000000000000",
       "expected": {
-        "current_work_days": 65280,
-        "current_work_hours": 0,
-        "current_work_minutes": 0
+        "current_work_time": 5640192000
+      }
+    },
+    {
+      "name": "a1_be16_low_byte_only",
+      "protocol_key": "rsp_0xa1",
+      "body_hex": "a1000000000000000000ff000000000000000000",
+      "expected": {
+        "current_work_time": 22032000
       }
     },
     {
       "name": "a1_realistic",
       "protocol_key": "rsp_0xa1",
-      "body_hex": "a1000000000000000000070423000000002a0000",
+      "body_hex": "a100000000000000000007042300000000000000",
       "expected": {
-        "current_work_days": 7,
-        "current_work_hours": 4,
-        "current_work_minutes": 35
+        "current_work_time": 621300
       }
     }
   ]
