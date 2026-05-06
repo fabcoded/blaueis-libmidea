@@ -6176,9 +6176,10 @@ fields:
             bits:
             - 7
             - 0
+            encoding: uint16_be
           direction: response
           section: §5.2
-      note: 'Disabled — multi-byte combination formula unverified. probe captures showed always 0 (55 frames); single-byte decode reads body[9] only. See docs/disabled_fields.md §2.1.'
+      note: 'Disabled — multi-byte combination formula unverified. probe captures showed always 0 (55 frames). See docs/disabled_fields.md §2.1.'
       confidence: consistent
     current_work_hours:
       description: Current work time — hours component.
