@@ -388,8 +388,8 @@ class Device:
         result = {}
         all_fields = self._db.field_flat
         for name, fdata in self._status["fields"].items():
-            fa = fdata.get("feature_available", "never")
-            if fa in ("never", "capability", "capability-opt"):
+            fa = fdata.get("feature_available", "excluded")
+            if fa in ("excluded", "capability", "capability-opt"):
                 continue
             gdef = all_fields.get(name, {})
             result[name] = {
@@ -450,8 +450,8 @@ class Device:
         b1_seen: set[tuple[int, int]] = set()
 
         for fname, fdata in self._status["fields"].items():
-            fa = fdata.get("feature_available", "never")
-            if fa in ("never", "capability", "capability-opt"):
+            fa = fdata.get("feature_available", "excluded")
+            if fa in ("excluded", "capability", "capability-opt"):
                 continue  # not confirmed available
             gdef = all_fields.get(fname, {})
             protocols = gdef.get("protocols", {})

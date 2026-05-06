@@ -221,7 +221,7 @@ def main():
     targets = target_field_names(status)
     check(
         f"target_field_names returns non-never fields ({len(targets)} fields)",
-        len(targets) > 0 and all(status["fields"][n]["feature_available"] != "never" for n in targets),
+        len(targets) > 0 and all(status["fields"][n]["feature_available"] != "excluded" for n in targets),
         detail=f"got {len(targets)} targets",
     )
     # Simulate a never field: mutate a copy
@@ -229,7 +229,7 @@ def main():
 
     status2 = copy.deepcopy(status)
     first_field = next(iter(status2["fields"]))
-    status2["fields"][first_field]["feature_available"] = "never"
+    status2["fields"][first_field]["feature_available"] = "excluded"
     targets2 = target_field_names(status2)
     check(
         "target_field_names excludes feature_available=never fields",

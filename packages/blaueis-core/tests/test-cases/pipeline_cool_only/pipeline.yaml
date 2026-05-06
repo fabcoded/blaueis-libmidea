@@ -18,6 +18,6 @@ steps:
       # Fan speed: discrete levels
       fields.fan_speed.feature_available: "always"
       # Eco mode disabled (cap 0x12=0 → none)
-      fields.eco_mode.feature_available: "never"
+      fields.eco_mode.feature_available: "excluded"
       # No values populated yet
       fields.power.value: null

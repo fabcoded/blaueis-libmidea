@@ -20,7 +20,7 @@
       "description": "Direct overrides for status['fields'][name]['feature_available']. Applied after finalize_capabilities so they override cap-derived decisions.",
       "additionalProperties": {
         "type": "string",
-        "enum": ["always", "readable", "readable-opt", "capability", "capability-opt", "never"]
+        "enum": ["always", "readable", "readable-opt", "capability", "capability-opt", "excluded"]
       }
     },
     "synthesize_capabilities": {

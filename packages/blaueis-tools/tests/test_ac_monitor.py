@@ -89,7 +89,7 @@ def test_build_query_table_filters_never():
     status = build_status(glossary)
     # Mark a field as never-available
     for name in list(status["fields"].keys())[:3]:
-        status["fields"][name]["feature_available"] = "never"
+        status["fields"][name]["feature_available"] = "excluded"
     table = build_query_table(status, glossary)
     # Those fields should not appear in any table values
     never_fields = [n for n in list(status["fields"].keys())[:3]]

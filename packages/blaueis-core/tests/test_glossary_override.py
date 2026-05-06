@@ -29,7 +29,7 @@ def test_empty_override_returns_base_copy():
     assert merged == base
     assert affected == []
     # Must be a copy, not the same object.
-    merged["fields"]["screen_display"]["feature_available"] = "never"
+    merged["fields"]["screen_display"]["feature_available"] = "excluded"
     assert base["fields"]["screen_display"]["feature_available"] == "always"
 
 
@@ -42,9 +42,9 @@ def test_empty_dict_override_is_noop():
 
 def test_scalar_leaf_replacement():
     base = {"fields": {"screen_display": {"feature_available": "always"}}}
-    override = {"fields": {"screen_display": {"feature_available": "never"}}}
+    override = {"fields": {"screen_display": {"feature_available": "excluded"}}}
     merged, affected = deep_merge(base, override)
-    assert merged["fields"]["screen_display"]["feature_available"] == "never"
+    assert merged["fields"]["screen_display"]["feature_available"] == "excluded"
     assert affected == ["fields.screen_display.feature_available"]
 
 
@@ -60,12 +60,12 @@ def test_nested_merge_preserves_sibling_keys():
         },
     }
     override = {
-        "fields": {"screen_display": {"feature_available": "never"}},
+        "fields": {"screen_display": {"feature_available": "excluded"}},
     }
     merged, _ = deep_merge(base, override)
     assert merged["fields"]["screen_display"]["description"] == "Display LED"
     assert merged["fields"]["screen_display"]["data_type"] == "bool"
-    assert merged["fields"]["screen_display"]["feature_available"] == "never"
+    assert merged["fields"]["screen_display"]["feature_available"] == "excluded"
 
 
 def test_adding_new_field():
@@ -164,7 +164,7 @@ def test_remove_false_is_not_a_sentinel():
 def test_meta_stripped_with_warning():
     override = {
         "meta": {"version": "99.0.0"},
-        "fields": {"x": {"feature_available": "never"}},
+        "fields": {"x": {"feature_available": "excluded"}},
     }
     clean, warnings = sanitize_override(override)
     assert "meta" not in clean
@@ -206,14 +206,14 @@ def test_apply_override_end_to_end():
     }
     override = {
         "meta": {"version": "99.0.0"},           # stripped
-        "fields": {"screen_display": {"feature_available": "never"}},
+        "fields": {"screen_display": {"feature_available": "excluded"}},
     }
     merged, affected, warnings = apply_override(base, override)
 
     # Meta stripped → base meta preserved.
     assert merged["meta"]["version"] == "1.0.0"
     # Field leaf patched.
-    assert merged["fields"]["screen_display"]["feature_available"] == "never"
+    assert merged["fields"]["screen_display"]["feature_available"] == "excluded"
     # Affected path reported for the changed leaf only.
     assert affected == ["fields.screen_display.feature_available"]
     # Warning surfaced for meta.

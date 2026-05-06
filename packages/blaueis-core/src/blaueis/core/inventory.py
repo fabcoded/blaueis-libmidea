@@ -219,7 +219,7 @@ def pick_variant(variants: list[Variant], field_def: dict) -> tuple[Variant | No
 
     1. If only one variant produces a non-None, non-zero value → pick it, not guessed.
     2. Otherwise, filter to variants whose ``feature_available`` is not
-       ``never``, that have an ``encoding`` set, and whose decoded value
+       ``excluded``, that have an ``encoding`` set, and whose decoded value
        falls within the field's glossary ``range: [min, max]`` bounds
        when present.
     3. If that leaves exactly one candidate → pick it, not guessed.
@@ -238,8 +238,8 @@ def pick_variant(variants: list[Variant], field_def: dict) -> tuple[Variant | No
     if len(meaningful) == 1:
         return meaningful[0], False
 
-    # Constrain to "real" variants: has encoding, not marked never.
-    candidates = [v for v in meaningful if v.encoding and v.feature_available != "never"]
+    # Constrain to "real" variants: has encoding, not marked excluded.
+    candidates = [v for v in meaningful if v.encoding and v.feature_available != "excluded"]
 
     # Range-based filter if the glossary declares bounds.
     rng = field_def.get("range")
@@ -252,7 +252,7 @@ def pick_variant(variants: list[Variant], field_def: dict) -> tuple[Variant | No
     if candidates:
         # Multiple plausible variants and no hard discriminator. First wins, flagged.
         return candidates[0], True
-    # No "clean" candidate (no encoding / never-flagged / out of range) —
+    # No "clean" candidate (no encoding / excluded-flagged / out of range) —
     # fall back to the first meaningful variant, flagged as guessed.
     return meaningful[0], True
 
@@ -536,7 +536,7 @@ def synthesize_override_snippet(
         }
         reason = (
             f"populated; cap {cap_def.get('cap_id', '?')}={_raw_hex(cap_records, cap_def)} "
-            f"currently gates the field to {_matched_cap_fa(cap_def, matched_name) or 'never'}"
+            f"currently gates the field to {_matched_cap_fa(cap_def, matched_name) or 'excluded'}"
         )
     else:
         # Cap absent from B5 (or field isn't cap-dependent but still hidden).
@@ -1079,7 +1079,7 @@ def generate_compare_report(prev: dict, curr: dict) -> str:
 def _describe_cap_state(field_def: dict, cap_records: list[dict]) -> str:
     """Human-readable description of how the cap resolves for this field."""
     fa = field_def.get("feature_available")
-    if fa in ("always", "readable", "never"):
+    if fa in ("always", "readable", "excluded"):
         return fa
     cap_def = field_def.get("capability") or {}
     cap_id = cap_def.get("cap_id")
@@ -1090,7 +1090,7 @@ def _describe_cap_state(field_def: dict, cap_records: list[dict]) -> str:
     if matched:
         values = cap_def.get("values") or {}
         cap_fa = (values.get(matched) or {}).get("feature_available")
-        return f"cap {cap_id}={raw_hex} → {cap_fa or 'never'}"
+        return f"cap {cap_id}={raw_hex} → {cap_fa or 'excluded'}"
     return f"cap {cap_id}={raw_hex} (unmatched)"
 
 

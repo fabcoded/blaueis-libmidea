@@ -7,7 +7,7 @@ Two concurrent async tasks:
     - B5 capability responses -> process_b5 (appends caps to database)
     - C0/C1/A1 data frames -> process_data_frame (decodes available fields)
     - Fields with feature_available='always' decode before B5 is known
-    - Fields with 'capability'/'never' are skipped
+    - Fields with 'capability'/'excluded' are skipped
 
   SENDER: manages a scan queue that evolves through phases:
     1. BOOT: send C0 status query (power, mode, temps -- always-available)
@@ -74,7 +74,7 @@ def build_query_table(status: dict, glossary: dict) -> dict[str, list[str]]:
     table = {}
     for name, fdef in fields_def.items():
         fa = status["fields"].get(name, {}).get("feature_available", "always")
-        if fa == "never":
+        if fa == "excluded":
             continue
         for pkey, ploc in fdef.get("protocols", {}).items():
             if pkey.startswith("rsp_") and ploc.get("decode"):
@@ -235,7 +235,7 @@ async def sender_task(ws, session, status, glossary, db_path, interval, no_encry
                 caps_total = len(status.get("capabilities_raw", []))
                 print(
                     f"  Capabilities resolved ({caps_total} caps): "
-                    f"always={fa.get('always', 0)}, never={fa.get('never', 0)}"
+                    f"always={fa.get('always', 0)}, excluded={fa.get('excluded', 0)}"
                 )
 
                 # Rebuild and show query table for the operator summary.

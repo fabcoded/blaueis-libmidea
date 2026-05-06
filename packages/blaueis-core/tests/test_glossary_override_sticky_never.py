@@ -40,7 +40,7 @@ def _minimal_glossary_with_screen_display(field_fa: str) -> dict:
                             },
                             "not_supported": {
                                 "raw": 0,
-                                "feature_available": "never",
+                                "feature_available": "excluded",
                                 "description": "not supported",
                             },
                         },
@@ -82,7 +82,7 @@ def test_b5_cap_supported_promotes_unpinned_field_to_always():
     assert status["fields"]["screen_display"]["feature_available"] == "always"
 
 
-# ── The invariant: pinned 'never' survives promotion ──────────────────
+# ── The invariant: pinned 'excluded' survives promotion ──────────────────
 
 
 def test_b5_cap_supported_does_not_escalate_pinned_never():
@@ -90,26 +90,26 @@ def test_b5_cap_supported_does_not_escalate_pinned_never():
     `never` (via an override or direct edit), a B5 record advertising
     the cap as supported MUST NOT escalate the field back to `always`.
     The override is sticky."""
-    glossary = _minimal_glossary_with_screen_display(field_fa="never")
-    status = _minimal_status(field_fa="never")
+    glossary = _minimal_glossary_with_screen_display(field_fa="excluded")
+    status = _minimal_status(field_fa="excluded")
     records = [{
         "cap_id": "0x24",
         "cap_type": 1,
         "data": [0x01],      # cap value says "supported" (never→always)
     }]
     _apply_caps_to_fields(status, records, glossary)
-    assert status["fields"]["screen_display"]["feature_available"] == "never"
+    assert status["fields"]["screen_display"]["feature_available"] == "excluded"
 
 
 def test_b5_cap_not_supported_keeps_pinned_never():
     """Cap value saying "not_supported" already maps to never — pinned
     state unchanged, trivially consistent."""
-    glossary = _minimal_glossary_with_screen_display(field_fa="never")
-    status = _minimal_status(field_fa="never")
+    glossary = _minimal_glossary_with_screen_display(field_fa="excluded")
+    status = _minimal_status(field_fa="excluded")
     records = [{
         "cap_id": "0x24",
         "cap_type": 1,
         "data": [0x00],      # cap value says "not_supported"
     }]
     _apply_caps_to_fields(status, records, glossary)
-    assert status["fields"]["screen_display"]["feature_available"] == "never"
+    assert status["fields"]["screen_display"]["feature_available"] == "excluded"

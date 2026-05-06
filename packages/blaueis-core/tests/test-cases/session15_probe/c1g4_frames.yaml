@@ -14,7 +14,7 @@ frames:
   - name: "run4 — compressor low load (~14 Hz)"
     timestamp: "2026-04-10T19:07:51Z"
     body_hex: "c1 21 01 44 00 01 19 dd 00 00 00 00 00 00 00 00 00 07 76 00 00"
-    # No ground_truth — these fields are capability-gated to 'never' on this
+    # No ground_truth — these fields are capability-gated to 'excluded' on this
     # unit (cap 0x16=0). The killer integration test in
     # test_apply_device_quirks.py loads the bundled power quirks file and
     # asserts the expected values:

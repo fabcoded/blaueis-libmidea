@@ -1,4 +1,4 @@
-"""Tests for StatusDB._apply_feature_gate — feature_available='never' rejection.
+"""Tests for StatusDB._apply_feature_gate — feature_available='excluded' rejection.
 
 Policy: if B5 capability processing marked a field as feature_available=never,
 the device does not support the feature. Reject the write with a stable reason
@@ -16,7 +16,7 @@ from blaueis.core.query import write_field
 class TestFeatureGate:
     def test_never_rejects(self, caplog):
         db = StatusDB()
-        db._status["fields"].setdefault("breezeless", {})["feature_available"] = "never"
+        db._status["fields"].setdefault("breezeless", {})["feature_available"] = "excluded"
         with caplog.at_level(logging.WARNING, logger="blaueis.device"):
             accepted, rejected = db._apply_feature_gate({"breezeless": True})
         assert "breezeless" in rejected
@@ -58,7 +58,7 @@ class TestCommandIntegration:
         db = StatusDB()
         write_field(db._status, "operating_mode", 2, ts=1.0)
         write_field(db._status, "power", True, ts=1.0)
-        db._status["fields"].setdefault("breezeless", {})["feature_available"] = "never"
+        db._status["fields"].setdefault("breezeless", {})["feature_available"] = "excluded"
 
         sent = []
         async def fake_send(frame_hex: str) -> None:
@@ -76,7 +76,7 @@ class TestCommandIntegration:
         db = StatusDB()
         write_field(db._status, "operating_mode", 2, ts=1.0)
         write_field(db._status, "power", True, ts=1.0)
-        db._status["fields"].setdefault("breezeless", {})["feature_available"] = "never"
+        db._status["fields"].setdefault("breezeless", {})["feature_available"] = "excluded"
 
         sent = []
         async def fake_send(frame_hex: str) -> None:

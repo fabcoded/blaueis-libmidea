@@ -37,7 +37,7 @@ tests:
     source: "../xtremesaveblue_s1/b5_frames.yaml"
     check_field: buzzer
     assert:
-      feature_available: "never"
+      feature_available: "excluded"
       active_constraints: null
 
   - name: "power_total_kwh becomes never (cap 0x16=0 -> none)"
@@ -45,7 +45,7 @@ tests:
     source: "../xtremesaveblue_s1/b5_frames.yaml"
     check_field: power_total_kwh
     assert:
-      feature_available: "never"
+      feature_available: "excluded"
 
   # ── Phase transitions ──────────────────────────────────────────
   - name: "B5 sets phase to post_b5"
@@ -530,7 +530,7 @@ tests:
   # ── Session 15 probe: B1 property responses ────────────────────
   # All B1 property fields are capability-gated → need B5 caps first.
   # Using xtremesaveblue_s1 B5 which has caps 0x42, 0x09, 0x0A, 0x48.
-  # buzzer cap 0x2C is NOT in S1 B5 → stays 'never', tested separately.
+  # buzzer cap 0x2C is NOT in S1 B5 → stays 'excluded', tested separately.
 
   - name: "B1 batch1: breezeless=1 (prop 0x42, cap-gated)"
     action: b5_then_frame

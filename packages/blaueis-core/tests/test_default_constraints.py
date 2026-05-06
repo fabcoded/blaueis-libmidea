@@ -20,7 +20,7 @@ Five validation tests (V1-V4 from the plan, plus one regression check):
 
   V4 — capability-only fields finalize to never (gates §2). Confirm
        fields with no rsp_0xc0.decode that did NOT get promoted still
-       finalize to 'never' when their cap is missing from B5, AND that
+       finalize to 'excluded' when their cap is missing from B5, AND that
        promoted readable fields are not regressed by finalize_capabilities.
 
   V0 — Sanity: distribution after the conservative-migration sensor
@@ -95,7 +95,7 @@ def main():
     check("always == 14", fa["always"] == 14, f"got {fa['always']}")
     check("readable == 120", fa["readable"] == 120, f"got {fa['readable']}")
     check("capability == 63", fa["capability"] == 63, f"got {fa['capability']}")
-    check("never == 3", fa["never"] == 3, f"got {fa['never']}")
+    check("never == 3", fa["excluded"] == 3, f"got {fa['excluded']}")
 
     # All 11 promoted fields are now `readable`
     for fname in PROMOTED_FIELDS:
@@ -276,12 +276,12 @@ def main():
     # finalize_capabilities() must mark as never.
     check(
         "breeze_away (no rsp_0xc0, cap 0x33 NOT in S1) → never",
-        status["fields"]["breeze_away"]["feature_available"] == "never",
+        status["fields"]["breeze_away"]["feature_available"] == "excluded",
         f"got {status['fields']['breeze_away']['feature_available']}",
     )
     check(
         "buzzer (no rsp_0xc0, cap 0x2c NOT in S1) → never",
-        status["fields"]["buzzer"]["feature_available"] == "never",
+        status["fields"]["buzzer"]["feature_available"] == "excluded",
         f"got {status['fields']['buzzer']['feature_available']}",
     )
     # And conversely: anion_ionizer cap 0x1E IS in S1 → upgraded to always.
@@ -296,17 +296,17 @@ def main():
     # Cap 0x22 (temperature_unit) is in S1 with value 0 = changeable → upgrades to always.
     check(
         "swing_vertical (readable, cap 0x15 in S1) NOT regressed",
-        status["fields"]["swing_vertical"]["feature_available"] != "never",
+        status["fields"]["swing_vertical"]["feature_available"] != "excluded",
         f"got {status['fields']['swing_vertical']['feature_available']}",
     )
     check(
         "temperature_unit (readable, cap 0x22 in S1) NOT regressed",
-        status["fields"]["temperature_unit"]["feature_available"] != "never",
+        status["fields"]["temperature_unit"]["feature_available"] != "excluded",
         f"got {status['fields']['temperature_unit']['feature_available']}",
     )
     check(
         "fan_speed (readable, cap 0x10 in S1) NOT regressed",
-        status["fields"]["fan_speed"]["feature_available"] != "never",
+        status["fields"]["fan_speed"]["feature_available"] != "excluded",
         f"got {status['fields']['fan_speed']['feature_available']}",
     )
 
@@ -315,12 +315,12 @@ def main():
     # can still decode it from rsp_0xc0. auxiliary_heat_level cap 0x19 = 0
     # in S1 (per Session 1 B5: '0x19=0 → not supported on the probed unit'), so its
     # cap_value 'not_supported' has feature_available: never. After cap
-    # upgrade auxiliary_heat_level becomes 'never' — that's the correct
+    # upgrade auxiliary_heat_level becomes 'excluded' — that's the correct
     # cap-driven state, not a finalize-sweep regression.
     aux_state = status["fields"]["auxiliary_heat_level"]["feature_available"]
     check(
         "auxiliary_heat_level state after S1 (cap=0 → never) is cap-driven, not regression",
-        aux_state == "never",
+        aux_state == "excluded",
         f"got {aux_state}",
     )
 

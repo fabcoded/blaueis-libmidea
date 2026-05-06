@@ -98,7 +98,7 @@ def _field_is_exempt(name: str, field_def: dict, status: dict, glossary: dict | 
     Exempt fields:
       - Have a glossary `default_value` (encoder uses the default, not status).
         These are protocol-reserved bits like protocol_bit1, swing_reserved.
-      - Are capability-gated to `never` (or `capability`) — process_data_frame
+      - Are capability-gated to `excluded` (or `capability`) — process_data_frame
         skips writes for these so last_updated can never become fresh.
       - Have no rsp_* protocol entry at all (pure write-only fields like
         exchange_air and fan_speed_timer_bit). The encoder always emits
@@ -112,11 +112,11 @@ def _field_is_exempt(name: str, field_def: dict, status: dict, glossary: dict | 
     if fdef is None:
         return True
     fa = fdef.get("feature_available")
-    # 'never' = unit doesn't have this capability; 'capability' / 'capability-opt'
+    # 'excluded' = unit doesn't have this capability; 'capability' / 'capability-opt'
     # = pre-B5 state where decoding is suppressed by process_data_frame, so the
     # field will never have a last_updated.  All three are exempt for the same
     # reason: we can't get fresh data for them.
-    if fa in ("never", "capability", "capability-opt"):
+    if fa in ("excluded", "capability", "capability-opt"):
         return True
     # Pure write-only fields: no rsp_* entry → no decode path → no
     # last_updated will ever be populated by process_data_frame.

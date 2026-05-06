@@ -1,6 +1,6 @@
 # Permanently-disabled glossary fields
 
-> Fields with `feature_available: never` in the glossary are observable
+> Fields with `feature_available: excluded` in the glossary are observable
 > on the wire but **deliberately not exposed** because their decoding,
 > calibration, or hardware presence is unverified. This document is the
 > central place to list *why* each one is disabled and *what data the
@@ -215,5 +215,5 @@ behaviour and there's nothing to surface.
    of what hypothesis the data lets us test.
 
 Even a single rollover-spanning capture for a duration field would let
-us promote the related fields out of `feature_available: never`. The
+us promote the related fields out of `feature_available: excluded`. The
 bottleneck is data, not code.

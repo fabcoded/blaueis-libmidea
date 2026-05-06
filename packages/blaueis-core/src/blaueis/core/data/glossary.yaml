@@ -859,7 +859,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Ionizer not available
             correction: ignore
           supported:
@@ -962,7 +962,7 @@ fields:
             raw: 1
             description: 'Not available (inverted: non-zero=no)'
             correction: ignore
-            feature_available: never
+            feature_available: excluded
         alt_names:
           dudanov: CAPABILITY_WIND_OF_ME
         note: 'INVERTED LOGIC per node-mideahvac: val=0 means supported.'
@@ -1053,7 +1053,7 @@ fields:
             raw: 1
             description: 'Not available (inverted: non-zero=no)'
             correction: ignore
-            feature_available: never
+            feature_available: excluded
         alt_names:
           dudanov: CAPABILITY_BREEZE_CONTROL
         note: 'INVERTED LOGIC per node-mideahvac: val=0 means supported. On FA100 units, property 0x43 is a multi-value state
@@ -1145,7 +1145,7 @@ fields:
             raw: 0
             description: Not available
             correction: ignore
-            feature_available: never
+            feature_available: excluded
           supported:
             raw: 1
             description: Breezeless available
@@ -1237,7 +1237,7 @@ fields:
             raw: 0
             description: Buzzer control not available
             correction: ignore
-            feature_available: never
+            feature_available: excluded
           supported:
             raw: 1
             description: Buzzer control available
@@ -1636,7 +1636,7 @@ fields:
         values:
           none:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Eco mode not available
             correction: ignore
           standard:
@@ -1737,7 +1737,7 @@ fields:
         (0x80) here regardless of timer state. Not user-facing — the encoder must write 1 as a fixed constant to match the
         manufacturer's frame format.
       field_class: stateful_bool
-      feature_available: never
+      feature_available: excluded
       data_type: bool
       device_context: indoor_unit
       default_value: true
@@ -1826,7 +1826,7 @@ fields:
         values:
           disabled_0:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Disabled
             valid_set: []
             correction: reject
@@ -1855,7 +1855,7 @@ fields:
               auto:      { raw: 102, description: "synthetic — escapes slider, enum-only", label: "Auto" }
           disabled_2:
             raw: 2
-            feature_available: never
+            feature_available: excluded
             description: Disabled
             valid_set: []
             correction: reject
@@ -2117,7 +2117,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Frost protection not available
             correction: ignore
           supported:
@@ -2291,7 +2291,7 @@ fields:
         values:
           none:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: No humidity control
             correction: ignore
           auto_only:
@@ -2418,7 +2418,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Jet Cool not available
           supported:
             raw: 1
@@ -2708,7 +2708,7 @@ fields:
       description: Reserved protocol bit — must always be set to 1 in 0x40 Set frames. Part of the body[1] byte alongside
         power and resume.
       field_class: stateful_bool
-      feature_available: never
+      feature_available: excluded
       data_type: bool
       default_value: true
       protocols:
@@ -2785,7 +2785,7 @@ fields:
         _inferred_reason: Pure derived field with no wire position of its own — user-visible value is synthesised from close_hour,
           close_step_minutes, and close_min_raw via a multi-input formula. Worked example in serial_glossary_guide.md Part
           3.
-      feature_available: never
+      feature_available: excluded
       data_type: uint16
       device_context: indoor_unit
       unit: minute
@@ -2880,7 +2880,7 @@ fields:
         _inferred_class: stateful_bool
         _inferred_reason: Boolean switch gating the power_off_time_value derived field. Owns bit 7 of body[5]; remaining bits
           belong to the time value's sub-fields.
-      feature_available: never
+      feature_available: excluded
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -2930,7 +2930,7 @@ fields:
         _inferred_class: complex_function
         _inferred_reason: Pure derived field — mirror of power_off_time_value for the power-on timer. Same composite/derived/decompose
           pattern.
-      feature_available: never
+      feature_available: excluded
       data_type: uint16
       device_context: indoor_unit
       unit: minute
@@ -3022,7 +3022,7 @@ fields:
         _inferred_class: stateful_bool
         _inferred_reason: Boolean switch gating the power_on_time_value derived field. Mirror of power_off_timer. Owns bit
           7 of body[4].
-      feature_available: never
+      feature_available: excluded
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -3156,7 +3156,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Aux heating not available
             correction: ignore
           supported:
@@ -3262,7 +3262,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Rate selection not available
             correction: ignore
           gear_2:
@@ -3388,7 +3388,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Display control not available
             correction: ignore
           supported:
@@ -3471,7 +3471,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Self-clean not available
             correction: ignore
           supported:
@@ -3535,7 +3535,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Silky cool not available
             correction: ignore
           supported:
@@ -3602,7 +3602,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Smart eye not available
             correction: ignore
           supported:
@@ -3772,7 +3772,7 @@ fields:
           ud_only:
             raw: 0
             description: Vertical only — horizontal NOT available
-            feature_available: never
+            feature_available: excluded
             correction: ignore
           both:
             raw: 1
@@ -3781,7 +3781,7 @@ fields:
           neither:
             raw: 2
             description: No swing available
-            feature_available: never
+            feature_available: excluded
             correction: ignore
           lr_only:
             raw: 3
@@ -3882,12 +3882,12 @@ fields:
           neither:
             raw: 2
             description: No swing available
-            feature_available: never
+            feature_available: excluded
             correction: ignore
           lr_only:
             raw: 3
             description: Horizontal swing only (no vertical)
-            feature_available: never
+            feature_available: excluded
             correction: ignore
         alt_names:
           dudanov: CAPABILITY_SWING_MODES
@@ -4166,7 +4166,7 @@ fields:
             description: Unit switchable (0=yes, inverted logic)
           not_changeable:
             raw: 1
-            feature_available: never
+            feature_available: excluded
             description: Unit NOT switchable (1=no, inverted logic)
             correction: ignore
         alt_names:
@@ -4337,7 +4337,7 @@ fields:
             note: Valid when operating_mode == cool (2) or heat (4).
           neither:
             raw: 2
-            feature_available: never
+            feature_available: excluded
             description: Turbo not available
             correction: ignore
           heat_only:
@@ -4557,7 +4557,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -4663,7 +4663,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: LR angle control not available
             correction: ignore
           supported:
@@ -4764,7 +4764,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: UD angle control not available
             correction: ignore
           supported:
@@ -5276,7 +5276,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -5336,7 +5336,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -5393,7 +5393,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -5483,7 +5483,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -5777,7 +5777,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported_cool:
@@ -6131,10 +6131,10 @@ fields:
         values:
           none_0:
             raw: 0
-            feature_available: never
+            feature_available: excluded
           none_1:
             raw: 1
-            feature_available: never
+            feature_available: excluded
           power_cal_bcd:
             raw: 2
             feature_available: always
@@ -6161,7 +6161,7 @@ fields:
     current_work_days:
       description: Current work time — days component. 16-bit big-endian.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint16
       device_context: indoor_unit
       unit: days
@@ -6183,7 +6183,7 @@ fields:
     current_work_hours:
       description: Current work time — hours component.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       unit: hours
@@ -6205,7 +6205,7 @@ fields:
     current_work_minutes:
       description: Current work time — minutes component.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       unit: minutes
@@ -6282,7 +6282,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -6503,7 +6503,7 @@ fields:
     humidity_actual:
       description: Current indoor humidity measured by sensor (C1 Group 5 path).
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       unit: '%'
@@ -6541,7 +6541,7 @@ fields:
     humidity_measured:
       description: Current indoor humidity from A1 heartbeat sensor.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       unit: '%'
@@ -6713,7 +6713,7 @@ fields:
     ipm_module_temp:
       description: IPM (Insulated Power Module) temperature. Raw value — encoding disputed.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -6758,7 +6758,7 @@ fields:
     local_body_sense:
       description: Built-in occupancy sensor active. Detects/tracks people in the room.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -6990,7 +6990,7 @@ fields:
         values:
           none:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: No filter check
             correction: ignore
           nest_check_1:
@@ -7149,7 +7149,7 @@ fields:
     outdoor_return_air_temp:
       description: Outdoor return air temperature as raw ADC value. Needs NTC lookup table for conversion to degrees.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -7319,7 +7319,7 @@ fields:
     pm25_concentration:
       description: PM2.5 particulate matter concentration. 16-bit big-endian.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint16
       device_context: indoor_unit
       unit: ug/m3
@@ -7412,10 +7412,10 @@ fields:
         values:
           none_0:
             raw: 0
-            feature_available: never
+            feature_available: excluded
           none_1:
             raw: 1
-            feature_available: never
+            feature_available: excluded
           power_cal_bcd:
             raw: 2
             feature_available: always
@@ -7651,11 +7651,11 @@ fields:
           none_0:
             raw: 0
             description: No power calc
-            feature_available: never
+            feature_available: excluded
           none_1:
             raw: 1
             description: No power calc
-            feature_available: never
+            feature_available: excluded
           power_cal_bcd:
             raw: 2
             description: Power calculation (BCD encoding)
@@ -7735,10 +7735,10 @@ fields:
         values:
           none_0:
             raw: 0
-            feature_available: never
+            feature_available: excluded
           none_1:
             raw: 1
-            feature_available: never
+            feature_available: excluded
           power_cal_bcd:
             raw: 2
             feature_available: always
@@ -7786,7 +7786,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -8184,7 +8184,7 @@ fields:
     vane_ud_status:
       description: Up-down vane strip operating status (2-bit enum).
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8204,7 +8204,7 @@ fields:
     vane_lr_status:
       description: Left-right vane strip operating status (2-bit enum).
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8224,7 +8224,7 @@ fields:
     vane_top_status:
       description: Top vane strip operating status (2-bit enum).
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8244,7 +8244,7 @@ fields:
     vane_ud_cool_upper:
       description: Up-down vane upper limit in cooling mode.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8264,7 +8264,7 @@ fields:
     vane_ud_cool_lower:
       description: Up-down vane lower limit in cooling mode.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8284,7 +8284,7 @@ fields:
     vane_ud_heat_upper:
       description: Up-down vane upper limit in heating mode.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8304,7 +8304,7 @@ fields:
     vane_ud_heat_lower:
       description: Up-down vane lower limit in heating mode.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8324,7 +8324,7 @@ fields:
     vane_ud_angle:
       description: Up-down vane current angle position.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8344,7 +8344,7 @@ fields:
     vane_lr_upper:
       description: Left-right vane upper limit.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8364,7 +8364,7 @@ fields:
     vane_lr_lower:
       description: Left-right vane lower limit.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8384,7 +8384,7 @@ fields:
     vane_lr_angle:
       description: Left-right vane current angle position.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8579,7 +8579,7 @@ fields:
     power_on_days:
       description: Power-on cumulative days counter (BE 16-bit — body[4] high byte, body[5] low byte).
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint16
       device_context: indoor_unit
@@ -8604,7 +8604,7 @@ fields:
     power_on_hours:
       description: Power-on hours counter.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
@@ -8628,7 +8628,7 @@ fields:
     power_on_minutes:
       description: Power-on minutes counter.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
@@ -8652,7 +8652,7 @@ fields:
     power_on_seconds:
       description: Power-on seconds counter.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
@@ -8676,7 +8676,7 @@ fields:
     total_worked_days:
       description: Total worked cumulative days counter (BE 16-bit — body[9] high byte, body[10] low byte).
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint16
       device_context: indoor_unit
@@ -8701,7 +8701,7 @@ fields:
     total_worked_hours:
       description: Total worked hours counter (lifetime).
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
@@ -8725,7 +8725,7 @@ fields:
     total_worked_minutes:
       description: Total worked minutes counter (lifetime).
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
@@ -8749,7 +8749,7 @@ fields:
     total_worked_seconds:
       description: Total worked seconds counter (lifetime).
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
@@ -8773,7 +8773,7 @@ fields:
     current_session_days:
       description: Current session cumulative days counter (BE 16-bit — body[14] high byte, body[15] low byte).
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint16
       device_context: indoor_unit
@@ -8798,7 +8798,7 @@ fields:
     current_session_hours:
       description: Current session hours counter.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
@@ -8822,7 +8822,7 @@ fields:
     current_session_minutes:
       description: Current session minutes counter.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
@@ -8846,7 +8846,7 @@ fields:
     current_session_seconds:
       description: Current session seconds counter.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       note: Disabled — multi-byte combination formula unverified. See docs/disabled_fields.md §2.1.
       data_type: uint8
       device_context: indoor_unit
@@ -8870,7 +8870,7 @@ fields:
     group7_unknown_byte5:
       description: Group 7 body[5] — unknown. Increments across probe runs (FD->FE->FF). Possibly a counter or timer.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -8890,7 +8890,7 @@ fields:
     group7_unknown_byte6:
       description: Group 7 body[6] — unknown. Decrements with compressor frequency (07->04->02). Correlates with load.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -8910,7 +8910,7 @@ fields:
     group7_unknown_byte7:
       description: Group 7 body[7] — unknown. Mostly stable (01), jumped to 02 at low compressor freq.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -8930,7 +8930,7 @@ fields:
     group7_unknown_byte8:
       description: Group 7 body[8] — unknown. Constant 0x06 across all runs.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -8950,7 +8950,7 @@ fields:
     group7_unknown_byte10:
       description: Group 7 body[10] — unknown. Non-monotonic (8F->58->B3). Possibly a real-time motor parameter.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -8970,7 +8970,7 @@ fields:
     group7_unknown_byte11:
       description: Group 7 body[11] — unknown. Decrements with load (02->01->00).
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -8990,7 +8990,7 @@ fields:
     group12_unknown_byte4:
       description: Group 12 body[4] — unknown. Constant 0x02 across all runs.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -9010,7 +9010,7 @@ fields:
     group12_unknown_byte6:
       description: Group 12 body[6] — unknown. Constant 0x0F across all runs.
       field_class: sensor
-      feature_available: never
+      feature_available: excluded
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -9106,7 +9106,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -9255,7 +9255,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -9291,7 +9291,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -9327,7 +9327,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -9363,7 +9363,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -9399,7 +9399,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -9435,7 +9435,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -9471,7 +9471,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -9507,7 +9507,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -9546,7 +9546,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -9585,7 +9585,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:
@@ -9621,7 +9621,7 @@ fields:
         values:
           not_supported:
             raw: 0
-            feature_available: never
+            feature_available: excluded
             description: Not available
             correction: ignore
           supported:

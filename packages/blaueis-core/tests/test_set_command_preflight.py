@@ -297,7 +297,7 @@ def test_capability_never_exempt():
 
     _populate_all_cmd_0x40_fields(status, glossary, age_seconds=1.0, now=now)
     # buzzer is at body[1] sharing with power. Mark it never (cap missing).
-    status["fields"]["buzzer"]["feature_available"] = "never"
+    status["fields"]["buzzer"]["feature_available"] = "excluded"
     status["fields"]["buzzer"]["last_updated"] = None  # never read
 
     result = build_command_body(status, {"power": True}, glossary, now=now)

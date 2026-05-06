@@ -68,7 +68,7 @@ def main():
     check("always == 14", fa_counts["always"] == 14, f"got {fa_counts.get('always', 0)}")
     check("readable == 120", fa_counts["readable"] == 120, f"got {fa_counts.get('readable', 0)}")
     check("capability == 63", fa_counts["capability"] == 63, f"got {fa_counts.get('capability', 0)}")
-    check("never == 3", fa_counts["never"] == 3, f"got {fa_counts.get('never', 0)}")
+    check("never == 3", fa_counts["excluded"] == 3, f"got {fa_counts.get('excluded', 0)}")
 
     # Required keys on every field. The new shape is flat: sources +
     # default_priority back the per-frame storage; the rest are
@@ -131,7 +131,7 @@ def main():
     check("capabilities_raw empty", status["capabilities_raw"] == [])
 
     # Never fields
-    never_fields = [n for n, f in fields.items() if f["feature_available"] == "never"]
+    never_fields = [n for n, f in fields.items() if f["feature_available"] == "excluded"]
     expected_never = {"ipm_module_temp", "local_body_sense", "outdoor_return_air_temp"}
     check("never fields correct", set(never_fields) == expected_never, f"got {never_fields}")
 

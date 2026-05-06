@@ -56,13 +56,13 @@ def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict) -> 
             if not status_field:
                 continue
 
-            # Glossary-level "never" is sticky: B5 cap processing must
+            # Glossary-level "excluded" is sticky: B5 cap processing must
             # not escalate a field that the glossary has pinned as
             # never available. This matches how glossary-override users
             # (see glossary_override.py) flip feature_available to
-            # "never" to simulate the cap-absent path — the override
+            # "excluded" to simulate the cap-absent path — the override
             # must survive every ingress, not just the first.
-            glossary_pinned_never = field_def.get("feature_available") == "never"
+            glossary_pinned_excluded = field_def.get("feature_available") == "excluded"
 
             # Decode the capability value using THIS field's cap definition
             if cap_def.get("values"):
@@ -70,7 +70,7 @@ def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict) -> 
                 decoded = decode_enum_cap(cap_def, raw_val)
 
                 cap_fa = decoded.get("feature_available")
-                if cap_fa and not glossary_pinned_never:
+                if cap_fa and not glossary_pinned_excluded:
                     status_field["feature_available"] = cap_fa
 
                 ac = {}
@@ -104,7 +104,7 @@ def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict) -> 
                         }
                     }
 
-                if not glossary_pinned_never:
+                if not glossary_pinned_excluded:
                     status_field["feature_available"] = "always"
 
 
@@ -141,7 +141,7 @@ def process_b5(status: dict, body: bytes, glossary: dict, timestamp: str | None 
 
 
 def finalize_capabilities(status: dict, glossary: dict):
-    """Mark fields whose cap was never reported as 'never'.
+    """Mark fields whose cap was never reported as 'excluded'.
 
     Call this AFTER all B5 queries are done (multiple pages may be needed).
     Checks the accumulated capabilities_raw, not just the last B5 response.
@@ -156,7 +156,7 @@ def finalize_capabilities(status: dict, glossary: dict):
             cap_def = fdef.get("capability", {})
             cap_id = cap_def.get("cap_id", "").lower()
             if cap_id and cap_id not in all_cap_ids:
-                status_field["feature_available"] = "never"
+                status_field["feature_available"] = "excluded"
 
 
 # ── Data frame processing (C0, C1, A1) ───────────────────────────────────
@@ -209,9 +209,9 @@ def process_data_frame(
         if not status_field:
             continue
 
-        # Skip fields that are not available (never, or *capability* / *capability-opt*
+        # Skip fields that are not available (excluded, or *capability* / *capability-opt*
         # not yet resolved by B5 promotion)
-        if status_field["feature_available"] in ("never", "capability", "capability-opt"):
+        if status_field["feature_available"] in ("excluded", "capability", "capability-opt"):
             continue
 
         suppression = result.get("suppression")
@@ -265,7 +265,7 @@ def process_data_frame(
         status_field = status["fields"].get(rec["field"])
         if not status_field:
             continue
-        if status_field["feature_available"] in ("never", "capability", "capability-opt"):
+        if status_field["feature_available"] in ("excluded", "capability", "capability-opt"):
             continue
         slot = status_field.setdefault("sources", {}).setdefault(protocol_key, {})
         slot["rejection"] = {

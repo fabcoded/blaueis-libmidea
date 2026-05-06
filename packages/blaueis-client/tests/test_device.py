@@ -47,7 +47,7 @@ def test_init_defaults():
     assert d.capabilities_received is False
     # 'always', 'readable', and the '-opt' soft-disabled variants are
     # available before B5; 'capability' / 'capability-opt' need B5
-    # confirmation; 'never' is always excluded.
+    # confirmation; 'excluded' is always excluded.
     avail = d.available_fields
     assert len(avail) > 0
     assert all(

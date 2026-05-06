@@ -963,7 +963,7 @@ CAP_QUERY_FRAMES = ("cmd_0xb5_extended", "cmd_0xb5_simple")
 
 
 def target_field_names(status: dict) -> list[str]:
-    """Return the field names in `status` whose feature_available != 'never'.
+    """Return the field names in `status` whose feature_available != 'excluded'.
 
     Used as the default target set for plan_query_cycle when a live
     monitor wants to refresh every available field.
@@ -971,7 +971,7 @@ def target_field_names(status: dict) -> list[str]:
     return [
         name
         for name, fstate in (status or {}).get("fields", {}).items()
-        if fstate.get("feature_available", "always") != "never"
+        if fstate.get("feature_available", "always") != "excluded"
     ]
 
 
@@ -1048,14 +1048,14 @@ def build_scan_queue(
             # Count fields whose protocols OR capability.frames intersect
             # this frame's triggers — capability-gated fields show up via
             # the latter and the label should reflect the full coverage.
-            # Skip fields whose feature_available is 'never': they are
+            # Skip fields whose feature_available is 'excluded': they are
             # discarded at decode time by process_data_frame, so showing
             # them in the operator-facing label would inflate the count
             # past what actually populates state.
             covered = 0
             for fname, fdef in fields_by_name.items():
                 fa = status["fields"].get(fname, {}).get("feature_available", "always")
-                if fa == "never":
+                if fa == "excluded":
                     continue
                 protos = set((fdef.get("protocols") or {}).keys())
                 cap_frames = set(((fdef.get("capability") or {}).get("frames") or {}).keys())

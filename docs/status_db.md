@@ -43,7 +43,7 @@ StatusDB owns the same dict schema produced by `blaueis.core.status.build_status
   },
   "fields": {
     "<field_name>": {
-      "feature_available": "always" | "readable" | "capability" | "never",
+      "feature_available": "always" | "readable" | "capability" | "excluded",
       "data_type": "bool" | "enum" | "uint8" | ...,
       "writable": true | false,
       "sources": {
@@ -187,7 +187,7 @@ sequenceDiagram
         activate DB
         DB->>DB: acquire lock
         DB->>DB: feature_gate(changes)
-        Note over DB: feature_available != "never" → pass
+        Note over DB: feature_available != "excluded" → pass
         DB->>DB: power_gate(changes)
         Note over DB: power=True (device on) → pass
         DB->>DB: mode_gate(changes)
@@ -349,7 +349,7 @@ contingency.
 
 **I4. Feature availability is a hardware precondition.**
 B5 capability negotiation marks each field's `feature_available` as
-`always`, `capability`, `readable`, or `never`. A `never` field has
+`always`, `capability`, `readable`, or `excluded`. An `excluded` field has
 no physical presence on the device — writing it would ship a frame
 the device silently ignores, leaving ghost optimistic state that
 never gets corrected. The feature gate runs first, before any mode
@@ -389,13 +389,13 @@ siblings: only `power=True` releases the gate.
 
 The feature gate runs first and is the cheapest check in the pipeline:
 a pure lookup on `status["fields"][name]["feature_available"]`. Fields
-marked `never` (B5 reported the capability as absent) are rejected
+marked `excluded` (B5 reported the capability as absent) are rejected
 immediately; `always`, `capability`, and `readable` all pass. Missing
 fields or missing `feature_available` keys default to `always`, which
 accepts — this keeps pre-B5 boots and test fixtures from being
 blocked by an incomplete status dict.
 
-By **I4**, a `never` field cannot be physically written; the device
+By **I4**, an `excluded` field cannot be physically written; the device
 has no byte for it and no response ever reports it. Accepting the
 write would ship a frame the AC silently ignores, leaving the
 optimistic slot stuck at whatever the caller asked for. The feature
@@ -817,7 +817,7 @@ sequenceDiagram
     Note over DB: acquire lock
 
     DB->>Feat: _apply_feature_gate(changes)
-    Note over Feat: reject feature_available=never
+    Note over Feat: reject feature_available=excluded
     Feat-->>DB: (accepted, rejected)
 
     DB->>Pwr: _apply_power_gate(accepted)

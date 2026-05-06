@@ -204,7 +204,7 @@ class StatusDB:
     def _apply_feature_gate(
         self, changes: dict,
     ) -> tuple[dict, dict]:
-        """Reject writes to fields whose feature_available is 'never'.
+        """Reject writes to fields whose feature_available is 'excluded'.
 
         feature_available lives in status["fields"][name]["feature_available"]
         and is set by B5 capability processing. Missing key defaults to
@@ -215,7 +215,7 @@ class StatusDB:
                 "feature_available", "always",
             )
             return (
-                "feature not supported on this device" if fa == "never" else None
+                "feature not supported on this device" if fa == "excluded" else None
             )
         return self._filter_gate(changes, rejects, "Feature gate")
 

@@ -135,7 +135,7 @@ def main():
     field_first["feature_available"] = "no"  # the stale TODO doc value
     errors = list(validator.iter_errors(mutated4))
     check(
-        "schema rejects feature_available='no' (stale value, must be 'never')",
+        "schema rejects feature_available='no' (stale value, must be 'excluded')",
         len(errors) > 0,
         detail="schema accepted 'no' — §2 enum enforcement broken",
     )
