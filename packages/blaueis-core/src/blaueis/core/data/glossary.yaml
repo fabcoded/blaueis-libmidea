@@ -6355,7 +6355,7 @@ fields:
       note: 'S8: 46 raw = 368 steps. Compare with G3 eev_position (actual).'
       confidence: hypothesis
     error_code:
-      description: Device error/fault code (0-33). 0 = no error.
+      description: Device error/fault code. 0 = no error. Known codes 0-33 are documented in the values block; wire may carry undocumented codes from newer firmware variants — pass them through as raw integers rather than suppressing.
       signoff: tbd
       label: "Error Code"
       field_class: sensor
@@ -6364,9 +6364,6 @@ fields:
       device_context: indoor_unit
       ha:
         off_behavior: available
-      range:
-      - 0
-      - 33
       values:
         ok:                              { raw: 0,  description: "OK (0)" }
         indoor_display_comm:             { raw: 1,  description: "Interior ↔ display board communication failure (1)" }

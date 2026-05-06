@@ -226,15 +226,17 @@ CASES = [
         ("all bits set 0xFF",         0xFF, True),
     ]),
 
-    # ── Track 2B: error_code clamp test ─────────────────────────
-    # Glossary range: [0, 33]. Codes 0..33 are documented faults; 34+
-    # is undefined. raw=0xFF → suppression='out_of_range'.
+    # ── error_code: raw-pass-through diagnostic counter ─────────
+    # No range gate — community precedent (msmart, midea_ac_lan, etc.)
+    # passes the byte through unsuppressed so future firmware codes
+    # surface in HA rather than being silently dropped. See research
+    # in commit message for the analysis.
     ("error_code", "rsp_0xc0", c0(16), [
-        ("min (no error)",       0x00, 0),
-        ("max valid (33)",       0x21, 33),
+        ("no error (0)",         0x00, 0),
+        ("max documented (33)",  0x21, 33),
         ("centre (16)",          0x10, 16),
         ("edge (1: comm fail)",  0x01, 1),
-        ("clamp 0xFF",           0xFF, (SUPPR, "out_of_range")),
+        ("undocumented (0xFF)",  0xFF, 255),
     ]),
 
     # ── Track 1A: encoded sensor fields ─────────────────────────
