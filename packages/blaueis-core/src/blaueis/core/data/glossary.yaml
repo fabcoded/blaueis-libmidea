@@ -7338,9 +7338,10 @@ fields:
             bits:
             - 7
             - 0
+            encoding: uint16_be
           direction: response
           section: §5.2
-      note: 16-bit BE. Always 0 on the probed unit (no PM2.5 sensor). Single-byte decode reads only body[15].
+      note: 16-bit BE. Always 0 on the probed unit (no PM2.5 sensor).
       confidence: consistent
     pmv_index:
       description: PMV (Predicted Mean Vote) thermal comfort index. ISO 7730 / ASHRAE 55 scale.
