@@ -6850,6 +6850,9 @@ fields:
         entity_category: diagnostic
       data_type: enum
       device_context: outdoor_unit
+      range:
+      - 0
+      - 3
       values:
         inactive:    { raw: 0, description: "Inactive (0)" }
         starting:    { raw: 1, description: "Starting (1)" }
