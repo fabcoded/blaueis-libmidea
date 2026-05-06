@@ -150,23 +150,56 @@ correlate the byte to a physical quantity.
 
 ---
 
-## 5. Excluded by integration policy
+## 5. Excluded — decoder works, exposing is wrong
 
-Fields whose decoding is well-understood but where exposing them in
-HA creates conflicting sources of truth or duplicate scheduling
-surfaces. These are deliberate scope decisions, not protocol
-uncertainty — re-enabling them is a UX question, not an evidence
-question.
+Sections 1–4 cover *evidence* gaps: bytes flow but the decode can't
+be trusted. This section is the opposite — the decode is verified,
+but surfacing the field as an HA entity would create a worse outcome
+than hiding it. Membership criteria:
+
+1. The wire decode is verified (capture-cross-checked).
+2. Hiding is a deliberate integration design decision, not protocol
+   caution.
+3. Re-enabling is a UX or scope question, not an evidence question.
+
+Two recurring patterns appear here. Future additions go under the
+matching sub-section, or open a new one with the same shape.
+
+### 5.1 Conflicting sources of truth with Home Assistant
+
+The field exposes an AC-internal feature whose function is already
+provided — usually better — by HA itself. Surfacing it gives the
+user two competing controls for the same outcome and forces them
+to mentally reconcile state across systems.
+
+| Field(s) | Reason |
+|---|---|
+| `power_off_timer`, `power_on_timer` | AC-internal countdown switches. HA's automation engine, schedule helper, and the broader ecosystem (scripts, scenes, calendars) supersede the AC's single fire-and-forget countdown. Users who want a delayed power transition should drive `climate.turn_off` / `climate.turn_on` from an HA automation. |
+| `power_off_time_value`, `power_on_time_value` | Companion duration values for the timer switches above. Only meaningful while the parent timer is engaged, which it isn't (per above). Decoded but not exposed. |
+
+**To re-enable** any entry here: an integration design decision that
+documents how the HA-side and AC-side worlds are reconciled — for
+example, "HA wins; the AC-side surface is auto-cleared on every set",
+or "user picks one mode and the other is hidden". Until that
+reconciliation rule exists, exposing the field is net-negative.
+
+### 5.2 Protocol-reserved bits with no user semantic
+
+The byte position is required by the wire protocol (the encoder
+writes a fixed value to keep the frame format compatible) but the
+bit doesn't represent any user-controllable function. There is
+nothing to expose because there is no semantic at the field level —
+just a frame-formatting requirement.
 
 | Field | Reason |
 |---|---|
-| `power_off_timer`, `power_on_timer` | AC-internal countdown switches. HA's own automation engine, schedules, and helpers supersede them for any HA-driven setup; exposing the AC's countdown alongside HA's would create two competing schedulers. Users who want a countdown should drive `climate.turn_off` from a Home Assistant automation. |
-| `power_off_time_value`, `power_on_time_value` | Companion duration sensors — only meaningful while the parent timer switch is engaged, which it isn't (per above). Decoded but not exposed. |
+| `fan_speed_timer_bit` | `cmd_0x40` body[3] bit 7 is fixed at 1 (`0x80`) on every frame, regardless of timer state. The encoder writes the constant to match the manufacturer's frame format; there is nothing for the user to set or read. |
 
-**To re-enable**: an integration design decision documenting how the
-HA-side and AC-side schedules are reconciled (e.g. "HA wins, AC timer
-auto-cleared on every set"; or "user picks one, the other is
-locked"). The wire decoding itself is sound.
+**To re-enable** any entry here: protocol observation showing the
+bit actually carries variable, user-meaningful state on some firmware
+or hardware variant — i.e. the premise of the section no longer
+holds. Until then, the encoder's fixed value is the only correct
+behaviour and there's nothing to surface.
 
 ---
 
