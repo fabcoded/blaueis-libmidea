@@ -87,8 +87,28 @@ def build_b1_body(prop_lo: int, prop_hi: int, data) -> bytes:
 #     special: ("__suppression__", suppression_kind) for clamp tests
 
 
+def c0(offset):
+    """rsp_0xc0 body — 25 bytes; we pre-fill body[0]=0xC0, then the test
+    sets the field's offset. Other offsets stay 0; some adjacent fields
+    may flag as sentinel-suppressed but we only assert on the target."""
+    def builder(raw):
+        body = bytearray(25)
+        body[0] = 0xC0
+        body[offset] = raw & 0xFF
+        return bytes(body)
+    return builder
+
+
+def c1g1(offset):
+    return lambda raw: build_c1_body(1, {offset: raw}, length=21)
+
+
 def c1g2(offset):
     return lambda raw: build_c1_body(2, {offset: raw}, length=21)
+
+
+def c1g3(offset):
+    return lambda raw: build_c1_body(3, {offset: raw}, length=21)
 
 
 def c1g5(offset):
@@ -108,6 +128,11 @@ def c1g6_le16(offset):
         body[offset + 1] = (raw >> 8) & 0xFF
         return bytes(body)
     return builder
+
+
+def b1_one_byte(prop_lo, prop_hi):
+    """B1 property frame with a single data byte at data[0]."""
+    return lambda raw: build_b1_body(prop_lo, prop_hi, [raw & 0xFF])
 
 
 def b1_0x39(raw):
@@ -199,6 +224,118 @@ CASES = [
         ("on (0x01)",                 0x01, True),
         ("bit 0 clear, bit 1 set",    0x02, False),
         ("all bits set 0xFF",         0xFF, True),
+    ]),
+
+    # ── Track 2B: error_code clamp test ─────────────────────────
+    # Glossary range: [0, 33]. Codes 0..33 are documented faults; 34+
+    # is undefined. raw=0xFF → suppression='out_of_range'.
+    ("error_code", "rsp_0xc0", c0(16), [
+        ("min (no error)",       0x00, 0),
+        ("max valid (33)",       0x21, 33),
+        ("centre (16)",          0x10, 16),
+        ("edge (1: comm fail)",  0x01, 1),
+        ("clamp 0xFF",           0xFF, (SUPPR, "out_of_range")),
+    ]),
+
+    # ── Track 1A: encoded sensor fields ─────────────────────────
+    # Each field's encoding is applied by the codec; expected values
+    # come from manually applying the formula at known boundary inputs.
+    # Sentinel-bearing fields (indoor_/outdoor_temperature with
+    # sentinel_values=[0, 255]) replace min/max boundary cases with
+    # sentinel-suppression assertions.
+
+    # ── temp_offset50_half: physical = (raw - 50) / 2.0 °C ───────
+    ("indoor_temperature", "rsp_0xc0", c0(11), [
+        ("sentinel raw=0",       0x00, (SUPPR, "sentinel")),
+        ("sentinel raw=255",     0xFF, (SUPPR, "sentinel")),
+        ("centre raw=128 → 39C", 0x80, 39.0),
+        ("edge raw=100 → 25C",   100,  25.0),
+    ]),
+    ("outdoor_temperature", "rsp_0xc0", c0(12), [
+        ("sentinel raw=0",       0x00, (SUPPR, "sentinel")),
+        ("sentinel raw=255",     0xFF, (SUPPR, "sentinel")),
+        ("centre raw=128 → 39C", 0x80, 39.0),
+        ("edge raw=100 → 25C",   100,  25.0),
+    ]),
+    ("t3_outdoor_coil_temp", "rsp_0xc1_group1", c1g1(12), [
+        ("min raw=0 → -25C",     0x00, -25.0),
+        ("max raw=255 → 102.5C", 0xFF, 102.5),
+        ("centre raw=128 → 39C", 0x80, 39.0),
+        ("edge raw=100 → 25C",   100,  25.0),
+    ]),
+    ("t4_outdoor_ambient_temp", "rsp_0xc1_group1", c1g1(13), [
+        ("min raw=0 → -25C",     0x00, -25.0),
+        ("max raw=255 → 102.5C", 0xFF, 102.5),
+        ("centre raw=128 → 39C", 0x80, 39.0),
+        ("edge raw=100 → 25C",   100,  25.0),
+    ]),
+    ("mito_cool_temp", "rsp_0xb1", b1_one_byte(0x8D, 0x00), [
+        ("min raw=0 → -25C",     0x00, -25.0),
+        ("max raw=255 → 102.5C", 0xFF, 102.5),
+        ("centre raw=128 → 39C", 0x80, 39.0),
+        ("edge raw=92 → 21C",    92,   21.0),
+    ]),
+    ("mito_heat_temp", "rsp_0xb1", b1_one_byte(0x8E, 0x00), [
+        ("min raw=0 → -25C",     0x00, -25.0),
+        ("max raw=255 → 102.5C", 0xFF, 102.5),
+        ("centre raw=128 → 39C", 0x80, 39.0),
+        ("edge raw=110 → 30C",   110,  30.0),
+    ]),
+
+    # ── temp_offset30_half: physical = (raw - 30) / 2.0 °C ───────
+    ("compensated_setpoint", "rsp_0xc1_group5", c1g5(5), [
+        ("min raw=0 → -15C",     0x00, -15.0),
+        ("max raw=255 → 112.5C", 0xFF, 112.5),
+        ("centre raw=128 → 49C", 0x80, 49.0),
+        ("edge raw=80 → 25C",    80,   25.0),
+    ]),
+    ("t1_indoor_coil", "rsp_0xc1_group1", c1g1(10), [
+        ("min raw=0 → -15C",     0x00, -15.0),
+        ("max raw=255 → 112.5C", 0xFF, 112.5),
+        ("centre raw=128 → 49C", 0x80, 49.0),
+        ("edge raw=80 → 25C",    80,   25.0),
+    ]),
+    ("t2_indoor_temp", "rsp_0xc1_group1", c1g1(11), [
+        ("min raw=0 → -15C",     0x00, -15.0),
+        ("max raw=255 → 112.5C", 0xFF, 112.5),
+        ("centre raw=128 → 49C", 0x80, 49.0),
+        ("edge raw=80 → 25C",    80,   25.0),
+    ]),
+
+    # ── temp_direct_integer: physical = raw °C ──────────────────
+    ("discharge_pipe_temp", "rsp_0xc1_group1", c1g1(14), [
+        ("min raw=0 → 0C",       0x00, 0.0),
+        ("max raw=255 → 255C",   0xFF, 255.0),
+        ("centre raw=128 → 128C", 0x80, 128.0),
+        ("edge raw=80 → 80C",    80,   80.0),
+    ]),
+
+    # ── voltage_offset60: physical = raw + 60 V ─────────────────
+    ("max_bus_voltage", "rsp_0xc1_group5", c1g5(17), [
+        ("min raw=0 → 60V",      0x00, 60),
+        ("max raw=255 → 315V",   0xFF, 315),
+        ("centre raw=128 → 188V", 0x80, 188),
+        ("edge raw=180 → 240V",  180,  240),
+    ]),
+    ("min_bus_voltage", "rsp_0xc1_group5", c1g5(18), [
+        ("min raw=0 → 60V",      0x00, 60),
+        ("max raw=255 → 315V",   0xFF, 315),
+        ("centre raw=128 → 188V", 0x80, 188),
+        ("edge raw=180 → 240V",  180,  240),
+    ]),
+
+    # ── eev_steps: physical = raw * 8 steps ──────────────────────
+    ("eev_position", "rsp_0xc1_group3", c1g3(11), [
+        ("min raw=0 → 0 steps",       0x00, 0),
+        ("max raw=255 → 2040 steps",  0xFF, 2040),
+        ("centre raw=128 → 1024",     0x80, 1024),
+        ("edge raw=50 → 400 steps",   50,   400),
+    ]),
+    ("eev_target_angle", "rsp_0xc1_group5", c1g5(9), [
+        ("min raw=0 → 0 steps",       0x00, 0),
+        ("max raw=255 → 2040 steps",  0xFF, 2040),
+        ("centre raw=128 → 1024",     0x80, 1024),
+        ("edge raw=50 → 400 steps",   50,   400),
     ]),
 ]
 

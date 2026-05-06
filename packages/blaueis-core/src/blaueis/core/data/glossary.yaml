@@ -6364,6 +6364,9 @@ fields:
       device_context: indoor_unit
       ha:
         off_behavior: available
+      range:
+      - 0
+      - 33
       values:
         ok:                              { raw: 0,  description: "OK (0)" }
         indoor_display_comm:             { raw: 1,  description: "Interior ↔ display board communication failure (1)" }
