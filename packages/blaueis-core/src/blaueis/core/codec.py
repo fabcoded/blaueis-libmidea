@@ -26,6 +26,16 @@ def load_glossary() -> dict:
     return _glossary_cache
 
 
+def invalidate_glossary_cache() -> None:
+    """Drop the cached glossary so the next ``load_glossary()`` re-reads
+    from disk. Used by long-running hosts (e.g. the HA integration on
+    config-entry reload) that want to pick up an updated glossary YAML
+    without restarting the Python process. No-op when nothing is
+    cached."""
+    global _glossary_cache
+    _glossary_cache = None
+
+
 # ── Field walkers ─────────────────────────────────────────────────────────
 
 
