@@ -132,10 +132,13 @@ class Device:
         # happens in config_flow on save). See ``glossary_override``.
         if glossary_overrides:
             base = load_glossary()
-            patched, affected, warnings = apply_override(base, glossary_overrides)
-            if warnings:
-                for w in warnings:
-                    log.warning("glossary override: %s", w)
+            patched, affected, messages = apply_override(base, glossary_overrides)
+            for m in messages:
+                where = m.field or "<top>"
+                if m.severity in ("error", "warning"):
+                    log.warning("glossary override [%s] %s: %s", m.code, where, m.message)
+                else:
+                    log.info("glossary override [%s] %s: %s", m.code, where, m.message)
             if affected:
                 log.info(
                     "glossary override applied: %d leaf paths changed (%s)",

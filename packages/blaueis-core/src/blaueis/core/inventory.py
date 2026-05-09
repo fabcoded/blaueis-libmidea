@@ -560,7 +560,7 @@ def synthesize_override_snippet(
     # merged view. Drop errors pre-existing in the base (same pattern as
     # the HA config_flow preflight).
     try:
-        merged, _affected, _warnings = apply_override(glossary, override)
+        merged, _affected, _messages = apply_override(glossary, override)
         validator = Draft202012Validator(schema)
         base_sigs = {(tuple(e.absolute_path), e.message) for e in validator.iter_errors(glossary)}
         new_errors = [e for e in validator.iter_errors(merged) if (tuple(e.absolute_path), e.message) not in base_sigs]

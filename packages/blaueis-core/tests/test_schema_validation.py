@@ -164,6 +164,62 @@ def main():
         detail="schema accepted invalid generation value",
     )
 
+    # ── Tests 8-11: excluded_reasons enum + array shape ───────────
+    # Pick a currently-excluded field for the mutation tests.
+    excluded_field_path = None
+    for cat_name, cat in glossary["fields"].items():
+        for fname, fdef in cat.items():
+            if isinstance(fdef, dict) and fdef.get("feature_available") == "excluded":
+                excluded_field_path = (cat_name, fname)
+                break
+        if excluded_field_path:
+            break
+    assert excluded_field_path, "no excluded field found in glossary for mutation tests"
+    cat_x, fname_x = excluded_field_path
+
+    # Test 8: valid excluded_reasons list accepted.
+    mutated7 = copy.deepcopy(glossary)
+    mutated7["fields"][cat_x][fname_x]["excluded_reasons"] = ["unnecessary_automation"]
+    errors = list(validator.iter_errors(mutated7))
+    check(
+        "schema accepts excluded_reasons: ['unnecessary_automation']",
+        len(errors) == 0,
+        detail=f"errors: {[e.message for e in errors[:3]]}",
+    )
+
+    # Test 9: empty excluded_reasons list rejected.
+    mutated8 = copy.deepcopy(glossary)
+    mutated8["fields"][cat_x][fname_x]["excluded_reasons"] = []
+    errors = list(validator.iter_errors(mutated8))
+    check(
+        "schema rejects excluded_reasons: [] (minItems=1)",
+        len(errors) > 0,
+        detail="schema accepted empty list",
+    )
+
+    # Test 10: unknown reason value rejected.
+    mutated9 = copy.deepcopy(glossary)
+    mutated9["fields"][cat_x][fname_x]["excluded_reasons"] = ["totally_made_up"]
+    errors = list(validator.iter_errors(mutated9))
+    check(
+        "schema rejects excluded_reasons with unknown enum value",
+        len(errors) > 0,
+        detail="schema accepted unknown reason",
+    )
+
+    # Test 11: duplicate reasons rejected.
+    mutated10 = copy.deepcopy(glossary)
+    mutated10["fields"][cat_x][fname_x]["excluded_reasons"] = [
+        "unnecessary_automation",
+        "unnecessary_automation",
+    ]
+    errors = list(validator.iter_errors(mutated10))
+    check(
+        "schema rejects duplicate entries in excluded_reasons (uniqueItems)",
+        len(errors) > 0,
+        detail="schema accepted duplicates",
+    )
+
     # ── Summary ──────────────────────────────────────────────────
     total = passed + failed
     print(f"\n{'=' * 60}")

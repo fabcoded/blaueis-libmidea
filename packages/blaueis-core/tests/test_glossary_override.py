@@ -4,21 +4,23 @@ Covers:
 - deep_merge: scalar replace, dict recurse, list replace, None/empty.
 - affected_paths: only actual changes reported, not no-op merges.
 - _remove sentinel: key deleted from result when present in base.
-- sanitize_override: meta stripped with warning, everything else passes.
+- sanitize_override: meta stripped, OverrideMessage emitted.
 - apply_override: end-to-end composition.
+- exclusion gating: per-reason accept/caveat/reject classification.
 """
 
 from __future__ import annotations
 
 import pytest
-
 from blaueis.core.glossary_override import (
+    CAVEAT_REASONS,
     PROTECTED_KEYS,
+    REJECT_REASONS,
+    OverrideMessage,
     apply_override,
     deep_merge,
     sanitize_override,
 )
-
 
 # ── deep_merge ─────────────────────────────────────────────────────────
 
@@ -166,27 +168,32 @@ def test_meta_stripped_with_warning():
         "meta": {"version": "99.0.0"},
         "fields": {"x": {"feature_available": "excluded"}},
     }
-    clean, warnings = sanitize_override(override)
+    clean, messages = sanitize_override(override)
     assert "meta" not in clean
     assert "fields" in clean
-    assert len(warnings) == 1
-    assert "meta" in warnings[0]
+    assert len(messages) == 1
+    msg = messages[0]
+    assert isinstance(msg, OverrideMessage)
+    assert msg.code == "protected_key"
+    assert msg.severity == "warning"
+    assert msg.field is None
+    assert "meta" in msg.message
 
 
 def test_sanitize_empty_override():
-    clean, warnings = sanitize_override(None)
+    clean, messages = sanitize_override(None)
     assert clean == {}
-    assert warnings == []
-    clean, warnings = sanitize_override({})
+    assert messages == []
+    clean, messages = sanitize_override({})
     assert clean == {}
-    assert warnings == []
+    assert messages == []
 
 
 def test_non_protected_keys_pass_through():
     override = {"fields": {"x": 1}, "encodings": {"bcd": {"scale": 10}}}
-    clean, warnings = sanitize_override(override)
+    clean, messages = sanitize_override(override)
     assert clean == override
-    assert warnings == []
+    assert messages == []
 
 
 def test_protected_keys_set_is_frozen():
@@ -202,28 +209,168 @@ def test_protected_keys_set_is_frozen():
 def test_apply_override_end_to_end():
     base = {
         "meta": {"version": "1.0.0"},
-        "fields": {"screen_display": {"feature_available": "always"}},
+        "fields": {"sensor": {"screen_display": {"feature_available": "always"}}},
     }
     override = {
-        "meta": {"version": "99.0.0"},           # stripped
-        "fields": {"screen_display": {"feature_available": "excluded"}},
+        "meta": {"version": "99.0.0"},  # stripped
+        "fields": {"sensor": {"screen_display": {"feature_available": "excluded"}}},
     }
-    merged, affected, warnings = apply_override(base, override)
+    merged, affected, messages = apply_override(base, override)
 
     # Meta stripped → base meta preserved.
     assert merged["meta"]["version"] == "1.0.0"
     # Field leaf patched.
-    assert merged["fields"]["screen_display"]["feature_available"] == "excluded"
+    assert merged["fields"]["sensor"]["screen_display"]["feature_available"] == "excluded"
     # Affected path reported for the changed leaf only.
-    assert affected == ["fields.screen_display.feature_available"]
-    # Warning surfaced for meta.
-    assert len(warnings) == 1
-    assert "meta" in warnings[0]
+    assert affected == ["fields.sensor.screen_display.feature_available"]
+    # Message surfaced for meta strip — base field is not excluded so no
+    # exclusion-gating message.
+    assert len(messages) == 1
+    assert messages[0].code == "protected_key"
+    assert "meta" in messages[0].message
 
 
 def test_apply_override_no_override():
     base = {"meta": {"version": "1.0.0"}, "fields": {}}
-    merged, affected, warnings = apply_override(base, None)
+    merged, affected, messages = apply_override(base, None)
     assert merged == base
     assert affected == []
-    assert warnings == []
+    assert messages == []
+
+
+# ── exclusion gating ───────────────────────────────────────────────────
+
+
+def _excluded_base(reasons: list[str]) -> dict:
+    """Synthetic base glossary with one excluded sensor field."""
+    return {
+        "fields": {
+            "sensor": {
+                "victim": {
+                    "feature_available": "excluded",
+                    "excluded_reasons": list(reasons),
+                    "data_type": "uint8",
+                },
+            },
+        },
+    }
+
+
+def test_gating_unnecessary_automation_accepted_clean():
+    """unnecessary_automation alone → accepted (info, no caveat)."""
+    base = _excluded_base(["unnecessary_automation"])
+    override = {
+        "fields": {"sensor": {"victim": {"feature_available": "always"}}},
+    }
+    merged, affected, messages = apply_override(base, override)
+    # Patch passes through.
+    assert merged["fields"]["sensor"]["victim"]["feature_available"] == "always"
+    # One info-level message.
+    assert len(messages) == 1
+    msg = messages[0]
+    assert msg.code == "excluded_accepted"
+    assert msg.severity == "info"
+    assert msg.field == "fields.sensor.victim"
+    assert msg.reasons == ["unnecessary_automation"]
+
+
+def test_gating_never_observed_caveat():
+    """never_observed → caveat (warning), patch still applied."""
+    base = _excluded_base(["never_observed"])
+    override = {
+        "fields": {"sensor": {"victim": {"feature_available": "readable"}}},
+    }
+    merged, _affected, messages = apply_override(base, override)
+    # Patch passes through despite caveat.
+    assert merged["fields"]["sensor"]["victim"]["feature_available"] == "readable"
+    assert len(messages) == 1
+    msg = messages[0]
+    assert msg.code == "excluded_caveat"
+    assert msg.severity == "warning"
+    assert msg.reasons == ["never_observed"]
+
+
+def test_gating_protocol_inert_rejected():
+    """protocol_inert → rejected (error). Patch is dropped."""
+    base = _excluded_base(["protocol_inert"])
+    override = {
+        "fields": {"sensor": {"victim": {"feature_available": "always"}}},
+    }
+    merged, affected, messages = apply_override(base, override)
+    # Patch is stripped — base value preserved in merge.
+    assert merged["fields"]["sensor"]["victim"]["feature_available"] == "excluded"
+    # Affected paths reflect the post-gate merge: nothing changed.
+    assert affected == []
+    assert len(messages) == 1
+    msg = messages[0]
+    assert msg.code == "excluded_rejected"
+    assert msg.severity == "error"
+    assert msg.reasons == ["protocol_inert"]
+
+
+def test_gating_unknown_semantic_rejected():
+    """unknown_semantic also lands in the reject set."""
+    base = _excluded_base(["unknown_semantic"])
+    override = {
+        "fields": {"sensor": {"victim": {"feature_available": "readable"}}},
+    }
+    merged, _affected, messages = apply_override(base, override)
+    assert merged["fields"]["sensor"]["victim"]["feature_available"] == "excluded"
+    assert messages[0].code == "excluded_rejected"
+
+
+def test_gating_worst_wins_caveat_plus_clean():
+    """[unnecessary_automation, never_tested_write] → caveat (worst wins)."""
+    base = _excluded_base(["unnecessary_automation", "never_tested_write"])
+    override = {
+        "fields": {"sensor": {"victim": {"feature_available": "always"}}},
+    }
+    merged, _affected, messages = apply_override(base, override)
+    # Patch still applied (caveat does not strip).
+    assert merged["fields"]["sensor"]["victim"]["feature_available"] == "always"
+    assert len(messages) == 1
+    msg = messages[0]
+    assert msg.code == "excluded_caveat"
+    assert msg.severity == "warning"
+    assert set(msg.reasons) == {"unnecessary_automation", "never_tested_write"}
+
+
+def test_gating_worst_wins_reject_dominates_caveat():
+    """[never_observed, protocol_inert] → rejected (reject dominates caveat)."""
+    base = _excluded_base(["never_observed", "protocol_inert"])
+    override = {
+        "fields": {"sensor": {"victim": {"feature_available": "always"}}},
+    }
+    merged, _affected, messages = apply_override(base, override)
+    assert merged["fields"]["sensor"]["victim"]["feature_available"] == "excluded"
+    assert messages[0].code == "excluded_rejected"
+
+
+def test_gating_non_excluded_field_silent():
+    """Override on a non-excluded field emits no exclusion message."""
+    base = {
+        "fields": {
+            "sensor": {
+                "victim": {"feature_available": "readable", "data_type": "uint8"},
+            },
+        },
+    }
+    override = {
+        "fields": {"sensor": {"victim": {"feature_available": "readable-opt"}}},
+    }
+    _merged, _affected, messages = apply_override(base, override)
+    # No exclusion-gating message for non-excluded base field.
+    assert messages == []
+
+
+def test_gating_buckets_match_documented_split():
+    """Sanity-check the reason buckets stay aligned with the documented
+    contract: reject ∩ caveat must be empty; unnecessary_automation is in
+    neither (i.e. lands in the implicit 'accept clean' bucket)."""
+    assert REJECT_REASONS.isdisjoint(CAVEAT_REASONS)
+    assert "unnecessary_automation" not in REJECT_REASONS
+    assert "unnecessary_automation" not in CAVEAT_REASONS
+    # The full enum coverage of REJECT ∪ CAVEAT ∪ {unnecessary_automation}
+    # should match the schema enum (8 values).
+    full = REJECT_REASONS | CAVEAT_REASONS | {"unnecessary_automation"}
+    assert len(full) == 8

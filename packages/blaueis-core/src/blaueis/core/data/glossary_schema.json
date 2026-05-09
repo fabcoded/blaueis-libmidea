@@ -457,7 +457,26 @@
         "feature_available": {
           "type": "string",
           "enum": ["always", "readable", "readable-opt", "capability", "capability-opt", "excluded"],
-          "description": "Field-level access tier. Determines whether HA registers an entity, whether the field's frame is included in the poll schedule, and the entity's default-enabled state in HA's entity registry. 'always': polled, registered, enabled by default, read+write. 'readable': polled, registered, enabled by default, read-only. 'readable-opt': polled, registered, but disabled by default in HA's entity registry — user enables with one click; for fields whose data costs poll-traffic / DB storage and is only useful to advanced users (e.g. inverter rails, EEV positions). 'capability': not polled or registered until the B5 capability probe confirms support; on confirmation behaves like 'readable'. 'capability-opt': cap-gated like 'capability', but on confirmation behaves like 'readable-opt' (registered + disabled by default); for fields where cap-confirm is known to be unreliable across firmware variants — surfacing the entity tells the user it exists, but disabled-by-default prevents wrong-decoded values from polluting dashboards before user-confirmation. 'excluded': not polled, no entity, hard-hidden; only path to surface is an explicit YAML hard-override via the integration's Glossary-Overrides textarea (for disputed encoding, unconfirmed availability, known-broken decode, or deliberate scope exclusion). The two '-opt' states are the soft-override tier (one click in HA UI). The 'excluded' state is the hard-override tier (paste YAML). Both override paths use identical YAML syntax — only the starting glossary value differs."
+          "description": "Field-level access tier. Determines whether HA registers an entity, whether the field's frame is included in the poll schedule, and the entity's default-enabled state in HA's entity registry. 'always': polled, registered, enabled by default, read+write. 'readable': polled, registered, enabled by default, read-only. 'readable-opt': polled, registered, but disabled by default in HA's entity registry — user enables with one click; for fields whose data costs poll-traffic / DB storage and is only useful to advanced users (e.g. inverter rails, EEV positions). 'capability': not polled or registered until the B5 capability probe confirms support; on confirmation behaves like 'readable'. 'capability-opt': cap-gated like 'capability', but on confirmation behaves like 'readable-opt' (registered + disabled by default); for fields where cap-confirm is known to be unreliable across firmware variants — surfacing the entity tells the user it exists, but disabled-by-default prevents wrong-decoded values from polluting dashboards before user-confirmation. 'excluded': not polled, no entity, hard-hidden; only path to surface is an explicit YAML hard-override via the integration's Glossary-Overrides textarea (for disputed encoding, unconfirmed availability, known-broken decode, or deliberate scope exclusion). When 'excluded', 'excluded_reasons' is required. The two '-opt' states are the soft-override tier (one click in HA UI). The 'excluded' state is the hard-override tier (paste YAML). Both override paths use identical YAML syntax — only the starting glossary value differs."
+        },
+        "excluded_reasons": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "unknown_semantic",
+              "decode_unverified",
+              "unknown_technical_background",
+              "never_observed",
+              "unnecessary_automation",
+              "protocol_inert",
+              "never_tested_write",
+              "unsafe_write"
+            ]
+          },
+          "description": "Why this field is feature_available: excluded. Closed enum, see docs/exclusion_reasons.md for the full contract and per-reason recovery paths. Required when feature_available == 'excluded'; absent on any other tier. Override-eligibility derived as worst-wins on the list: any of {protocol_inert, unknown_semantic, unsafe_write} → reject the override; else any of {decode_unverified, unknown_technical_background, never_observed, never_tested_write} → caveat (override accepted with warning); else (only unnecessary_automation) → accept clean. Field-specific recovery prose lives in the existing 'note:' field, not here."
         },
         "power_independent": {
           "type": "boolean",
@@ -524,7 +543,8 @@
             }
           }
         }
-      }
+      },
+      "$comment": "FIXME(excluded_reasons): tighten to required when feature_available == 'excluded'. Soft for now — only the 4 timer fields have been migrated in the pilot. Once all currently-excluded fields carry excluded_reasons (audit in docs/exclusion_reasons.md, classification in this conversation's pilot follow-up), add an allOf if/then block here enforcing required: ['excluded_reasons'] under that condition."
     },
     "cap_default": {
       "type": "object",

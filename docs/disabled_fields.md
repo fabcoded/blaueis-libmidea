@@ -11,6 +11,11 @@ frames or operate in defined states, contributions are very welcome —
 especially for the **grouped** fields in §2. See "How to contribute" at
 the end.
 
+For the formal schema contract — the closed list of `excluded_reasons`
+values, override-eligibility per reason, and the status-feedback flow —
+see `exclusion_reasons.md`. This document is the human reading layer
+listing the current members; that one is the contract.
+
 ---
 
 ## 1. Dead / unreliable hardware sensors
