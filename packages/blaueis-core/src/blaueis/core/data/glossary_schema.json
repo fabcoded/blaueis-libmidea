@@ -346,7 +346,7 @@
         },
         "shares_byte_with": {
           "$ref": "#/$defs/shares_byte_with",
-          "description": "Map of wire-byte position (e.g. 'bodyBytes[8]') to a list of sibling internal-key names that share the same byte. The encoder must reconstruct the byte from all listed siblings before writing, otherwise sibling values get clobbered. Discovered automatically by the field-extractor's shared-bytes pass. See serial_glossary_guide.md Part 3 — shares_byte_with."
+          "description": "DEPRECATED — do not write new entries. The encoder uses bitwise read-modify-write via insert_bits() and does not consult this block; the preflight sibling-freshness check derives byte→[fields] dynamically from each field's decode.offset (see _group_cmd_fields_by_byte() in command.py). Existing entries are tolerated during the deprecation walk and will be removed once every field's signoff has cleared its block. New fields must NOT carry this — declare bit ranges via decode.offset / bits and the auto-derive does the rest."
         },
         "ux": {
           "$ref": "#/$defs/ux_block",

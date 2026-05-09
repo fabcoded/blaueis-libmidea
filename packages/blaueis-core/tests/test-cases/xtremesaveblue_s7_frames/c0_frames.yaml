@@ -34,7 +34,6 @@ frames:
     power_save: false
     auxiliary_heat_level: 0
     resume: false
-    run_status: true
     screen_display: 0
     silky_cool: false
     sleep_mode: false
@@ -75,7 +74,6 @@ frames:
     power_save: false
     auxiliary_heat_level: 0
     resume: false
-    run_status: true
     screen_display: 0
     silky_cool: false
     sleep_mode: false
@@ -116,7 +114,6 @@ frames:
     power_save: false
     auxiliary_heat_level: 0
     resume: false
-    run_status: true
     screen_display: 0
     silky_cool: false
     sleep_mode: false
@@ -157,7 +154,6 @@ frames:
     power_save: false
     auxiliary_heat_level: 0
     resume: false
-    run_status: true
     screen_display: 0
     silky_cool: false
     sleep_mode: false
@@ -198,7 +194,6 @@ frames:
     power_save: false
     auxiliary_heat_level: 0
     resume: false
-    run_status: true
     screen_display: 0
     silky_cool: false
     sleep_mode: false
@@ -239,7 +234,6 @@ frames:
     power_save: false
     auxiliary_heat_level: 0
     resume: false
-    run_status: true
     screen_display: 0
     silky_cool: false
     sleep_mode: false
@@ -280,7 +274,6 @@ frames:
     power_save: false
     auxiliary_heat_level: 0
     resume: false
-    run_status: true
     screen_display: 0
     silky_cool: false
     sleep_mode: false

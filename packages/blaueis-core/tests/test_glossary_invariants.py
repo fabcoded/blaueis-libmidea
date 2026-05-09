@@ -9,9 +9,12 @@ the receive (decode) and send (encode) paths:
     Catches typos and orphaned encoding names.
 
   - Byte-slot non-overlap within cmd_0x40: no two settable fields claim
-    overlapping (offset, bit-range) slots. Exception: explicit
-    `shares_byte_with` groups. Prevents accidental clobbering when new
-    cmd_0x40 fields land (see TODO §5 cmd_0x40 decode-array audit).
+    the same bit. Different bit-ranges within the same byte are fine
+    (the encoder's insert_bits() preserves bits outside the target
+    range). Prevents accidental same-bit aliasing when new cmd_0x40
+    fields land. The historical `shares_byte_with` exemption is
+    deprecated — empirical check confirmed no real same-bit overlaps
+    exist, and the encoder doesn't need the block.
 
   - Build-every-frame smoke test: every `frames[fid]` entry must build
     successfully via build_frame_from_spec() — catches a broken frame
@@ -88,13 +91,20 @@ def main():
     # Walk every cmd_0x40 field's decode array, collect (offset, bit)
     # tuples, and fail if two distinct fields claim the same bit.
     #
+    # Different bit-ranges within the same byte are NOT a collision —
+    # the encoder's insert_bits() preserves bits outside the target
+    # range, so e.g. fan_speed (bits 6:0) and fan_speed_timer_bit
+    # (bit 7) coexist on body[3] without any contract beyond their
+    # bit-range declarations.
+    #
     # Exception: logic-combiner fields (decode step with logic: or / and)
     # deliberately read from multiple source bits; they aren't encoding
     # their own bit, they're deriving a boolean from others. Skip them.
     #
-    # Future exception (not yet used): shares_byte_with block — if two
-    # fields explicitly declare they share a byte, that's a contract,
-    # not a collision.
+    # The historical `shares_byte_with` exemption was kept here as a
+    # defensive escape hatch but never load-bearing — Phase 0 of the
+    # deprecation walk confirmed zero real same-bit collisions across
+    # all cmd_0x40 fields. Dropped.
     bit_owners: dict[tuple[int, int], list[str]] = {}
     for fname, fdef in fields.items():
         ploc = (fdef.get("protocols") or {}).get("cmd_0x40")
@@ -111,37 +121,16 @@ def main():
             for bit in range(low, high + 1):
                 bit_owners.setdefault((offset, bit), []).append(fname)
 
-    collisions = {slot: owners for slot, owners in bit_owners.items() if len(set(owners)) > 1}
-
-    # Explicit allowed overlaps via shares_byte_with: gather the siblings
-    # that announce a shared byte. If two fields both list each other
-    # as siblings in shares_byte_with, the collision is intentional.
-    def _shared_sibling_set(fname: str) -> set[str]:
-        sbw = (fields.get(fname) or {}).get("shares_byte_with") or {}
-        siblings: set[str] = set()
-        for key, value in sbw.items():
-            if not key.startswith(("bodyBytes", "messageBytes")):
-                continue  # e.g. 'note' sibling of the dict
-            if isinstance(value, list):
-                siblings.update(value)
-        return siblings
-
-    filtered_collisions = {}
-    for slot, owners in collisions.items():
-        unique_owners = sorted(set(owners))
-        all_share = True
-        for f in unique_owners:
-            sibs = _shared_sibling_set(f)
-            if not sibs.issuperset(set(unique_owners) - {f}):
-                all_share = False
-                break
-        if not all_share:
-            filtered_collisions[slot] = unique_owners
+    collisions = {
+        slot: sorted(set(owners))
+        for slot, owners in bit_owners.items()
+        if len(set(owners)) > 1
+    }
 
     check(
         f"no byte-slot collisions within cmd_0x40 ({len(bit_owners)} slots claimed)",
-        not filtered_collisions,
-        detail=f"collisions: {list(filtered_collisions.items())[:5]}",
+        not collisions,
+        detail=f"collisions: {list(collisions.items())[:5]}",
     )
 
     # ── Invariant 3: build every frame from spec without exception ──
@@ -188,14 +177,15 @@ def main():
 
     # ── Invariant 5: complex_function has at least one indirection block ──
     # A field classed as complex_function must carry at least one of
-    # composite / derived_from / decompose_to / state_machine /
-    # shares_byte_with — otherwise it is misclassified.
+    # composite / derived_from / decompose_to / state_machine —
+    # otherwise it is misclassified. (`shares_byte_with` was previously
+    # listed here; dropped during the deprecation walk — empirical
+    # check confirmed no complex_function field relies solely on it.)
     indirection_keys = {
         "composite",
         "derived_from",
         "decompose_to",
         "state_machine",
-        "shares_byte_with",
     }
     misclassified = []
     for fname, fdef in fields.items():

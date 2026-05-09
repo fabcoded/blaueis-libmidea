@@ -92,6 +92,28 @@
 # building atomically — callers pass user-visible field names and values, not
 # wire bytes.
 #
+# ── Mode-multiplexed wire bits ────────────────────────────────────────────────
+#
+# A small number of bits in the wire protocol are multiplexed by operating
+# mode: the same physical bit position carries different field values
+# depending on whether the unit is in heat/auto vs. cool/auto/dry mode. The
+# device's own mode-gating ensures only one interpretation is active at a
+# time, and the colliding fields tag this with `ux.visible_in_modes` to
+# capture the gate on the consumer side.
+#
+# Consumers reading raw decoded values MUST cross-check the field's
+# `ux.visible_in_modes` against the current `operating_mode` before treating
+# the value as meaningful — outside the listed modes the underlying bit
+# belongs to a different field. `device.set()` already applies this gate on
+# writes; direct callers using `device.read(field_name)` on mode-multiplexed
+# fields are responsible for applying the same check on reads.
+#
+# Currently known mode-multiplexed positions (rsp_0xc0):
+#   - body[9] bit 4: auxiliary_heat_level (heat/auto) ↔ eco_mode (cool/auto/dry)
+#
+# New cases discovered during signoff are added to this list as the
+# field-by-field walk completes.
+#
 # ── Citation / provenance rules (see workspace AGENTS.md) ─────────────────────
 #
 # `alt_names:` and `sources:` blocks carry structured provenance metadata —
@@ -1378,9 +1400,9 @@ fields:
       sources:
       - serial_protocol.md §3.2/§4.1
     cosy_sleep:
-      description: 'Comfort sleep mode. Multi-key composite: the user-visible state is determined by the combination of comfortableSleepValue
-        (body[8] bits[1:0]) and comfortableSleepSwitch (body[9] bit 6). A third sub-field, comfortableSleepTime (body[17]
-        bits[4:0]), carries the sleep duration and is destructively overwritten to 0x0A when transitioning to ON.'
+      description: 'Comfort sleep mode. Multi-key composite: the user-visible state is determined by the combination of a 2-bit
+        value at body[8] bits[1:0] and a switch bit at body[9] bit 6. A third sub-field at body[17] bits[4:0] carries the
+        sleep duration and is destructively overwritten to 0x0A when transitioning to ON.'
       note: 'AC-internal multi-key sleep composite (switch + value + duration timer) whose function an HA automation can replicate via target_temperature ramps and time triggers. Usage cannot be guaranteed in mixed setups — the AC''s destructive write of the sleep_time sub-field on switch transitions can conflict with HA-side state restoration, and concurrent HA temp-ramp automations will compete with the AC''s vendor curve. Surfaced for users who prefer the AC-side composite; HA-driven setups should disable this entity. See docs/disabled_fields.md §5.1 for the broader supersede rule.'
       signoff: tbd
       field_class: complex_function
@@ -1484,8 +1506,8 @@ fields:
         bodyBytes[17]:
         - natural_wind
         note: 'Three wire bytes are shared with many siblings. bodyBytes[8] is the most densely packed: all 8 bits are claimed.
-          The encoder must read all siblings before writing. The manufacturer Lua uses bit.bor chains to reconstruct each
-          byte from the full set of contributing fields.'
+          The encoder must read all siblings before writing. Upstream encoders compose each byte via bitwise-OR over
+          the full set of contributing fields.'
       protocols:
         cmd_0x40:
           frame: 0x40 Set
@@ -1507,7 +1529,7 @@ fields:
             - 0
           direction: response
           section: §4.1
-      disambiguation: 'The manufacturer Lua reads comfortableSleepTime with mask 0x15
+      disambiguation: 'Upstream observation: this field is read with mask 0x15
 
         (bits 4, 2, 0 — non-contiguous). This is almost certainly a bug:
 
@@ -1519,9 +1541,9 @@ fields:
 
         This glossary uses the corrected mask 0x1F. Confidence: disputed
 
-        (glossary disagrees with manufacturer Lua; corrected mask is logically
+        (glossary corrected vs upstream observation; the corrected mask is
 
-        necessary for the ON-transition value to survive the read-back).
+        logically necessary for the ON-transition value to survive the read-back).
 
         '
       note: The existing sensor field cosy_sleep_switch (body[9] bit 6) is the same wire position as composite member comfortable_sleep_switch.
@@ -1567,6 +1589,16 @@ fields:
     eco_mode:
       description: Energy-saving ECO mode.
       signoff: tbd
+      note: |
+        Body[9] bit 4 is mode-multiplexed with auxiliary_heat_level (PTC bits[4:3]):
+        in cool/auto/dry it carries eco_mode; in heat/auto it is the high bit of PTC.
+        The unit's mode-gating ensures only one interpretation is meaningful at a time.
+        Asymmetric R/W matches upstream OEM behavior: cmd_0x40 writes the eco flag at
+        body[9] bit 7 (mask 0x80); rsp_0xc0 reads it at bit 4 (mask 0x10).
+
+        Consumer contract: callers MUST gate the decoded value by the current
+        operating_mode (`ux.visible_in_modes: [cool, auto, dry]`) — outside those
+        modes the bit position belongs to auxiliary_heat_level, not this field.
       field_class: stateful_bool
       feature_available: readable
       data_type: bool
@@ -1735,18 +1767,24 @@ fields:
       sources:
       - serial_protocol.md §3.2 body[9]
     fan_speed_timer_bit:
-      description: Protocol-reserved timer-switch bit in body[3] bit 7. The manufacturer Lua always sets BYTE_TIMER_SWITCH_ON
-        (0x80) here regardless of timer state. Not user-facing — the encoder must write 1 as a fixed constant to match the
-        manufacturer's frame format.
+      description: |
+        Protocol-reserved bit at body[3] bit 7. Always set to 1 (0x80) regardless of timer state, per the manufacturer-frame
+        conventions observed in our captures. Not user-facing — the encoder must write 1 as a fixed constant. Shares body[3]
+        with fan_speed (bits 6:0).
+      label: "Reserved timer-byte bit (cmd_0x40 body[3] bit 7)"
       field_class: stateful_bool
       feature_available: excluded
+      excluded_reasons:
+      - protocol_inert
       data_type: bool
       device_context: indoor_unit
       default_value: true
+      alt_names:
+        rev1: BYTE_TIMER_SWITCH_ON
       protocols:
         cmd_0x40:
           frame: 0x40 Set
-          byte: body[3] bit 7 (BYTE_TIMER_SWITCH_ON constant)
+          byte: body[3] bit 7
           direction: command
           decode:
           - offset: 3
@@ -1754,6 +1792,11 @@ fields:
             - 7
             - 7
           section: §3.2
+      note: |
+        Always written as 1 (constant 0x80). The encoder treats it as a frame-formatting requirement, not a user-controllable
+        toggle. No round-trip variation observed in any captured session — the device echoes whatever the encoder writes here,
+        so there is no decode-side evidence the bit represents a user feature. Write-behaviour: deterministic constant; no
+        ack/echo asymmetry to record.
       confidence: confirmed
       sources:
       - own captures Sessions 1-12 (all 0x40 frames have body[3] bit 7 set)
@@ -2509,9 +2552,8 @@ fields:
       _migration:
         _reclassified_from: complex_function
         _inferred_reason: 'data_type=enum with 6 named values; capability.values selects the valid subset per unit. Field-extractor
-          false-positive: the block-extractor grabbed sibling keys (PTCValue, closeTimerSwitch, openTimerSwitch) from the
-          shared encode cascade because multiple features write to adjacent bits of the same wire byte, but operating_mode
-          itself is a textbook enum selector.'
+          false-positive: the block-extractor grabbed sibling keys from the shared encode cascade because multiple features
+          write to adjacent bits of the same wire byte, but operating_mode itself is a textbook enum selector.'
         _source: manual review during option-2 pass of conservative migration
       feature_available: readable
       data_type: enum
@@ -2781,6 +2823,7 @@ fields:
       description: 'Power-off countdown timer value in minutes (0-1440). Derived composite: synthesised from three sub-fields
         packed into body[5] and body[6]. Only meaningful when power_off_timer is ON; value is undefined when the timer switch
         is OFF. Excluded from the integration — companion to power_off_timer, which is itself excluded.'
+      label: "Power-off timer (minutes)"
       field_class: complex_function
       _migration:
         _inferred_class: complex_function
@@ -2797,9 +2840,13 @@ fields:
       range:
       - 0
       - 1440
+      ha:
+        device_class: duration
+        state_class: measurement
+        unit_of_measurement: min
+        entity_category: config
       alt_names:
         rev1: closeTime
-        rev2: power_off_timer_value
       composite:
         members:
           close_hour:
@@ -2845,14 +2892,6 @@ fields:
         formula: floor((value % 60) / 15)
       - target: close_min_raw
         formula: 15 - ((value % 60) % 15)
-      shares_byte_with:
-        bodyBytes[5]:
-        - power_off_timer
-        bodyBytes[6]:
-        - power_on_time_value
-        note: 'bodyBytes[5] bit 7 is owned by power_off_timer (switch). Bits 6:0 carry this field''s close_hour and close_step_minutes
-          sub-fields. bodyBytes[6] is shared: upper nibble belongs to power_on_time_value (open_min_raw), lower nibble to
-          this field (close_min_raw). The encoder must read all siblings before writing either byte.'
       protocols:
         rsp_0xc0:
           frame: 0xC0 Response
@@ -2919,11 +2958,11 @@ fields:
         bodyBytes[5]:
         - power_off_time_value
         note: When the encoder writes bodyBytes[5], it must also pack close_hour (bits 6:2) and close_step_minutes (bits 1:0)
-          from power_off_time_value, or those sub-fields get clobbered. When timer is OFF, the manufacturer Lua writes 0x7F
-          to the entire byte (all sub-field bits set as don't-care).
-      note: The manufacturer Lua uses constants BYTE_CLOSE_TIMER_SWITCH_ON = 0x80 and BYTE_CLOSE_TIMER_SWITCH_OFF = 0x7F.
-        The OFF constant 0x7F writes all 7 lower bits high, clobbering the timer sub-fields — a deliberate pattern since the
-        time value is meaningless when the switch is OFF.
+          from power_off_time_value, or those sub-fields get clobbered. When timer is OFF, the device writes 0x7F to the
+          entire byte (all sub-field bits set as don't-care).
+      note: 'Upstream-observed values: 0x80 (timer ON) and 0x7F (timer OFF). The OFF value 0x7F writes all 7 lower
+        bits high, clobbering the timer sub-fields — a deliberate pattern since the time value is meaningless when
+        the switch is OFF.'
       confidence: consistent
       sources:
       - Session 11 (all frames show 0x7F = timer OFF)
@@ -3065,8 +3104,8 @@ fields:
         bodyBytes[4]:
         - power_on_time_value
         note: When the encoder writes bodyBytes[4], it must also pack open_hour (bits 6:2) and open_step_minutes (bits 1:0)
-          from power_on_time_value. When timer is OFF, Lua writes 0x7F to the entire byte.
-      note: Mirror of power_off_timer. Constants BYTE_START_TIMER_SWITCH_ON = 0x80, BYTE_START_TIMER_SWITCH_OFF = 0x7F.
+          from power_on_time_value. When timer is OFF, the device writes 0x7F to the entire byte.
+      note: 'Mirror of power_off_timer. Upstream-observed values: 0x80 (timer ON), 0x7F (timer OFF).'
       confidence: consistent
       sources:
       - Session 11 (all frames show 0x7F = timer OFF)
@@ -3109,10 +3148,22 @@ fields:
         when the heat pump alone cannot meet demand. 2-bit field at body[9] bits[4:3] — four
         possible stages; only off and low are observed on the probed XtremeSaveBlue unit.
       signoff: tbd
+      note: |
+        Body[9] bit 4 is mode-multiplexed with eco_mode: in heat/auto modes it is the
+        high bit of this 2-bit PTC stage; in cool/auto/dry it carries eco_mode. The
+        unit's mode-gating ensures only one interpretation is meaningful at a time.
+        Upstream OEM behavior: PTC display restricted to heat or auto operating mode.
+
+        Consumer contract: callers MUST gate the decoded value by the current
+        operating_mode (`ux.visible_in_modes: [heat, auto]`) — outside those modes
+        the high-bit position belongs to eco_mode, not this field.
       field_class: stateful_enum
       feature_available: readable
       data_type: uint8
       device_context: indoor_unit
+      ux:
+        visible_in_modes: [heat, auto]
+        sources: own research
       alt_names:
         rev1: PTCValue
         dudanov: m_ptc
@@ -3203,12 +3254,12 @@ fields:
       disambiguation: 'Previously named ptc_heater (moved to alt_names.midea_protocol).
 
         The 0x40 and 0xC0 frames both use body[9] bits[4:3], confirmed 2026-04-10.
-        Lua constants observed: BYTE_PTC_ON=0x08 (bits[4:3]=1) and BYTE_PTC_OFF=0x00
-        (bits[4:3]=0), matching the confirmed off/low stages. Raw 2 and 3 are reachable
-        in the protocol encoding but no reference implementation drives them — labels
-        medium/high are hypotheses pending observation on a staging-aux SKU. The Lua
-        also defines a conditional PTCForceValue (bit 4 OR 0x10) — a service/debug
-        force-override NOT modelled in the glossary.
+        Upstream-observed raw values: 1 (mask 0x08, low / aux on) and 0 (mask 0x00,
+        off), matching the confirmed off/low stages. Raw 2 and 3 are reachable in the
+        protocol encoding but no reference implementation drives them — labels
+        medium/high are hypotheses pending observation on a staging-aux SKU. Upstream
+        also defines a conditional service/debug force-override that sets bit 4 (mask
+        0x10) — NOT modelled here.
 
         '
       confidence: confirmed
@@ -3806,8 +3857,7 @@ fields:
         - dudanov
         - Session 1 B5 query (0x15=1)
       xye_note: 'C6 byte[6] = 0x20 (horizontal). C4/C6/D0 byte[11] = 0x20. Three-state: 0x00/0x10/0x20/0x30.'
-      note: Secondary under-unit LR swing at body[7] bit 7 (0x80) documented as BYTE_SWING_LR_UNDER_ON. Hypothesis — not observed
-        on own hardware.
+      note: Secondary under-unit LR swing at body[7] bit 7 (mask 0x80). Hypothesis — not observed on own hardware.
       confidence: confirmed
       sources:
       - dudanov
@@ -3920,11 +3970,11 @@ fields:
       _migration:
         _reclassified_from: complex_function
         _inferred_reason: 'continuous numeric setpoint in [16.0, 30.5] °C with 0.5 step via half_bit; the field-extractor
-          flagged this as complex because the block-extractor grabbed sibling keys (smallTemperature, temperature_unit) from
-          shared encode bridges. In fact the field is a single numeric value: the half-degree flag is handled by the existing
-          half_bit decode-chain syntax, the dual encoding (body[2] legacy vs body[13] extended) by condition-based decode
-          steps, and the per-mode valid ranges come from capability cap_id 0x25 which is already fully declared. No composite/derived_from/decompose_to
-          needed.'
+          flagged this as complex because the block-extractor grabbed sibling keys (half-degree flag, temperature_unit)
+          from shared encode bridges. In fact the field is a single numeric value: the half-degree flag is handled by the
+          existing half_bit decode-chain syntax, the dual encoding (body[2] legacy vs body[13] extended) by condition-based
+          decode steps, and the per-mode valid ranges come from capability cap_id 0x25 which is already fully declared. No
+          composite/derived_from/decompose_to needed.'
         _source: manual review during option-2 pass of conservative migration
       feature_available: readable
       data_type: float
@@ -6284,7 +6334,7 @@ fields:
       - serial_protocol.md §3.4
     dust_full:
       description: 'Dust full indicator: filter needs cleaning.'
-      signoff: tbd
+      signoff: "TODO collision rsp_0xc0 body[10] bit 6 with peak_elec — single bit, two distinct sensors. One byte/bit is wrong. Verify against captures + upstream sources. See KNOWN_PENDING_COLLISIONS in test_glossary_collisions.py"
       field_class: sensor
       feature_available: readable
       data_type: bool
@@ -6491,6 +6541,8 @@ fields:
       description: Current indoor humidity measured by sensor (C1 Group 5 path).
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+      - never_observed
       data_type: uint8
       device_context: indoor_unit
       unit: '%'
@@ -6529,6 +6581,8 @@ fields:
       description: Current indoor humidity from A1 heartbeat sensor.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+      - never_observed
       data_type: uint8
       device_context: indoor_unit
       unit: '%'
@@ -6701,6 +6755,8 @@ fields:
       description: IPM (Insulated Power Module) temperature. Raw value — encoding disputed.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+      - decode_unverified
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -6746,6 +6802,8 @@ fields:
       description: Built-in occupancy sensor active. Detects/tracks people in the room.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+      - decode_unverified
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -7282,7 +7340,7 @@ fields:
       confidence: hypothesis
     peak_elec:
       description: Peak electricity / demand response flag.
-      signoff: tbd
+      signoff: "TODO collision rsp_0xc0 body[10] bit 6 with dust_full — single bit, two distinct sensors. One byte/bit is wrong. Verify against captures + upstream sources. See KNOWN_PENDING_COLLISIONS in test_glossary_collisions.py"
       field_class: sensor
       feature_available: readable
       ha:
@@ -7310,6 +7368,8 @@ fields:
       description: PM2.5 particulate matter concentration. 16-bit big-endian.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+      - never_observed
       data_type: uint16
       device_context: indoor_unit
       unit: ug/m3
@@ -7430,34 +7490,6 @@ fields:
       confidence: confirmed
       sources:
       - Session 8 (381.4 W at 80 Hz)
-    run_status:
-      description: Whether the compressor / indoor fan is currently running (not just powered on).
-      signoff: tbd
-      field_class: sensor
-      feature_available: readable
-      ha:
-        entity_category: diagnostic
-      data_type: bool
-      device_context: indoor_unit
-      alt_names:
-        dudanov: running
-      protocols:
-        rsp_0xc0:
-          frame: 0xC0 Response
-          byte: body[1] bit 0 (power), body[10] bit 1 (turbo as proxy)
-          decode:
-          - offset: 1
-            bits:
-            - 0
-            - 0
-          direction: response
-          section: §4.1
-      xye_note: 'C0/C3 byte[19]: hardware-variant bit position — bit 5 (0x20) on the probed XtremeSaveBlue unit, bit 0 (0x01) on CH-36AHU.'
-      disambiguation: No single 'running' bit exists in the serial C0 response. Power (body[1] bit 0) indicates commanded-on,
-        not compressor-running. XYE has an explicit run_status byte but its bit position is hardware-variant-dependent.
-      confidence: hypothesis
-      sources:
-      - protocol_xye.md byte[19]
     t1_indoor_coil:
       description: Indoor heat exchanger coil temperature (T1 thermistor).
       signoff: tbd
