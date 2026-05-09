@@ -60,10 +60,16 @@ glossary fields:
 | `current_session_time` | rsp_0xc1_group0 | body[14..18] | same |
 | `current_work_time` | rsp_0xa1 | body[9..12] | `days*86400 + hours*3600 + minutes*60` (no seconds on wire) |
 
-All four are `feature_available: readable`, unit `s`. Probe captures
-showed always-zero on test units; the formula is locked down via
-oracle parity tests and is a separate concern from whether a given
-unit populates non-zero values.
+All four were `feature_available: readable` originally; demoted to
+`feature_available: excluded` with `excluded_reasons: [never_observed]`
+after both probe captures and live HA observation showed always-zero
+on the dev unit (the AC firmware does not appear to track these
+indoor-side counters). The decoder formula stays locked down via
+oracle parity tests — a separate concern from whether a given unit
+populates non-zero values. A user with a unit that does report
+non-zero counters can hard-override via the integration's
+Glossary-Overrides textarea (caveat path; see
+`exclusion_reasons.md`).
 
 The fifth synthesised time field, `dr_time`, lives in the B1 property
 0x8F,0x00 (hours + minutes only, no days/seconds). It stays

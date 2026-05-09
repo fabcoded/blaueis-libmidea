@@ -6173,7 +6173,9 @@ fields:
     current_work_time:
       description: Compressor-active time in the current run cycle, surfaced in the A1 heartbeat at minute precision (no seconds component on the wire). Same logical concept as current_session_time but reported through a different frame and at coarser resolution.
       field_class: sensor
-      feature_available: readable
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
       data_type: uint32
       device_context: indoor_unit
       unit: s
@@ -8568,7 +8570,9 @@ fields:
     power_on_time:
       description: Cumulative lifetime mains-on time. Synthesised from days/hours/minutes/seconds components packed into rsp_0xc1_group0 body[4..8].
       field_class: sensor
-      feature_available: readable
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
       data_type: uint32
       device_context: indoor_unit
       unit: s
@@ -8613,7 +8617,9 @@ fields:
     total_worked_time:
       description: Cumulative lifetime compressor-active time. Synthesised from days/hours/minutes/seconds components packed into rsp_0xc1_group0 body[9..13].
       field_class: sensor
-      feature_available: readable
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
       data_type: uint32
       device_context: indoor_unit
       unit: s
@@ -8658,7 +8664,9 @@ fields:
     current_session_time:
       description: Compressor-active time in the current session (since last power cycle). Synthesised from days/hours/minutes/seconds components packed into rsp_0xc1_group0 body[14..18].
       field_class: sensor
-      feature_available: readable
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
       data_type: uint32
       device_context: indoor_unit
       unit: s
