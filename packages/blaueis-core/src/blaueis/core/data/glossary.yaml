@@ -3267,7 +3267,6 @@ fields:
       - dudanov
     rate_select:
       description: Fan speed/rate selection mode. Determines available speed control granularity.
-      signoff: tbd
       field_class: stateful_enum
       _migration:
         _reclassified_from: unknown
@@ -3275,12 +3274,9 @@ fields:
         _source: manual review during conservative migration pass
       data_type: uint8
       device_context: indoor_unit
-      feature_available: capability
-      ux:
-        visible_in_modes: [cool, heat, fan_only, dry, auto]
-        sources: community protocol research
-        note: Passive parameter — driven by performance-preset forces, not
-          typically adjusted standalone. Shown when cap-confirmed.
+      feature_available: excluded
+      excluded_reasons:
+      - unknown_semantic
       alt_names:
         rev1: Gear
         rev2: GenMode
@@ -3342,9 +3338,10 @@ fields:
         confidence: consistent
         sources:
         - Session 1 B5 query (0x48=1)
-      note: 'Field-level values: map not yet populated. The capability values (gear_2/gen_mode/gear_5) describe the speed
-        mode TYPE, not the actual rate values the field carries. Actual rate enumeration needs community protocol research
-        — see TODO §13.'
+      note: 'Hidden (feature_available: excluded — unknown_semantic). Passive byte: it resets to the sentinel 100 ("off/disabled")
+        on every power/mode transition, so a non-100 value is not user-sustainable. The capability values (gear_2/gen_mode/gear_5)
+        describe the supported speed-mode TYPE, not the runtime byte; the runtime sub-rate meanings are undecoded. Recovery: a
+        gen_mode or gear_5 device showing a durable, mode-stable, settable sub-rate. See TODO §13.'
       confidence: consistent
       sources:
       - Session 1 B5 query
