@@ -3341,7 +3341,7 @@ fields:
       note: 'Hidden (feature_available: excluded — unknown_semantic). Passive byte: it resets to the sentinel 100 ("off/disabled")
         on every power/mode transition, so a non-100 value is not user-sustainable. The capability values (gear_2/gen_mode/gear_5)
         describe the supported speed-mode TYPE, not the runtime byte; the runtime sub-rate meanings are undecoded. Recovery: a
-        gen_mode or gear_5 device showing a durable, mode-stable, settable sub-rate. See TODO §13.'
+        gen_mode or gear_5 device showing a durable, mode-stable, settable sub-rate. See TODO_glossary.md §13.1.'
       confidence: consistent
       sources:
       - Session 1 B5 query
