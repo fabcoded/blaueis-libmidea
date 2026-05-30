@@ -19,10 +19,14 @@ from __future__ import annotations
 
 from typing import Any
 
-# Keep this tiny and self-contained. The mode-name ↔ int translation is
-# duplicated in HA's const.py; the two must stay in sync, but the lookup
-# here accepts either form so callers can pass whichever is handy.
-_MODE_INT_TO_NAME: dict[int, str] = {
+# Single source of truth for the Midea operating_mode int ↔ mode-name
+# translation. The names are the HA HVACMode vocabulary (``fan_only``, not
+# the glossary ``operating_mode.values`` key ``fan``) because that is what
+# ``ux.visible_in_modes`` lists are written in and matched against. HA's
+# ``const.py`` derives ``MODE_MIDEA_TO_HA`` from this map rather than keeping
+# its own copy. ``smart_dry`` (raw 6) is intentionally absent: no HVACMode
+# maps to it.
+MODE_INT_TO_NAME: dict[int, str] = {
     1: "auto",
     2: "cool",
     3: "dry",
@@ -77,7 +81,7 @@ def is_field_visible(
         return True
     if current_mode in modes:
         return True
-    name = _MODE_INT_TO_NAME.get(current_mode) if isinstance(current_mode, int) else None
+    name = MODE_INT_TO_NAME.get(current_mode) if isinstance(current_mode, int) else None
     return name in modes
 
 
