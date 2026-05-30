@@ -227,10 +227,10 @@ CASES = [
     ]),
 
     # ── error_code: raw-pass-through diagnostic counter ─────────
-    # No range gate — community precedent (msmart, midea_ac_lan, etc.)
-    # passes the byte through unsuppressed so future firmware codes
-    # surface in HA rather than being silently dropped. See research
-    # in commit message for the analysis.
+    # No range gate — community precedent (midea_ac_lan and other
+    # open-source Midea LAN libs) passes the byte through unsuppressed
+    # so future firmware codes surface in HA rather than being silently
+    # dropped. See research in commit message for the analysis.
     ("error_code", "rsp_0xc0", c0(16), [
         ("no error (0)",         0x00, 0),
         ("max documented (33)",  0x21, 33),
