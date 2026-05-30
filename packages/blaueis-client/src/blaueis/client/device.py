@@ -957,7 +957,13 @@ class Device:
                         log.debug("frame observer %r raised: %s", obs, e)
 
             if protocol_key == "rsp_0xb5":
-                next_frame = process_b5(self._status, body, self._glossary, timestamp=ts)
+                # A B5 sets persistent capability state; pass the wire-integrity
+                # verdict so process_b5 discards a corrupted frame rather than
+                # letting a bad cap byte gate a field off until reload.
+                next_frame = process_b5(
+                    self._status, body, self._glossary, timestamp=ts,
+                    frame_trusted=parsed["crc_ok"] and parsed["checksum_ok"],
+                )
                 if self._b5_state == "waiting":
                     self._b5_next_frame = next_frame
                     if self._b5_response_event:

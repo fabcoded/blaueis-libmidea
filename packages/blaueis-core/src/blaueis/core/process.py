@@ -108,11 +108,36 @@ def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict) -> 
                     status_field["feature_available"] = "always"
 
 
-def process_b5(status: dict, body: bytes, glossary: dict, timestamp: str | None = None) -> bool:
+def process_b5(
+    status: dict,
+    body: bytes,
+    glossary: dict,
+    timestamp: str | None = None,
+    frame_trusted: bool = True,
+) -> bool:
     """Process a B5 capability frame and update the status file.
 
     Returns the next_frame flag: True if more B5 pages are available.
+
+    ``frame_trusted`` is the wire-frame integrity verdict (CRC-8 + checksum)
+    from the ingest layer. A B5 sets *persistent* capability state, so a frame
+    that failed integrity must not be decoded — a single corrupted cap byte
+    would otherwise gate a field off (e.g. cap 0x10 read as ``disabled_0/2`` →
+    ``fan_speed = excluded``, silently unsettable until reload). Untrusted
+    frames are discarded with a warning + a ``rsp_0xb5_bad`` counter. Clean
+    wire frames and synthetic-quirk callers (default ``True``) are unaffected,
+    so every legitimate cap-gate still applies.
     """
+    if not frame_trusted:
+        counts = status.setdefault("meta", {}).setdefault("frame_counts", {})
+        counts["rsp_0xb5_bad"] = counts.get("rsp_0xb5_bad", 0) + 1
+        log.warning(
+            "Discarding B5 with failed integrity (CRC/checksum) — capabilities "
+            "not applied; bad-B5 count=%d",
+            counts["rsp_0xb5_bad"],
+        )
+        return False  # do not page further based on a corrupt frame
+
     parsed = parse_b5_tlv(body)
     records = parsed["records"]
     next_frame = parsed["next_frame"]
