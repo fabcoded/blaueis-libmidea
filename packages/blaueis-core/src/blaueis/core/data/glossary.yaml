@@ -3765,6 +3765,7 @@ fields:
       - all captured 0x40 frames
     swing_horizontal:
       description: Horizontal (left/right) air vane oscillation. Wire encoding uses 2 bits — 0x03=ON, 0x00=OFF.
+      label: "Louver Swing Horizontal"
       signoff: tbd
       field_class: stateful_enum
       feature_available: readable
@@ -3864,6 +3865,7 @@ fields:
       - own captures
     swing_vertical:
       description: Vertical (up/down) air vane oscillation. Wire encoding uses 2 bits — 0x03=ON (0x0C in byte), 0x00=OFF.
+      label: "Louver Swing Vertical"
       signoff: tbd
       field_class: stateful_enum
       feature_available: readable
@@ -4651,7 +4653,7 @@ fields:
         — AC sets this to release the vane when a pattern mode like swing takes
         over; not user-selectable). Sent via B0 property 0x0A.'
       signoff: tbd
-      label: "Louver Angle LR"
+      label: "Louver Angle Horizontal"
       field_class: stateful_enum
       data_type: uint8
       device_context: indoor_unit
@@ -4746,7 +4748,7 @@ fields:
         — AC sets this to release the vane when a pattern mode like swing takes
         over; not user-selectable). Sent via B0 property 0x09.'
       signoff: tbd
-      label: "Louver Angle UD"
+      label: "Louver Angle Vertical"
       field_class: stateful_enum
       data_type: uint8
       device_context: indoor_unit
