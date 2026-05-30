@@ -4732,16 +4732,10 @@ fields:
             raw: 1
             feature_available: always
             description: LR angle control available
-            slider:
-              name: "Louver Angle LR"
-              range: [1, 100]
-              step: 1
-              mode: clamp
         confidence: consistent
         sources:
         - Session 1 B5 query (0x0A=1)
-      note: Values from community protocol documentation and app UI validation. Session 8 Phase 3 tested 5 horizontal positions
-        via app — pending pcap validation.
+      note: 'Discrete-only: 5 fixed positions (raw 1/25/50/75/100). Bench-confirmed 2026-05-29 on the live unit — off-grid B0 0x0A angle values are rejected (vane holds current position; not snapped), so the free-value slider was removed. Select-only control.'
       confidence: consistent
       sources:
       - Session 1 B5 query
@@ -4833,15 +4827,10 @@ fields:
             raw: 1
             feature_available: always
             description: UD angle control available
-            slider:
-              name: "Louver Angle UD"
-              range: [1, 100]
-              step: 1
-              mode: clamp
         confidence: consistent
         sources:
         - Session 1 B5 query (0x09=1)
-      note: 'Same percentage-based encoding as LR. Values from community protocol research (5 fixed positions: 1/25/50/75/100). Session 8 Phase 3 tested 5 vertical positions via app — pending pcap validation.'
+      note: 'Same percentage-based encoding as LR. Discrete-only: 5 fixed positions (raw 1/25/50/75/100). Bench-confirmed 2026-05-29 — off-grid B0 0x09 angle values rejected (vane holds position; not snapped), free-value slider removed. Select-only control.'
       confidence: consistent
       sources:
       - Session 1 B5 query
