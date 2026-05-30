@@ -2754,6 +2754,8 @@ fields:
         power and resume.
       field_class: stateful_bool
       feature_available: excluded
+      excluded_reasons:
+        - protocol_inert
       data_type: bool
       default_value: true
       protocols:
@@ -7186,6 +7188,8 @@ fields:
       description: Outdoor return air temperature as raw ADC value. Needs NTC lookup table for conversion to degrees.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_technical_background
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -7203,7 +7207,9 @@ fields:
           section: §4.2.3
       note: 'Own captures: constant 0x72=114 across all 109 G3 frames in S7. Raw ADC from NTC thermistor — the outdoor unit
         MCU does NOT apply the lookup table for this field (unlike Tp which is direct °C). Stable because outdoor return air
-        was ~3-5°C all session.'
+        was ~3-5°C all session. A real outdoor suction-temp reading, but as a raw ADC value it would be misleading dressed as
+        a temperature; a power user can hard-override (caveat reason) to see the raw ADC trend. Reopen: TODO_glossary.md §13.5
+        — obtain or derive the NTC lookup table to convert to a clean °C diagnostic sensor.'
       confidence: hypothesis
     outdoor_supply_voltage:
       description: Outdoor unit supply voltage. Raw byte = volts AC (European 230 V nominal; observed 231 V on own unit).
@@ -8196,6 +8202,9 @@ fields:
       description: Up-down vane strip operating status (2-bit enum).
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): populated as 0 but carries no enum decode map, so the 2-bit value meaning is unverified. Kept as raw documentation. Reopen: TODO_glossary.md §13.2.'
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8216,6 +8225,9 @@ fields:
       description: Left-right vane strip operating status (2-bit enum).
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): populated as 0 but carries no enum decode map, so the 2-bit value meaning is unverified. Kept as raw documentation. Reopen: TODO_glossary.md §13.2.'
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8236,6 +8248,9 @@ fields:
       description: Top vane strip operating status (2-bit enum).
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): populated as 0 but carries no enum decode map, so the 2-bit value meaning is unverified. Kept as raw documentation. Reopen: TODO_glossary.md §13.2.'
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8256,6 +8271,9 @@ fields:
       description: Up-down vane upper limit in cooling mode.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): populated as a constant (100/0), plausibly a percent travel limit, but the scale is unverified. Reopen: TODO_glossary.md §13.2.'
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8276,6 +8294,9 @@ fields:
       description: Up-down vane lower limit in cooling mode.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): populated as a constant (100/0), plausibly a percent travel limit, but the scale is unverified. Reopen: TODO_glossary.md §13.2.'
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8296,6 +8317,9 @@ fields:
       description: Up-down vane upper limit in heating mode.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): populated as a constant (100/0), plausibly a percent travel limit, but the scale is unverified. Reopen: TODO_glossary.md §13.2.'
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8316,6 +8340,9 @@ fields:
       description: Up-down vane lower limit in heating mode.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): populated as a constant (100/0), plausibly a percent travel limit, but the scale is unverified. Reopen: TODO_glossary.md §13.2.'
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8336,6 +8363,9 @@ fields:
       description: Up-down vane current angle position.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - decode_unverified
+      note: 'Excluded (decode_unverified): the vane angle hardware sensor is dead on this unit — the byte reads garbage/out-of-range, not a trustworthy angle. Reopen: TODO_glossary.md §13.3.'
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8356,6 +8386,9 @@ fields:
       description: Left-right vane upper limit.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): populated as a constant (100/0), plausibly a percent travel limit, but the scale is unverified. Reopen: TODO_glossary.md §13.2.'
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8376,6 +8409,9 @@ fields:
       description: Left-right vane lower limit.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): populated as a constant (100/0), plausibly a percent travel limit, but the scale is unverified. Reopen: TODO_glossary.md §13.2.'
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8396,6 +8432,9 @@ fields:
       description: Left-right vane current angle position.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - decode_unverified
+      note: 'Excluded (decode_unverified): the vane angle hardware sensor is dead on this unit — the byte reads garbage/out-of-range, not a trustworthy angle. Reopen: TODO_glossary.md §13.3.'
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8732,6 +8771,9 @@ fields:
       description: Group 7 body[5] — unknown. Increments across probe runs (FD->FE->FF). Possibly a counter or timer.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): populated and varies but the semantic is unidentified; raw debug documentation, not a standing entity (reachable via field-inventory / overrides / flight recorder). Reopen: TODO_glossary.md §13.4.'
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -8752,6 +8794,9 @@ fields:
       description: Group 7 body[6] — unknown. Decrements with compressor frequency (07->04->02). Correlates with load.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): populated and varies but the semantic is unidentified; raw debug documentation, not a standing entity (reachable via field-inventory / overrides / flight recorder). Reopen: TODO_glossary.md §13.4.'
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -8772,6 +8817,9 @@ fields:
       description: Group 7 body[7] — unknown. Mostly stable (01), jumped to 02 at low compressor freq.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): populated and varies but the semantic is unidentified; raw debug documentation, not a standing entity (reachable via field-inventory / overrides / flight recorder). Reopen: TODO_glossary.md §13.4.'
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -8792,6 +8840,9 @@ fields:
       description: Group 7 body[8] — unknown. Constant 0x06 across all runs.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): constant undecoded byte, semantic unidentified. May reclassify protocol_inert if a reference confirms it is reserved. Reopen: TODO_glossary.md §13.4.'
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -8812,6 +8863,9 @@ fields:
       description: Group 7 body[10] — unknown. Non-monotonic (8F->58->B3). Possibly a real-time motor parameter.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): populated and varies but the semantic is unidentified; raw debug documentation, not a standing entity (reachable via field-inventory / overrides / flight recorder). Reopen: TODO_glossary.md §13.4.'
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -8832,6 +8886,9 @@ fields:
       description: Group 7 body[11] — unknown. Decrements with load (02->01->00).
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): populated and varies but the semantic is unidentified; raw debug documentation, not a standing entity (reachable via field-inventory / overrides / flight recorder). Reopen: TODO_glossary.md §13.4.'
       data_type: uint8
       device_context: outdoor_unit
       protocols:
@@ -8852,6 +8909,9 @@ fields:
       description: Group 12 body[4] — unknown. Constant 0x02 across all runs.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): constant undecoded byte, semantic unidentified. May reclassify protocol_inert if a reference confirms it is reserved. Reopen: TODO_glossary.md §13.4.'
       data_type: uint8
       device_context: indoor_unit
       protocols:
@@ -8872,6 +8932,9 @@ fields:
       description: Group 12 body[6] — unknown. Constant 0x0F across all runs.
       field_class: sensor
       feature_available: excluded
+      excluded_reasons:
+        - unknown_semantic
+      note: 'Excluded (unknown_semantic): constant undecoded byte, semantic unidentified. May reclassify protocol_inert if a reference confirms it is reserved. Reopen: TODO_glossary.md §13.4.'
       data_type: uint8
       device_context: indoor_unit
       protocols:

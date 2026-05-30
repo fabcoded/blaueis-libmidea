@@ -73,3 +73,79 @@ reason needs; this says what it concretely looks like for the field.
   captures.
 - **On reopen:** decode the sub-rate value set, drop `unknown_semantic`,
   and re-tier from `excluded` to `capability` (B5-gated on cap `0x48`).
+
+### §13.2 — Vane status & travel-limit readbacks (`unknown_semantic`)
+
+Fields: `vane_ud_status`, `vane_lr_status`, `vane_top_status` (2-bit
+status enums) and `vane_ud_cool_upper/lower`, `vane_ud_heat_upper/lower`,
+`vane_lr_upper/lower` (per-mode travel limits), all in `rsp_0xc1_group11`.
+
+- **Current disposition:** excluded. They *populated* in the Session-15
+  capture (status bytes read `0`; limits read a constant `100`/`0`), so
+  this is not a never-observed case — but the status enums carry no
+  decode map (a bare integer renders meaningless) and the limit
+  percent-scale is unverified (hypothesis-only). Nothing a person or
+  automation can yet read as signal.
+- **Reopen condition:** a capture in which these bytes **track real
+  louver motion** — status bytes changing as the strip moves, limits
+  changing across a deliberate cool↔heat config — **plus** an enum/scale
+  decode (a value→meaning map for the status enums, a verified percent
+  formula for the limits).
+- **On reopen:** add the decode map/encoding, drop `unknown_semantic`,
+  and surface as diagnostic-shelf sensors (`entity_category: diagnostic`).
+
+### §13.3 — Vane angle readbacks (`decode_unverified`, dead sensor)
+
+Fields: `vane_ud_angle` (read `48`→`0` across runs), `vane_lr_angle`
+(stable `240` = `0xF0`, out of any 0–100 range).
+
+- **Current disposition:** excluded. The angle hardware sensor is **dead**
+  on this unit — the byte returns garbage / out-of-range values, not a
+  trustworthy angle. The sibling B1 property reads corroborate (no live
+  angle). Publishing it would falsify long-term statistics.
+- **Reopen condition:** a unit (or a repaired sensor) where the byte
+  leaves its garbage value and **tracks the real vane angle** — ideally a
+  before/after capture paired with louver video — confirming the decode.
+- **On reopen:** surface as a diagnostic angle sensor; the decode is
+  already positioned, so this is an evidence reopen, not a new decode.
+
+### §13.4 — Group-7 / Group-12 unknown bytes (`unknown_semantic`)
+
+Fields: `group7_unknown_byte5/6/7/10/11` (vary with load / counter-like),
+`group7_unknown_byte8`, `group12_unknown_byte4/6` (constant), all
+undecoded with no known vendor decoder.
+
+- **Current disposition:** excluded, kept as **raw debug documentation**,
+  not standing entities. Each field's `description` records the observed
+  pattern (increments, load-correlation, or constant value). Investigator-
+  reachable via the field-inventory service, the glossary-overrides
+  textarea, and the flight-recorder full-frame capture — one door away.
+- **Reopen condition:** a **cross-reference decoder** for the Group-7 /
+  Group-12 body, OR **multi-session captures at known physical states**
+  that pin a varying byte to a quantity (e.g. a byte to a compressor-load
+  curve). For the *constant* bytes, a reference confirming the byte is
+  reserved would instead reclassify them `protocol_inert`.
+- **On reopen:** decode and re-tier the byte that earns it; leave the
+  rest as documentation.
+
+### §13.5 — `outdoor_return_air_temp` (`unknown_technical_background`)
+
+- **Current disposition:** excluded. A **real** outdoor return-air
+  (suction) thermistor — present in every G3 frame, corroborated by an
+  independent source attribution (preserved in the field's `alt_names`) —
+  but the wire value is a **raw NTC ADC**
+  reading the outdoor MCU does not convert (read constant `114` only
+  because outdoor air sat ~3–5 °C all session). With no lookup table,
+  publishing `114` as a temperature would mislead and corrupt statistics.
+  The reason is a *caveat*, so a power user can already hard-override it
+  via the Glossary-Overrides textarea today.
+- **Reopen condition:** obtain or derive the **NTC lookup table** (a
+  shared-thermistor table from the indoor path, a datasheet curve, or a
+  2-point bench calibration) — then a multi-condition capture proving the
+  converted value tracks suction temperature. This is the single
+  strongest near-term reopen candidate of the excluded set.
+- **On reopen:** apply the lookup `encoding`, add a `ha:` block
+  (`device_class: temperature`, °C), drop `unknown_technical_background`,
+  and surface as a clean diagnostic temperature sensor. If the table
+  stays elusive, the interim option is an explicitly raw-ADC diagnostic
+  (no °C unit, no `device_class`), disabled-by-default.
