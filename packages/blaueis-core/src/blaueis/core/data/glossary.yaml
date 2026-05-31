@@ -912,7 +912,6 @@ fields:
     wind_avoid:
       description: 'Wind OFF me: actively steers the airstream away from the occupant — the
         directional inverse of wind_straight ("Wind ON me", property 0x32). Property 0x33.'
-      signoff: tbd
       field_class: stateful_bool
       _migration:
         _reclassified_from: complex_function
@@ -1006,7 +1005,6 @@ fields:
       description: 'Breeze Mild: softened/dampened airstream — wind blows mildly rather than being
         thrown at occupants. The intermediate intensity (between breeze_away''s deflect-up and
         breezeless''s near-zero diffusion). Property 0x43.'
-      signoff: tbd
       field_class: stateful_bool
       _migration:
         _reclassified_from: complex_function
@@ -1102,7 +1100,6 @@ fields:
         airstream upward / along the ceiling, away from the occupant, with the indoor fan pinned
         low (the "prevent straight wind" feature, property 0x42). NOT the micro-hole wind-free
         mode (that is the separate breezeless feature on property 0x18).'
-      signoff: tbd
       field_class: stateful_enum
       _migration:
         _reclassified_from: complex_function
@@ -1207,7 +1204,10 @@ fields:
         0x43 state machine. Gated to cool/dry/fan (not useful in heat/auto). IMPORTANT: Breeze Away
         does NOT drive the heat warm-up "no draft until the coil warms" behaviour — that is the
         unit''s separate automatic Heating cold-wind protection (surfaced as error_code 25 with the
-        indoor fan forced to 0 until the t2 coil warms), not any breeze toggle.'
+        indoor fan forced to 0 until the t2 coil warms), not any breeze toggle. Engagement is
+        device-confirmed (raw 1 and 2 are both adopted on readback); the off/on direction is taken
+        from the OEM control source (the app writes 2 for on, 1 for off) — not visually verified on
+        the louver, as testing was remote.'
       confidence: consistent
       sources:
       - Session 1 B5 query (0x42=1)
@@ -4591,7 +4591,10 @@ fields:
       sources:
       - serial_protocol.md §3.5
     wind_straight:
-      description: Direct airflow control. On YB100 models, value 0x02 activates Breeze Away mode.
+      description: 'Wind ON me: aims the airstream AT the occupant — the directional inverse of
+        wind_avoid (property 0x33). Property 0x32, 2-value bool (off=0/on=1). On YB100 models value
+        0x02 re-routes to wind_avoid — a foreign-SKU branch, not a value of our register. Hidden on
+        our unit.'
       signoff: tbd
       field_class: stateful_enum
       _migration:
@@ -4861,7 +4864,6 @@ fields:
       description: 'Breezeless / wind-free: near-zero-velocity airflow diffused through the micro-hole
         panel so no direct draft is felt — the gentlest of the three breeze intensities. Property 0x18
         (FA models collapse it onto the shared 0x43 state machine at value 4).'
-      signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
