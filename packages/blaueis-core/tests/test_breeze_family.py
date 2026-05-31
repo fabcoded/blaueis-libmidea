@@ -96,6 +96,32 @@ check("decode raw 0x03 -> on-value 3", dec(0x43, 3, "breeze_mild") == {"value": 
 check("encode on(3)  -> 0x43=0x03", enc("breeze_mild", 3, 0x43) == bytes([3]))
 check("encode off(1) -> 0x43=0x01", enc("breeze_mild", 1, 0x43) == bytes([1]))
 
+# 4b. Adjacent comfort fields (auto / cascade / directional).   [capability-tier]
+print("\n4b. Adjacent comfort fields  [capability-tier, awaiting field feedback]")
+
+
+def dec_t(prop, typ, data, field):
+    return decode_frame_fields(b1([(prop, typ, bytes(data))]), "rsp_0xb1", G).get(field)
+
+
+# auto_prevent_straight_wind (0x26,0x02) — bool off=0/on=1 (automatic deflect-up).
+check("auto_prevent_straight_wind raw 0 -> False", dec_t(0x26, 0x02, [0], "auto_prevent_straight_wind") == {"value": False})
+check("auto_prevent_straight_wind raw 1 -> True", dec_t(0x26, 0x02, [1], "auto_prevent_straight_wind") == {"value": True})
+
+# wind_around / Cascade (0x59) — 2-byte composite: byte0 = on/off state,
+# byte1 = up/down direction sub-mode.
+check("wind_around_value byte0=0 -> 0", dec_t(0x59, 0x00, [0, 0], "wind_around_value") == {"value": 0})
+check("wind_around_value byte0=1 -> 1", dec_t(0x59, 0x00, [1, 1], "wind_around_value") == {"value": 1})
+check("wind_around_ud_mode byte1=1 -> upper(1)", dec_t(0x59, 0x00, [1, 1], "wind_around_ud_mode") == {"value": 1})
+check("wind_around_ud_mode byte1=2 -> lower(2)", dec_t(0x59, 0x00, [1, 2], "wind_around_ud_mode") == {"value": 2})
+
+# prevent_straight_wind_lr (0x58) — currently a bool (bit-0); the directional
+# Upper(2)/Lower(3) semantics are NOT represented. KNOWN capability-tier gap,
+# awaiting the directional-enum relabel + a unit that exposes 0x58.
+check("prevent_straight_wind_lr raw 0 -> False", dec_t(0x58, 0x00, [0], "prevent_straight_wind_lr") == {"value": False})
+check("prevent_straight_wind_lr raw 2 -> False (bit-0 model; direction lost — KNOWN gap, awaiting feedback)",
+      dec_t(0x58, 0x00, [2], "prevent_straight_wind_lr") == {"value": False})
+
 # 5. Glossary value-enum consistency with the documented characterization.
 print("\n5. Glossary value-enum consistency")
 

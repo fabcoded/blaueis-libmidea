@@ -307,9 +307,10 @@ def test_tx_rx_asymmetry():
     status = {"fields": {}}
 
     # Build a SET command for a single 1-byte property
+    # (louver_swing_angle_lr_enum is property 0x0A; value 50 = "center")
     result = build_b0_command_body(
         status,
-        {"wind_swing_lr_angle": 50},
+        {"louver_swing_angle_lr_enum": 50},
         glossary,
     )
     body = result["body"]
