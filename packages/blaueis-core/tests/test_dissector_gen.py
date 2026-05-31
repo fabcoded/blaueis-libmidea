@@ -82,12 +82,19 @@ def simulate_registry_decode(body: bytes, glossary: dict) -> dict:
 
             raw = extract_bits(body[offset], bits)
 
-            # Condition
+            # Condition (kept in lockstep with codec.decode_field)
             cond = step.get("condition")
             if cond:
                 if cond == "!= 0" and raw == 0:
                     continue
                 if cond == "> 0" and raw <= 0:
+                    continue
+
+            cond_pred = step.get("condition_predicate")
+            if cond_pred:
+                from blaueis.core.decode_predicates import DECODE_PREDICATES
+
+                if not DECODE_PREDICATES[cond_pred](body, step, raw):
                     continue
 
             val = raw

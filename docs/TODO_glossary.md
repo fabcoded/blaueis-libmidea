@@ -196,3 +196,25 @@ our XtremeSaveBlue** (cap not advertised — bench scan + live HA snapshot).
   a unit advertises `fresh_air` (`0x004B`). The `body[22]` reset shares the
   byte with `comfort_power_save` / `independent_ptc`; model those before
   building it. Full mechanism map: `internal-tests/findings/15_filter_dust_mechanisms.md`.
+
+### §13.8 — `target_temperature` extended-setpoint ladder (`decode_unverified`)
+
+- **Current disposition:** the `rsp_0xc0 body[13]` extended-setpoint override
+  is now mode-gated (suppressed in dry/smart_dry via the
+  `temp_extended_setpoint_active` decode predicate — that bug is **fixed**).
+  But the override's *formula* is still incomplete: we apply a flat `add: 12`
+  (`raw + 12`), correct only for the normal arm `raw 1..25` (→ 13–37 °C). The
+  OEM body[13] setpoint is a value-gated **three-way ladder**: `raw == 0` → no
+  override (sentinel, handled), `1..25` → `raw + 12`, **`26..31` → `raw - 19`**
+  (→ 7–12 °C, the deep/8 °C-heat low arm). Our flat `+12` mis-decodes `raw
+  26..31` to 38–43 °C.
+- **Why it's latent (range-masked):** the field's `range: [16.0, 30.5]`
+  value-gate suppresses 38–43 °C to `None`, so today the user sees *no value*
+  rather than a wrong one. It would only surface if the range were widened.
+  (A maintained open-source reference decoder is also `+12`-only — its own
+  code notes additional range is possible — so even upstream is incomplete here.)
+- **Reopen condition:** a non-dry capture that lights up `body[13]` as a
+  genuine low extended setpoint (`raw ≥ 26`) to validate the `raw - 19` arm.
+  A single scalar `add:` can't express the piecewise ladder — implement it as
+  a named decode transform on the same `decode_predicates` substrate this
+  session introduced. Then `target_temperature` can sign off.

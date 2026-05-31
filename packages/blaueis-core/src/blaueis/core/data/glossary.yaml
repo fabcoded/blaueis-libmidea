@@ -4009,14 +4009,14 @@ fields:
           section: §3.2
         rsp_0xc0:
           frame: 0xC0 Response
-          byte: body[2] bits[3:0] + bit4; body[13] bits[4:0] overrides if > 0
+          byte: 'body[2] bits[3:0] + bit4 (primary); body[13] bits[4:0] extended override — fires only outside dry/smart_dry (predicate temp_extended_setpoint_active), since target_temperature is meaningless in dehumidify modes'
           decode:
           - offset: 13
             bits:
             - 4
             - 0
             add: 12
-            condition: '!= 0'
+            condition_predicate: temp_extended_setpoint_active
           - offset: 2
             bits:
             - 3

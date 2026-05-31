@@ -8,6 +8,8 @@ from pathlib import Path
 
 import yaml
 
+from .decode_predicates import DECODE_PREDICATES
+
 SPEC_DIR = Path(__file__).resolve().parent / "data"
 GLOSSARY_PATH = SPEC_DIR / "glossary.yaml"
 
@@ -386,6 +388,19 @@ def decode_field(
             cond = step.get("condition")
             if cond and ((cond == "!= 0" and val == 0) or (cond == "> 0" and val <= 0)):
                 continue
+
+            # Named cross-state predicate — the sanctioned escape hatch for a
+            # step whose firing depends on another byte (e.g. operating_mode)
+            # rather than its own value. Resolved against the registry and
+            # called with the full body in scope; False skips the step. Keeps
+            # mode/cross-byte logic in named Python, not a YAML DSL.
+            cond_pred = step.get("condition_predicate")
+            if cond_pred:
+                pred = DECODE_PREDICATES.get(cond_pred)
+                if pred is None:
+                    raise KeyError(f"unknown condition_predicate: {cond_pred!r}")
+                if not pred(body, step, val):
+                    continue
 
             add = step.get("add")
             if add is not None:

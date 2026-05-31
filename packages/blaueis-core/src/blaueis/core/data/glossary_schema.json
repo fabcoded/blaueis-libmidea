@@ -275,6 +275,10 @@
           "type": "string",
           "description": "Simple condition on extracted value: '!= 0', '> 0'. Step skipped if not met."
         },
+        "condition_predicate": {
+          "type": "string",
+          "description": "Name of a cross-state predicate in blaueis.core.decode_predicates.DECODE_PREDICATES, evaluated against the full frame body (e.g. operating_mode in another byte). Step skipped if the predicate returns False. The sanctioned alternative to growing a condition DSL — see decode_predicates.py."
+        },
         "half_bit": {
           "type": "object",
           "description": "Extra 0.5 flag from another bit position. Adds 0.5 if the specified bit is set.",
