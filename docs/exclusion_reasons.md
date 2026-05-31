@@ -125,15 +125,15 @@ Schema rules:
 - `excluded_reasons` is an array of unique strings; each entry must be
   a value from the closed enum in §1.
 - `minItems: 1` — empty list is invalid.
-- **FIXME — pending tightening.** The schema *should* require
-  `excluded_reasons` whenever `feature_available == "excluded"`, but
-  this conditional is currently soft (the schema accepts excluded
-  fields without reasons). Reason: pilot scope migrated only the four
-  on/off timer fields; the remaining 27 currently-excluded fields
-  still need their reasons added per the audit elsewhere in this doc
-  set. Once that broader migration lands, add the `allOf if/then`
-  block in `glossary_schema.json` (the `$comment` there marks the
-  spot) to make the requirement enforceable.
+- **Required when excluded (enforced).** The schema requires
+  `excluded_reasons` whenever a field-level `feature_available ==
+  "excluded"`, via an `allOf if/then` block in the field-definition
+  schema. The migration is complete — every field-level excluded field
+  carries reasons, and `test_schema_validation.py` asserts a reason-less
+  excluded field is rejected. The requirement is **field-level only**:
+  the capability per-cap-value enum (`#/$defs/cap_value`) also uses
+  `feature_available: "excluded"` to mean "unsupported on this raw" and
+  intentionally needs no reasons.
 
 ## 6. Cross-references
 

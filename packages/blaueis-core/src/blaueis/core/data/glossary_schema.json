@@ -544,7 +544,16 @@
           }
         }
       },
-      "$comment": "FIXME(excluded_reasons): tighten to required when feature_available == 'excluded'. Soft for now — only the 4 timer fields have been migrated in the pilot. Once all currently-excluded fields carry excluded_reasons (audit in docs/exclusion_reasons.md, classification in this conversation's pilot follow-up), add an allOf if/then block here enforcing required: ['excluded_reasons'] under that condition."
+      "allOf": [
+        {
+          "$comment": "Enforced (was a soft FIXME): every field-level 'excluded' field must carry excluded_reasons. Scoped to the field definition only — the capability per-cap-value enum uses a separate schema (#/$defs/cap_value) where 'excluded' means 'unsupported on this raw' and needs no reasons.",
+          "if": {
+            "required": ["feature_available"],
+            "properties": { "feature_available": { "const": "excluded" } }
+          },
+          "then": { "required": ["excluded_reasons"] }
+        }
+      ]
     },
     "cap_default": {
       "type": "object",

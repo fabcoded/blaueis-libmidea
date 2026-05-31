@@ -220,6 +220,17 @@ def main():
         detail="schema accepted duplicates",
     )
 
+    # Test 12: an 'excluded' field MISSING excluded_reasons is rejected
+    # (the required-when-excluded enforcement — was a soft FIXME).
+    mutated11 = copy.deepcopy(glossary)
+    mutated11["fields"][cat_x][fname_x].pop("excluded_reasons", None)
+    errors = list(validator.iter_errors(mutated11))
+    check(
+        "schema rejects an excluded field with no excluded_reasons",
+        len(errors) > 0,
+        detail="schema accepted a reason-less excluded field",
+    )
+
     # ── Summary ──────────────────────────────────────────────────
     total = passed + failed
     print(f"\n{'=' * 60}")
