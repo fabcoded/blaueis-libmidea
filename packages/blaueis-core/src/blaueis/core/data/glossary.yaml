@@ -1005,14 +1005,21 @@ fields:
       description: 'Breeze Mild: softened/dampened airstream — wind blows mildly rather than being
         thrown at occupants. The intermediate intensity (between breeze_away''s deflect-up and
         breezeless''s near-zero diffusion). Property 0x43.'
-      field_class: stateful_bool
+      field_class: stateful_enum
       _migration:
         _reclassified_from: complex_function
-        _inferred_reason: bool toggle with read/write symmetry; prior complex_function flag was a field-extractor block-extractor
-          false positive (shared encode cascade with sibling breeze fields).
+        _inferred_reason: non-consecutive on/off enum (standalone wire 0x01=off, 0x03=on); modelled as
+          enum rather than bool because a plain bool decode cannot distinguish the two non-zero values.
       feature_available: capability
-      data_type: bool
+      data_type: uint8
       device_context: indoor_unit
+      values:
+        'off':
+          raw: 1
+          description: Breeze Mild off (standalone wire 0x01)
+        'on':
+          raw: 3
+          description: Breeze Mild on — softened airstream (standalone wire 0x03)
       ux:
         visible_in_modes: [cool]
         sources: community protocol research; OEM gentle-wind-sense mutex enables it in cool only (strictest gate in the family)
