@@ -4769,23 +4769,23 @@ fields:
         left:
           raw: 1
           description: Far left (1%)
-          label: "Far Left (1)"
+          label: "Left"
         left_mid:
           raw: 25
           description: Left of centre (25%)
-          label: "Left (25)"
+          label: "Left Center"
         center:
           raw: 50
           description: Center (50%)
-          label: "Center (50)"
+          label: "Center"
         right_mid:
           raw: 75
           description: Right of centre (75%)
-          label: "Right (75)"
+          label: "Right Center"
         right:
           raw: 100
           description: Far right (100%)
-          label: "Far Right (100)"
+          label: "Right"
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4863,23 +4863,23 @@ fields:
         up:
           raw: 1
           description: Highest / top (1%)
-          label: "Top (1)"
+          label: "Upper"
         up_mid:
           raw: 25
           description: Above centre (25%)
-          label: "Upper (25)"
+          label: "Upper Middle"
         center:
           raw: 50
           description: Centre (50%)
-          label: "Middle (50)"
+          label: "Middle"
         down_mid:
           raw: 75
           description: Below centre (75%)
-          label: "Lower (75)"
+          label: "Lower Middle"
         down:
           raw: 100
           description: Lowest / bottom (100%)
-          label: "Bottom (100)"
+          label: "Lower"
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
