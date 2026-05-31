@@ -1139,7 +1139,7 @@ fields:
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
-          byte: 'property ID 0x42,0x00; data: 0x01=mode 1, 0x02=mode 2'
+          byte: 'property ID 0x42,0x00; data: 0x01=off, 0x02=on'
           direction: command
           decode:
           - property_id: 0x42,0x00
