@@ -149,3 +149,50 @@ undecoded with no known vendor decoder.
   and surface as a clean diagnostic temperature sensor. If the table
   stays elusive, the interim option is an explicitly raw-ADC diagnostic
   (no °C unit, no `device_class`), disabled-by-default.
+
+### §13.6 — `peak_elec` (`unknown_semantic`)
+
+- **Current disposition:** excluded; its `rsp_0xc0` decode block was
+  **deleted** (not just hidden) to clear the `body[10] bit6` collision
+  with the relocated `filter_clean_due`. The prior `body[10] bit6` claim
+  was wrong: six decoders read that bit as peak-valley / natural-fan, and
+  one source has the peak/valley read commented out at bit5. Source-only,
+  never wire-observed; the real demand-response mechanism in this protocol
+  is a property-TLV window (`dr_time`), not a C0 status bit.
+- **Reopen condition:** a live capture where a C0 status bit toggles in
+  correlation with an induced peak-electricity / demand-response event
+  **and** a source decoder that reads a peak/DR flag from that specific
+  bit. Do **not** relocate onto the `dr_time` property — that is the DR
+  *window*, a distinct concept from a peak/valley status flag.
+- **On reopen:** position the decode at the proven bit, or re-tier to a
+  property-TLV sensor; drop `unknown_semantic`.
+
+### §13.7 — Filter family: clean-flag watch + deferred fresh-air pair
+
+Covers the `filter_clean_due` (relocated to `rsp_0xc0 body[13] bit5`) and
+`filter_clean_reset` (`cmd_0x40 body[10] bit7`) fields, both
+capability-gated on FILTER_REMIND (`0x0217`) and therefore **dormant on
+our XtremeSaveBlue** (cap not advertised — bench scan + live HA snapshot).
+
+- **Active-behaviour reopen (`filter_clean_due` / `filter_clean_reset`):**
+  both are signed off at `consistent` on six-decoder + unit-test grounds,
+  but the *live* behaviour (flag firing on a dirty filter; the reset
+  clearing it) is **unverified** — our hardware can't exercise it. Confirm
+  on a unit that advertises `0x0217`: a capture where `body[13] bit5` goes
+  to 1, then a `filter_clean_reset` press drives it back to 0. On
+  confirmation, the fields can be promoted toward `stable`.
+- **`body[13]` dry-humidity watch (`filter_clean_due`):** in dry/smart_dry
+  the OEM read-route packs the humidity target onto `body[13] & 0x7F`,
+  which covers bit5 — a false "clean due" risk. Mitigated by
+  `ux.visible_in_modes` (excludes dry/smart_dry) and inert on our wire
+  (we map C0 humidity to `body[19]`). Reopen if a real dry-mode humidity
+  capture shows `body[13]` carrying the `0x7F` humidity on our firmware.
+  Note `target_temperature` reads the same byte (`body[13] & 0x1F`,
+  ungated) and shares this latent multiplex — track jointly.
+- **Deferred fresh-air pair (not added):** `filter_replace_due`
+  (`body[13] bit6`, "replace the filter") and `filter_replace_reset`
+  (`cmd_0x40 body[22] bit3`), plus the fresh-air lifetime counters
+  (`body[24..27]` LE16) and the `0x09,0x04` level/value TLV. Un-defer when
+  a unit advertises `fresh_air` (`0x004B`). The `body[22]` reset shares the
+  byte with `comfort_power_save` / `independent_ptc`; model those before
+  building it. Full mechanism map: `internal-tests/findings/15_filter_dust_mechanisms.md`.

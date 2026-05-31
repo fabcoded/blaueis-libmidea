@@ -48,16 +48,6 @@ KNOWN_PENDING_COLLISIONS: list[dict] = [
             "both fields captures the gating. Permanent — not a TODO."
         ),
     },
-    {
-        "scope": "rsp_0xc0",
-        "byte": 10,
-        "bit": 6,
-        "fields": ["dust_full", "peak_elec"],
-        "reason": (
-            "Two distinct sensor bits both claim body[10] bit 6 — one byte/bit "
-            "is wrong."
-        ),
-    },
 ]
 
 
