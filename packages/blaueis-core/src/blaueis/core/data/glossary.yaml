@@ -801,6 +801,71 @@ fields:
   #                       `derived_from:` / `state_machine:`.
   # ────────────────────────────────────────────────────────────────────────────
   control:
+    filter_clean_reset:
+      description: 'Filter clean reset: zero the indoor/main filter run-time so the clean-due reminder clears. User-initiated "I cleaned it" acknowledgement.'
+      label: Filter — Mark Cleaned
+      field_class: trigger
+      feature_available: capability
+      data_type: bool
+      default_value: false
+      device_context: indoor_unit
+      alt_names:
+        rev1: common_filter_reset
+        handbook: Reset Filter Reminder
+      protocols:
+        cmd_0x40:
+          frame: 0x40 Set
+          byte: body[10] bit 7
+          direction: command
+          decode:
+          - offset: 10
+            bits:
+            - 7
+            - 7
+          section: §3.2
+      capability:
+        cap_id: '0x17'
+        cap_id_16: '0x0217'
+        cap_type: extended
+        description: Filter/nest maintenance reminder — gates the clean reset.
+        frames:
+          rsp_0xb5_tlv:
+            frame: 0xB5 Capability Response (TLV)
+            byte: record ID 0x17, type 0x02, data byte[0]
+            direction: capability
+            section: §3.4.1
+        values:
+          none:
+            raw: 0
+            feature_available: excluded
+            description: No filter reminder
+            correction: ignore
+          nest_check_1:
+            raw: 1
+            feature_available: always
+            description: Clean reminder level 1
+          nest_check_2:
+            raw: 2
+            feature_available: always
+            description: Clean reminder level 2
+          nest_need_change:
+            raw: 3
+            feature_available: always
+            description: Reminder present (replace-style)
+          both:
+            raw: 4
+            feature_available: always
+            description: Clean + replace reminder
+      note: 'Momentary reset: write True to set SET-frame body[10] bit7 (0x80) which zeroes the indoor filter run-time counter; the
+        firmware then recomputes filter_clean_due to 0. No readback (one-shot), no direct flag poke. Safe by construction: the
+        cmd_0x40 builder seeds the body[10] siblings (sleep_mode/turbo_mode/temperature_unit/catch_cold/night_light, bits 0-4) from
+        current status and the set-command preflight refuses to encode if any is stale; bit7 is otherwise unowned. Capability-gated
+        on FILTER_REMIND (0x0217) so it surfaces only where filter reminders exist; absent on our XtremeSaveBlue. Wire position
+        from own research; active reset behaviour unverified pending a unit that advertises 0x0217 — consistent, not stable. See
+        TODO_glossary.md §13.'
+      confidence: consistent
+      sources:
+      - own research
     alarm_sleep:
       description: Alarm sleep / wake-up timer function.
       note: 'AC-internal wake-up alarm/timer whose function HA''s automation engine, schedule helpers, and alarm-clock entities supersede. Usage cannot be guaranteed in mixed setups — when both an AC alarm and an HA automation target the same wake-up outcome, the two fire independently and state may diverge. Surfaced for users who prefer the AC-side handler; HA-driven setups should disable this entity and drive `climate.turn_on` from a time-triggered automation instead. See docs/disabled_fields.md §5.1 for the broader supersede rule.'
@@ -6427,71 +6492,6 @@ fields:
         Multiplex caveat: body[13] low bits[4:0] are target_temperature''s extended setpoint (mask 0x1F, cannot reach bit5); the
         dry/smart_dry humidity overlap is gated out by visible_in_modes and is inert on our wire (C0 humidity maps to body[19]).
         Active firing + reset-clearing behaviour unverified pending a unit that advertises 0x0217 — consistent, not stable. See
-        TODO_glossary.md §13.'
-      confidence: consistent
-      sources:
-      - own research
-    filter_clean_reset:
-      description: 'Filter clean reset: zero the indoor/main filter run-time so the clean-due reminder clears. User-initiated "I cleaned it" acknowledgement.'
-      label: Filter — Mark Cleaned
-      field_class: trigger
-      feature_available: capability
-      data_type: bool
-      default_value: false
-      device_context: indoor_unit
-      alt_names:
-        rev1: common_filter_reset
-        handbook: Reset Filter Reminder
-      protocols:
-        cmd_0x40:
-          frame: 0x40 Set
-          byte: body[10] bit 7
-          direction: command
-          decode:
-          - offset: 10
-            bits:
-            - 7
-            - 7
-          section: §3.2
-      capability:
-        cap_id: '0x17'
-        cap_id_16: '0x0217'
-        cap_type: extended
-        description: Filter/nest maintenance reminder — gates the clean reset.
-        frames:
-          rsp_0xb5_tlv:
-            frame: 0xB5 Capability Response (TLV)
-            byte: record ID 0x17, type 0x02, data byte[0]
-            direction: capability
-            section: §3.4.1
-        values:
-          none:
-            raw: 0
-            feature_available: excluded
-            description: No filter reminder
-            correction: ignore
-          nest_check_1:
-            raw: 1
-            feature_available: always
-            description: Clean reminder level 1
-          nest_check_2:
-            raw: 2
-            feature_available: always
-            description: Clean reminder level 2
-          nest_need_change:
-            raw: 3
-            feature_available: always
-            description: Reminder present (replace-style)
-          both:
-            raw: 4
-            feature_available: always
-            description: Clean + replace reminder
-      note: 'Momentary reset: write True to set SET-frame body[10] bit7 (0x80) which zeroes the indoor filter run-time counter; the
-        firmware then recomputes filter_clean_due to 0. No readback (one-shot), no direct flag poke. Safe by construction: the
-        cmd_0x40 builder seeds the body[10] siblings (sleep_mode/turbo_mode/temperature_unit/catch_cold/night_light, bits 0-4) from
-        current status and the set-command preflight refuses to encode if any is stale; bit7 is otherwise unowned. Capability-gated
-        on FILTER_REMIND (0x0217) so it surfaces only where filter reminders exist; absent on our XtremeSaveBlue. Wire position
-        from own research; active reset behaviour unverified pending a unit that advertises 0x0217 — consistent, not stable. See
         TODO_glossary.md §13.'
       confidence: consistent
       sources:

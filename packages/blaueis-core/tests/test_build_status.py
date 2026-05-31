@@ -42,7 +42,7 @@ def main():
 
     # Field count — 108 baseline + 44 Session 15 known + 8 unknown (G7+G12) +
     # 1 jet_cool + 3 Group 0 day counters + 36 bulk B0/B1 properties (Tier 1-4).
-    check("total fields == 200", len(fields) == 200, f"got {len(fields)}")
+    check("total fields == 198", len(fields) == 198, f"got {len(fields)}")
 
     # Writable count: every field with at least one cmd_* protocol entry
     # whose direction is 'command'. This is the same predicate the
@@ -52,23 +52,22 @@ def main():
     # 'cmd_0x40 in protocols' check picked up.
     writable = [n for n, f in fields.items() if f["writable"]]
     check(
-        "writable fields == 82 (matches control category count)",
-        len(writable) == 82,
+        "writable fields == 83 (matches control category count)",
+        len(writable) == 83,
         f"got {len(writable)}: {sorted(writable)}",
     )
 
-    # feature_available distribution after the glossary conservative
-    # migration pass demoted 39 sensor fields from `always` to `readable`
-    # (read-only access at the wire level, writes ignored):
-    #   always:     57 - 39 demoted sensors = 18
-    #   readable:   13 + 39 demoted sensors = 52
-    #   capability: 18
-    #   never:       3
+    # feature_available distribution — snapshot of the current glossary (sums to
+    # 198): always 11, readable 65, capability 74, excluded 38, readable-opt 10.
+    # The extensive exclusion work (vane fields, group-unknown bytes,
+    # decode-unverified/never-observed, etc.) moved many fields
+    # readable -> excluded/capability over time; every excluded field carries a
+    # schema-enforced excluded_reasons entry.
     fa_counts = Counter(f["feature_available"] for f in fields.values())
-    check("always == 14", fa_counts["always"] == 14, f"got {fa_counts.get('always', 0)}")
-    check("readable == 120", fa_counts["readable"] == 120, f"got {fa_counts.get('readable', 0)}")
-    check("capability == 63", fa_counts["capability"] == 63, f"got {fa_counts.get('capability', 0)}")
-    check("never == 3", fa_counts["excluded"] == 3, f"got {fa_counts.get('excluded', 0)}")
+    check("always == 11", fa_counts["always"] == 11, f"got {fa_counts.get('always', 0)}")
+    check("readable == 65", fa_counts["readable"] == 65, f"got {fa_counts.get('readable', 0)}")
+    check("capability == 74", fa_counts["capability"] == 74, f"got {fa_counts.get('capability', 0)}")
+    check("excluded == 38", fa_counts["excluded"] == 38, f"got {fa_counts.get('excluded', 0)}")
 
     # Required keys on every field. The new shape is flat: sources +
     # default_priority back the per-frame storage; the rest are
@@ -132,7 +131,19 @@ def main():
 
     # Never fields
     never_fields = [n for n, f in fields.items() if f["feature_available"] == "excluded"]
-    expected_never = {"ipm_module_temp", "local_body_sense", "outdoor_return_air_temp"}
+    expected_never = {
+        "current_session_time", "current_work_time", "fan_speed_timer_bit",
+        "group12_unknown_byte4", "group12_unknown_byte6", "group7_unknown_byte10",
+        "group7_unknown_byte11", "group7_unknown_byte5", "group7_unknown_byte6",
+        "group7_unknown_byte7", "group7_unknown_byte8", "humidity_actual",
+        "humidity_measured", "ipm_module_temp", "local_body_sense", "night_light",
+        "outdoor_return_air_temp", "peak_elec", "pm25_concentration",
+        "power_off_time_value", "power_off_timer", "power_on_time", "power_on_time_value",
+        "power_on_timer", "protocol_bit1", "rate_select", "total_worked_time",
+        "vane_lr_angle", "vane_lr_lower", "vane_lr_status", "vane_lr_upper",
+        "vane_top_status", "vane_ud_angle", "vane_ud_cool_lower", "vane_ud_cool_upper",
+        "vane_ud_heat_lower", "vane_ud_heat_upper", "vane_ud_status",
+    }
     check("never fields correct", set(never_fields) == expected_never, f"got {never_fields}")
 
     # Summary

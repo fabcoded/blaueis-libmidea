@@ -107,8 +107,8 @@ def main():
     control_fields = [n for n, v in control.items() if isinstance(v, dict) and "description" in v]
     total = len(sensor_fields) + len(control_fields)
     check(
-        "total field count == 200 (118 sensor + 82 control)",
-        total == 200,
+        "total field count == 198 (115 sensor + 83 control)",
+        total == 198,
         f"got {total} (sensor={len(sensor_fields)}, control={len(control_fields)})",
     )
 

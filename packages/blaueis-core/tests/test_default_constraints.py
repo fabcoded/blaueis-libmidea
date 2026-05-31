@@ -92,10 +92,10 @@ def main():
     status = build_status("test", glossary)
     fields = status["fields"]
     fa = Counter(f["feature_available"] for f in fields.values())
-    check("always == 14", fa["always"] == 14, f"got {fa['always']}")
-    check("readable == 120", fa["readable"] == 120, f"got {fa['readable']}")
-    check("capability == 63", fa["capability"] == 63, f"got {fa['capability']}")
-    check("never == 3", fa["excluded"] == 3, f"got {fa['excluded']}")
+    check("always == 11", fa["always"] == 11, f"got {fa['always']}")
+    check("readable == 65", fa["readable"] == 65, f"got {fa['readable']}")
+    check("capability == 74", fa["capability"] == 74, f"got {fa['capability']}")
+    check("excluded == 38", fa["excluded"] == 38, f"got {fa['excluded']}")
 
     # All 11 promoted fields are now `readable`
     for fname in PROMOTED_FIELDS:
@@ -271,13 +271,14 @@ def main():
     # Capability-only fields with no cap in B5 → never. Note that
     # anion_ionizer cap 0x1E IS in Session 1 B5 (the probed unit supports it), so
     # it gets upgraded to 'always' — not a finalize-sweep candidate.
-    # breeze_away (cap 0x33) and buzzer (cap 0x2c) genuinely are NOT
+    # wind_avoid (cap 0x33) and buzzer (cap 0x2c) genuinely are NOT
     # in S1 caps and have no rsp_0xc0 decode — those are the ones
-    # finalize_capabilities() must mark as never.
+    # finalize_capabilities() must mark as never. (cap 0x33 is wind_avoid
+    # since the breeze-family rename; breeze_away is cap 0x42, which IS in S1.)
     check(
-        "breeze_away (no rsp_0xc0, cap 0x33 NOT in S1) → never",
-        status["fields"]["breeze_away"]["feature_available"] == "excluded",
-        f"got {status['fields']['breeze_away']['feature_available']}",
+        "wind_avoid (no rsp_0xc0, cap 0x33 NOT in S1) → never",
+        status["fields"]["wind_avoid"]["feature_available"] == "excluded",
+        f"got {status['fields']['wind_avoid']['feature_available']}",
     )
     check(
         "buzzer (no rsp_0xc0, cap 0x2c NOT in S1) → never",
