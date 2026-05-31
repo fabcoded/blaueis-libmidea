@@ -149,4 +149,12 @@ check("breeze_mild values off=0x01/on=0x03 (non-consecutive)",
       bm["values"]["off"]["raw"] == 1 and bm["values"]["on"]["raw"] == 3)
 
 print(f"\n{'=' * 48}\nResults: {passed} passed, {failed} failed / {passed + failed} total")
-sys.exit(1 if failed else 0)
+
+
+def test_breeze_family_synthetic():
+    """pytest entry point — the checks above run at import; assert none failed."""
+    assert failed == 0, f"{failed} breeze-family synthetic checks failed"
+
+
+if __name__ == "__main__":
+    sys.exit(1 if failed else 0)
