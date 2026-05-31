@@ -909,9 +909,9 @@ fields:
       confidence: hypothesis
       sources:
       - Session 1 B5 query (0x1E=1, but no UI)
-    breeze_away:
-      description: 'Breeze Away: deflects airflow away from the user. Handbook §1.18 (non-TwinFlap) or sub-mode of Breezeless
-        function (TwinFlap).'
+    wind_avoid:
+      description: 'Wind OFF me: actively steers the airstream away from the occupant — the
+        directional inverse of wind_straight ("Wind ON me", property 0x32). Property 0x33.'
       signoff: tbd
       field_class: stateful_bool
       _migration:
@@ -923,30 +923,27 @@ fields:
       data_type: bool
       device_context: indoor_unit
       ux:
-        visible_in_modes: [cool, heat, fan_only, dry, auto]
-        sources: community protocol research
+        visible_in_modes: [cool, heat, auto]
+        sources: community protocol research; OEM windDeblow mutex blocks dry/fan/smart_dry (the inverse of breeze_away's gate)
       mutual_exclusion:
         when_on:
           forces:
-            breeze_mild: 0
-            breezeless: 0
+            wind_straight: 0
             turbo_mode: 0
             jet_cool: 0
             louver_swing_vertical: 0
             louver_swing_angle_ud_enum: 0
           reason: |
-            TwinFlap breeze family. On FA100 units the three breeze modes
-            (breeze_away, breeze_mild, breezeless) share property 0x43 as a
-            state machine and are mutually exclusive by construction.
-            Non-FA100 units expose them as independent bools but the same
-            logic applies — concurrent deflection geometries fight. Also
-            suppresses swing/turbo/jet_cool which reshape the micro-vent path.
+            Wind OFF me steers the stream away from the occupant, so it forces off
+            its directional opposite wind_straight ("Wind ON me", 0x32) plus the
+            swing/turbo/jet_cool that would re-aim or boost the airflow. Property-only,
+            standalone register — NOT part of the FA 0x43 breeze state machine.
       alt_names:
         rev1: WindDeblow
         rev2: wind_avoid
         rev3: Wind OFF me
         dudanov: WIND_OFF_ME
-        handbook: Breeze Away
+        handbook: Wind OFF me
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -974,7 +971,7 @@ fields:
         cap_id: '0x33'
         cap_id_16: '0x0033'
         cap_type: simple
-        description: 'Whether Breeze Away is available. INVERTED LOGIC: val=0 means supported.'
+        description: 'Whether Wind OFF me (wind_avoid, 0x33) is available. INVERTED LOGIC: val=0 means supported.'
         frames:
           rsp_0xb5_tlv:
             frame: 0xB5 Capability Response (TLV)
@@ -984,7 +981,7 @@ fields:
         values:
           supported:
             raw: 0
-            description: 'Breeze Away available (inverted: 0=yes)'
+            description: 'Wind OFF me available (inverted: 0=yes)'
             feature_available: always
           not_supported:
             raw: 1
@@ -998,13 +995,17 @@ fields:
         sources:
         - dudanov
         - node-mideahvac (inverted)
-      note: Property-only (no 0x40/0xC0 body bits). On YB100 models, routed internally to property 0x32 with value 0x02. On
-        FA100/TwinFlap, part of fa_no_wind_sense state machine (value 2).
+      note: 'Property-only (no 0x40/0xC0 body bits). Decode folds raw 0x01 and 0x02 both to on
+        (0x02 is a legacy combined value). YB100 models route internally to property 0x32 with
+        value 0x02. Standalone register — NOT part of the FA 0x43 breeze state machine. Hidden on
+        our unit (0x0033 not advertised). Does NOT drive the heat cold-wind protection.'
       confidence: hypothesis
       sources:
       - handbook §1.18
     breeze_mild:
-      description: 'Breeze Mild: intermediate soft-breeze mode between Breeze Away and Breezeless. TwinFlap models only.'
+      description: 'Breeze Mild: softened/dampened airstream — wind blows mildly rather than being
+        thrown at occupants. The intermediate intensity (between breeze_away''s deflect-up and
+        breezeless''s near-zero diffusion). Property 0x43.'
       signoff: tbd
       field_class: stateful_bool
       _migration:
@@ -1015,24 +1016,23 @@ fields:
       data_type: bool
       device_context: indoor_unit
       ux:
-        visible_in_modes: [cool, heat, fan_only, dry, auto]
-        sources: community protocol research
+        visible_in_modes: [cool]
+        sources: community protocol research; OEM gentle-wind-sense mutex enables it in cool only (strictest gate in the family)
       mutual_exclusion:
         when_on:
           forces:
+            wind_avoid: 0
             breeze_away: 0
-            breezeless: 0
             turbo_mode: 0
             strong_wind: 0
             jet_cool: 0
             louver_swing_vertical: 0
             louver_swing_angle_ud_enum: 0
           reason: |
-            TwinFlap breeze family member (see breeze_away for family rules).
-            Intermediate soft-breeze geometry. Concurrent breeze modes,
-            swing, turbo, or jet_cool reshape the micro-vent path and fight
-            this field's geometry. Also forces strong_wind off and auto-fan
-            per community protocol research on FA100 behavior.
+            Breeze Mild softens the airstream; concurrent breeze modes, swing,
+            turbo, strong_wind, or jet_cool re-aim or boost the flow and fight that
+            geometry, so it forces them off and pins the fan to auto. On FA/TwinFlap
+            units the three breeze modes share property 0x43 as a 4-way state machine.
       alt_names:
         rev1: GentleWindSense
         rev2: gentle_wind_sense
@@ -1090,49 +1090,55 @@ fields:
         sources:
         - dudanov
         - node-mideahvac (inverted)
-      note: 'Property-only (no 0x40/0xC0 body bits). Mutual exclusion: disables swing_ud, turbo when active.'
+      note: 'Property-only (no 0x40/0xC0 body bits). Standalone codec is NON-consecutive binary:
+        raw 0x01=off, 0x03=on (there is no 0x02). FA/TwinFlap units reinterpret 0x43 as the shared
+        4-way state machine {1=off, 2=Breeze Away, 3=Breeze Mild, 4=Breezeless}. Cool-only; hidden
+        on our unit (0x0043 not advertised). No relation to the heat cold-wind protection.'
       confidence: hypothesis
       sources:
       - handbook (TwinFlap §1.19)
-    breezeless:
-      description: 'Breezeless / wind-free mode. Air passes through micro-holes, eliminating direct draft. TwinFlap models:
-        one-key activation. Standard models: via property 0x42.'
+    breeze_away:
+      description: 'Breeze Away: deflect-up airflow redirection — vertical louvers throw the
+        airstream upward / along the ceiling, away from the occupant, with the indoor fan pinned
+        low (the "prevent straight wind" feature, property 0x42). NOT the micro-hole wind-free
+        mode (that is the separate breezeless feature on property 0x18).'
+      signoff: tbd
       field_class: stateful_enum
       _migration:
         _reclassified_from: complex_function
-        _inferred_reason: uint8 with multiple discrete values (off/on/intermediate); prior complex_function flag was a field-extractor
-          block-extractor false positive from shared encode cascade with sibling breeze fields.
+        _inferred_reason: binary on/off control (raw 1=off, 2=on, 0=neutral/unset); the earlier
+          off/mode_1/mode_2 reading was a range->enum autolabel artifact of the 0..2 clamp, not real modes.
       feature_available: capability
       data_type: uint8
       device_context: indoor_unit
       ux:
-        visible_in_modes: [cool, heat, fan_only, dry, auto]
-        sources: community protocol research; all-modes availability confirmed live (engages in cool/dry/fan/heat/auto)
+        visible_in_modes: [cool, dry, fan_only]
+        sources: community protocol research; gated to where useful (OEM app mutex enables it only in cool/dry/fan; heat/auto are not useful — the heat warm-up is the separate cold-wind protection)
       mutual_exclusion:
         when_on:
           forces:
-            breeze_away: 0
+            wind_avoid: 0
             breeze_mild: 0
             turbo_mode: 0
             strong_wind: 0
-            no_wind_sense: 0
+            breezeless: 0
             jet_cool: 0
             louver_swing_vertical: 0
             louver_swing_horizontal: 0
             louver_swing_angle_ud_enum: 0
             louver_swing_angle_lr_enum: 0
           reason: |
-            Wind-free mode: micro-hole diffusion, zero direct draft. On FA100
-            this is value 4 of the breeze state machine. Active breezeless
-            geometry cannot coexist with swing (redirects airflow), turbo /
-            strong_wind (boost velocity), jet_cool, no_wind_sense (redundant
-            older variant), or sibling breeze modes.
+            Breeze Away parks the louvers to deflect air upward/away and pins the
+            indoor fan low; that geometry cannot coexist with swing (redirects
+            airflow), turbo / strong_wind (boost velocity), jet_cool, or the sibling
+            comfort modes (breezeless, breeze_mild). On FA/TwinFlap units the same
+            button instead writes value 2 of the shared 0x43 state machine.
       alt_names:
         rev1: PreventStraightWind
         rev2: prevent_straight_wind
         rev3: Breeze Away
         dudanov: ONE_KEY_NO_WIND
-        handbook: Breezeless
+        handbook: Breeze Away
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -1160,7 +1166,7 @@ fields:
         cap_id: '0x42'
         cap_id_16: '0x0042'
         cap_type: simple
-        description: Whether Breezeless / one-key no-wind is available.
+        description: Whether Breeze Away (prevent-straight-wind, property 0x42) is available.
         frames:
           rsp_0xb5_tlv:
             frame: 0xB5 Capability Response (TLV)
@@ -1175,7 +1181,7 @@ fields:
             feature_available: excluded
           supported:
             raw: 1
-            description: Breezeless available
+            description: Breeze Away available
             feature_available: always
         alt_names:
           dudanov: CAPABILITY_ONE_KEY_NO_WIND_ON_ME
@@ -1184,25 +1190,24 @@ fields:
         - dudanov
         - Session 1 B5 query (0x42=1)
       values:
-        'off':
+        neutral_unset:
           raw: 0
-          description: Breezeless disabled (0)
-        mode_1:
+          user_selectable: false
+          description: Neutral / unset — never written by the app; the device ignores it (decode-only floor of the 0..2 clamp)
+        'off':
           raw: 1
-          description: Breezeless mode 1 (standard) (1)
-        mode_2:
+          description: Breeze Away off
+        'on':
           raw: 2
-          description: Breezeless mode 2 (enhanced) (2)
-      note: 'Property-only (no 0x40/0xC0 body bits). Mutual exclusion: disables swing,
-        turbo, jet_cool when active. On FA100, activated via property 0x43 with value 0x04
-        instead. Engages in all operating modes on our unit (live-confirmed cool/dry/fan/heat/auto,
-        mode_1/mode_2 both stick); the companion app hides the manual toggle in heat/auto but
-        that is UI-only — the firmware still applies it: in heat, breezeless holds the vane in its
-        highest, ceiling-facing position until the coil is warm enough, then resumes — avoiding the
-        cold-draft feeling during warm-up. On units that also advertise the 0x43 capability
-        (ours) the breeze level is held by a shared state machine, so writing off (raw 0) keeps
-        the current level instead of disabling — harmless; to turn it off, select a sibling
-        breeze mode.'
+          description: Breeze Away on — louvers deflect the airstream upward/away from the occupant; indoor fan pinned low (airflow not stopped)
+      note: 'Property-only (no 0x40/0xC0 body bits). Mutual exclusion: disables swing, turbo,
+        jet_cool, and the sibling comfort modes (breezeless, breeze_mild) when on. Standalone wire
+        values: raw 1=off, 2=on, 0=neutral/unset (the app never writes 0; a 0 write does not stick
+        on our unit). On FA/TwinFlap units the same button instead writes value 2 of the shared
+        0x43 state machine. Gated to cool/dry/fan (not useful in heat/auto). IMPORTANT: Breeze Away
+        does NOT drive the heat warm-up "no draft until the coil warms" behaviour — that is the
+        unit''s separate automatic Heating cold-wind protection (surfaced as error_code 25 with the
+        indoor fan forced to 0 until the t2 coil warms), not any breeze toggle.'
       confidence: consistent
       sources:
       - Session 1 B5 query (0x42=1)
@@ -1622,14 +1627,14 @@ fields:
           forces:
             turbo_mode: 0
             strong_wind: 0
-            no_wind_sense: 0
+            breezeless: 0
             jet_cool: 0
             frost_protection: 0
           reason: |
             Energy-saving target: low compressor output, reduced fan. Mutually
             exclusive with high-output presets (turbo, strong_wind, jet_cool)
             and with frost_protection (unrelated setpoint override). Also
-            forces no_wind_sense off per community protocol research. Probe
+            forces breezeless off per community protocol research. Probe
             evidence: AC keeps eco_mode set and silently drops turbo when
             both arrive same frame. Schema is UX guidance, not wire enforcement.
       alt_names:
@@ -2412,10 +2417,10 @@ fields:
             louver_swing_horizontal: 0
             louver_swing_angle_ud_enum: 0
             louver_swing_angle_lr_enum: 0
-            breeze_away: 0
+            wind_avoid: 0
             breeze_mild: 0
+            breeze_away: 0
             breezeless: 0
-            no_wind_sense: 0
             new_wind_sense: 0
           reason: |
             Source-of-truth mutex set, consumed by integration UX-overlay
@@ -4591,7 +4596,7 @@ fields:
       field_class: stateful_enum
       _migration:
         _reclassified_from: complex_function
-        _inferred_reason: uint8 with discrete values (0=off, 1=direct, 2=YB100-routed-to-breeze_away); the YB100 routing is
+        _inferred_reason: uint8 with discrete values (0=off, 1=direct, 2=YB100-routed-to-wind_avoid); the YB100 routing is
           an orchestration concern for the composite layer, not a property of this field's wire semantics.
       feature_available: capability
       data_type: uint8
@@ -4852,16 +4857,18 @@ fields:
       sources:
       - Session 1 B5 query
       - own research
-    no_wind_sense:
-      description: Wind-free / no-wind sensation control. 1-byte variant; FA models use 2 bytes (high byte ignored here).
+    breezeless:
+      description: 'Breezeless / wind-free: near-zero-velocity airflow diffused through the micro-hole
+        panel so no direct draft is felt — the gentlest of the three breeze intensities. Property 0x18
+        (FA models collapse it onto the shared 0x43 state machine at value 4).'
       signoff: tbd
       field_class: stateful_bool
       feature_available: capability
       data_type: bool
       device_context: indoor_unit
       ux:
-        visible_in_modes: [cool, heat]
-        sources: community protocol research
+        visible_in_modes: [cool]
+        sources: community protocol research; OEM noWindFree mutex blocks dry/auto/fan/heat/smart_dry — cool-only
       mutual_exclusion:
         when_on:
           forces:
@@ -4869,15 +4876,18 @@ fields:
             strong_wind: 0
             turbo_mode: 0
             louver_swing_vertical: 0
-            breezeless: 1
+            breeze_away: 1
           reason: |
-            Older wind-free variant. On FA-type units, activating no_wind_sense
-            engages breezeless (cascade, not exclusion) — schema records
-            forced value of 1 to signal the dependency. Other fields must go
-            off: eco, strong_wind, turbo (overlapping/incompatible airflow
-            shapes) and vertical swing (defeats diffusion geometry).
+            Breezeless (near-zero-velocity micro-hole diffusion) is mutually exclusive
+            with the directed/boosted airflow modes: it forces breeze_away to off
+            (raw 1) and turns off eco, strong_wind, turbo, and vertical swing, all of
+            which defeat the no-draft diffusion geometry.
       alt_names:
+        rev1: NoWindFeel
+        rev2: no_wind_sense
         rev3: noWindSense
+        app_label: Breezeless
+        dudanov: NO_WIND_FEEL
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -4901,6 +4911,10 @@ fields:
             - 0
             - 0
           section: §3.5
+      note: 'The true micro-hole wind-free feature (app "Breezeless"). Values off=0 / on=1 (raw 2..5
+        are encode-clamp artifacts, never produced). FA/TwinFlap units write value 4 of the shared
+        0x43 state machine instead. Cool-only; hidden on our unit (0x0018 not advertised). Does NOT
+        drive the heat warm-up — that is the separate automatic Heating cold-wind protection.'
       confidence: hypothesis
     cool_hot_sense:
       description: Cool/hot comfort sensing mode toggle.
@@ -9340,7 +9354,7 @@ fields:
       sources:
       - serial_protocol.md §3.4
     prevent_straight_wind_select:
-      description: Whether the unit offers a selector between anti-direct-wind variants. Distinct from 0x42/simple breezeless and B1 property 0x58,0x00 prevent_straight_wind_lr.
+      description: Whether the unit offers a selector between anti-direct-wind variants. Distinct from 0x42/simple breeze_away and B1 property 0x58,0x00 prevent_straight_wind_lr.
       signoff: tbd
       field_class: sensor
       data_type: bool
