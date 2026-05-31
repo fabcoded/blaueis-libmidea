@@ -229,7 +229,7 @@ def build_mutex_report(glossary: dict) -> dict:
     Three findings, all informational — not build-breaking:
 
     - ``asymmetric``: A→B=0 exists but B→A=0 is missing, and B has a mutex
-      block of its own (so it's not a pure "victim" field like swing_vertical).
+      block of its own (so it's not a pure "victim" field like louver_swing_vertical).
 
     - ``missing_siblings``: pairs (A, B) with no edge in either direction whose
       bidirectional-neighbor sets overlap heavily — they look like siblings in

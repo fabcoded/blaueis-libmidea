@@ -932,7 +932,7 @@ fields:
             breezeless: 0
             turbo_mode: 0
             jet_cool: 0
-            swing_vertical: 0
+            louver_swing_vertical: 0
             louver_swing_angle_ud_enum: 0
           reason: |
             TwinFlap breeze family. On FA100 units the three breeze modes
@@ -1025,7 +1025,7 @@ fields:
             turbo_mode: 0
             strong_wind: 0
             jet_cool: 0
-            swing_vertical: 0
+            louver_swing_vertical: 0
             louver_swing_angle_ud_enum: 0
           reason: |
             TwinFlap breeze family member (see breeze_away for family rules).
@@ -1118,8 +1118,8 @@ fields:
             strong_wind: 0
             no_wind_sense: 0
             jet_cool: 0
-            swing_vertical: 0
-            swing_horizontal: 0
+            louver_swing_vertical: 0
+            louver_swing_horizontal: 0
             louver_swing_angle_ud_enum: 0
             louver_swing_angle_lr_enum: 0
           reason: |
@@ -2401,8 +2401,8 @@ fields:
             turbo_mode: 0
             strong_wind: 0
             eco_mode: 0
-            swing_vertical: 0
-            swing_horizontal: 0
+            louver_swing_vertical: 0
+            louver_swing_horizontal: 0
             louver_swing_angle_ud_enum: 0
             louver_swing_angle_lr_enum: 0
             breeze_away: 0
@@ -3765,7 +3765,7 @@ fields:
       sources:
       - serial_protocol.md §3.2
       - all captured 0x40 frames
-    swing_horizontal:
+    louver_swing_horizontal:
       description: Horizontal (left/right) air vane oscillation. Wire encoding uses 2 bits — 0x03=ON, 0x00=OFF.
       label: "Louver Swing Horizontal"
       signoff: tbd
@@ -3810,7 +3810,7 @@ fields:
         cap_id: '0x15'
         cap_id_16: '0x0215'
         cap_type: extended
-        description: Swing/fan direction availability. Shared with swing_vertical.
+        description: Swing/fan direction availability. Shared with louver_swing_vertical.
         frames:
           rsp_0xb5_tlv:
             frame: 0xB5 Capability Response (TLV)
@@ -3865,7 +3865,7 @@ fields:
       sources:
       - dudanov
       - own captures
-    swing_vertical:
+    louver_swing_vertical:
       description: Vertical (up/down) air vane oscillation. Wire encoding uses 2 bits — 0x03=ON (0x0C in byte), 0x00=OFF.
       label: "Louver Swing Vertical"
       signoff: tbd
@@ -3910,7 +3910,7 @@ fields:
         cap_id: '0x15'
         cap_id_16: '0x0215'
         cap_type: extended
-        description: Swing/fan direction availability. Shared with swing_horizontal.
+        description: Swing/fan direction availability. Shared with louver_swing_horizontal.
         frames:
           rsp_0xb5_tlv:
             frame: 0xB5 Capability Response (TLV)
@@ -4853,7 +4853,7 @@ fields:
             eco_mode: 0
             strong_wind: 0
             turbo_mode: 0
-            swing_vertical: 0
+            louver_swing_vertical: 0
             breezeless: 1
           reason: |
             Older wind-free variant. On FA-type units, activating no_wind_sense
