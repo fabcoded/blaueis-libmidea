@@ -1202,7 +1202,6 @@ fields:
       - handbook (TwinFlap §1.19)
     buzzer:
       description: Request audible beep feedback from the AC display board on command receipt.
-      signoff: tbd
       field_class: trigger
       _migration:
         _reclassified_from: complex_function
@@ -4655,7 +4654,6 @@ fields:
         positions (raw 1 / 25 / 50 / 75 / 100) plus raw 0 (backend-only "released"
         — AC sets this to release the vane when a pattern mode like swing takes
         over; not user-selectable). Sent via B0 property 0x0A.'
-      signoff: tbd
       label: "Louver Angle Horizontal"
       field_class: stateful_enum
       data_type: uint8
@@ -4750,7 +4748,6 @@ fields:
         positions (raw 1 / 25 / 50 / 75 / 100) plus raw 0 (backend-only "released"
         — AC sets this to release the vane when a pattern mode like swing takes
         over; not user-selectable). Sent via B0 property 0x09.'
-      signoff: tbd
       label: "Louver Angle Vertical"
       field_class: stateful_enum
       data_type: uint8
@@ -5995,7 +5992,6 @@ fields:
       description: Compressor running flag. 1 = running, 0 = idle. The wire bit
         is inverted (1 = idle on the wire) — codec applies invert in decode so
         the field's semantic matches HA's device_class running (on = running).
-      signoff: tbd
       field_class: binary_sensor
       feature_available: readable-opt
       data_type: bool
@@ -6096,7 +6092,6 @@ fields:
       confidence: hypothesis
     compressor_target_frequency:
       description: Compressor target frequency (FT). Set by control logic. 0 Hz when compressor is off.
-      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: uint8
@@ -6152,7 +6147,6 @@ fields:
       - serial_protocol.md §4.1
     power_current_run_kwh:
       description: Energy consumed in the current run cycle in kWh. Resets on power cycle.
-      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: float
@@ -6992,7 +6986,6 @@ fields:
       confidence: hypothesis
     indoor_fan_runtime:
       description: Indoor fan total runtime (LE 16-bit minutes — body[6] low byte, body[7] high byte).
-      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: uint16
@@ -7058,7 +7051,6 @@ fields:
       - own probe 2026-04-10 Session 15 (value=0, no defrost)
     compressor_cumul_hours:
       description: Compressor cumulative runtime hours (LE 16-bit — body[14] low byte, body[15] high byte).
-      signoff: tbd
       field_class: sensor
       feature_available: readable
       data_type: uint16
@@ -7118,7 +7110,6 @@ fields:
       - serial_protocol.md §4.1 body[9]
     nest_filter_check:
       description: Nest/filter check and maintenance reminder capability.
-      signoff: tbd
       field_class: sensor
       _migration:
         _reclassified_from: unknown
@@ -7820,7 +7811,6 @@ fields:
       - Sessions 1+8 cross-validation
     power_total_run_kwh:
       description: Cumulative run-mode energy in kWh. Separate from power_total_kwh (which includes standby).
-      signoff: tbd
       field_class: sensor
       feature_available: capability
       data_type: float
