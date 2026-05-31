@@ -107,8 +107,8 @@ vs steady-state).
 
 Bytes the `field_inventory` scan classified as "populated" (carrying
 non-zero, non-constant data) but whose meaning hasn't been
-identified by any source documentation (glossary, Lua decoders, weex,
-node-mideahvac).
+identified by any source documentation (the glossary, public reference
+decoders such as node-mideahvac, or our own protocol research).
 
 | Field | Observed pattern |
 |---|---|

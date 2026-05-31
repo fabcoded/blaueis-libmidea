@@ -1097,7 +1097,6 @@ fields:
     breezeless:
       description: 'Breezeless / wind-free mode. Air passes through micro-holes, eliminating direct draft. TwinFlap models:
         one-key activation. Standard models: via property 0x42.'
-      signoff: tbd
       field_class: stateful_enum
       _migration:
         _reclassified_from: complex_function
@@ -1108,7 +1107,7 @@ fields:
       device_context: indoor_unit
       ux:
         visible_in_modes: [cool, heat, fan_only, dry, auto]
-        sources: community protocol research
+        sources: community protocol research; all-modes availability confirmed live (engages in cool/dry/fan/heat/auto)
       mutual_exclusion:
         when_on:
           forces:
@@ -1194,8 +1193,16 @@ fields:
         mode_2:
           raw: 2
           description: Breezeless mode 2 (enhanced) (2)
-      note: 'Property-only (no 0x40/0xC0 body bits). Mutual exclusion: disables swing, turbo, jet_cool when active. On FA100,
-        activated via property 0x43 with value 0x04 instead.'
+      note: 'Property-only (no 0x40/0xC0 body bits). Mutual exclusion: disables swing,
+        turbo, jet_cool when active. On FA100, activated via property 0x43 with value 0x04
+        instead. Engages in all operating modes on our unit (live-confirmed cool/dry/fan/heat/auto,
+        mode_1/mode_2 both stick); the companion app hides the manual toggle in heat/auto but
+        that is UI-only — the firmware still applies it: in heat, breezeless holds the vane in its
+        highest, ceiling-facing position until the coil is warm enough, then resumes — avoiding the
+        cold-draft feeling during warm-up. On units that also advertise the 0x43 capability
+        (ours) the breeze level is held by a shared state machine, so writing off (raw 0) keeps
+        the current level instead of disabling — harmless; to turn it off, select a sibling
+        breeze mode.'
       confidence: consistent
       sources:
       - Session 1 B5 query (0x42=1)
