@@ -17,8 +17,8 @@ tests:
       follow_me: false
       turbo_mode: false
       eco_mode: false
-      swing_vertical: false
-      swing_horizontal: false
+      louver_swing_vertical: false
+      louver_swing_horizontal: false
       alarm_sleep: false
       catch_cold: false
       night_light: false

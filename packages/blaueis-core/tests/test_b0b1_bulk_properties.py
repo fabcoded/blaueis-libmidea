@@ -96,7 +96,7 @@ def parse_b0_set_tlv(body):
 
 # (field_name, prop_id_lo, prop_id_hi, raw_byte, expected_decoded_value)
 TIER1_CASES = [
-    ("no_wind_sense", 0x18, 0x00, 0x01, True),
+    ("breezeless", 0x18, 0x00, 0x01, True),
     ("cool_hot_sense", 0x21, 0x00, 0x01, True),
     ("auto_prevent_straight_wind", 0x26, 0x02, 0x01, True),
     ("intelligent_wind", 0x34, 0x00, 0x01, True),
@@ -135,9 +135,9 @@ def test_tier1_single_byte():
     # Also probe the false / 0 case for one bool to confirm it isn't always-True
     decoded = decode_one(glossary, 0x18, 0x00, [0x00])
     check(
-        "no_wind_sense raw=0x00 → False",
-        decoded.get("no_wind_sense", {}).get("value") is False,
-        f"got {decoded.get('no_wind_sense')}",
+        "breezeless raw=0x00 → False",
+        decoded.get("breezeless", {}).get("value") is False,
+        f"got {decoded.get('breezeless')}",
     )
 
 

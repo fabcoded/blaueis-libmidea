@@ -93,7 +93,7 @@ tests:
       reason: clamp
 
   # ── swing: cap 0x15=2 (neither) — setting swing should be rejected ──
-  - field: swing_vertical
+  - field: louver_swing_vertical
     value: 1
     note: "vertical swing ON — REJECTED, cap 0x15=2 means no swing at all"
     expected:
@@ -101,7 +101,7 @@ tests:
       corrected: null
       reason: ignore
 
-  - field: swing_horizontal
+  - field: louver_swing_horizontal
     value: 1
     note: "horizontal swing ON — REJECTED, cap 0x15=2 means no swing at all"
     expected:
@@ -110,7 +110,7 @@ tests:
       reason: ignore
 
   # ── boolean capability checks ─────────────────────────────────
-  - field: swing_vertical
+  - field: louver_swing_vertical
     cap_check:
       cap_id: "0x15"
       expected_supported: true

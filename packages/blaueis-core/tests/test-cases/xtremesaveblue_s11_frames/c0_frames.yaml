@@ -13,7 +13,7 @@ frames:
     clean_fan_time: false
     cosy_sleep: 0
     dry_clean: false
-    dust_full: false
+    filter_clean_due: false
     eco_mode: false
     energy_save: false
     error_code: 0
@@ -38,8 +38,8 @@ frames:
     silky_cool: false
     sleep_mode: false
     strong_wind: false
-    swing_horizontal: false
-    swing_vertical: false
+    louver_swing_horizontal: false
+    louver_swing_vertical: false
     target_temperature: 25.0
     temperature_unit: false
     turbo_mode: false
@@ -61,7 +61,7 @@ frames:
     clean_fan_time: false
     cosy_sleep: 0
     dry_clean: false
-    dust_full: false
+    filter_clean_due: false
     eco_mode: false
     energy_save: false
     error_code: 0
@@ -86,8 +86,8 @@ frames:
     silky_cool: false
     sleep_mode: false
     strong_wind: true
-    swing_horizontal: false
-    swing_vertical: false
+    louver_swing_horizontal: false
+    louver_swing_vertical: false
     target_temperature: 27.0
     temperature_unit: false
     turbo_mode: false
@@ -107,7 +107,7 @@ frames:
     clean_fan_time: false
     cosy_sleep: 0
     dry_clean: false
-    dust_full: false
+    filter_clean_due: false
     eco_mode: false
     energy_save: false
     error_code: 0
@@ -132,8 +132,8 @@ frames:
     silky_cool: false
     sleep_mode: false
     strong_wind: false
-    swing_horizontal: 0
-    swing_vertical: 0
+    louver_swing_horizontal: 0
+    louver_swing_vertical: 0
     target_temperature: 24.0
     temperature_unit: false
     turbo_mode: false
@@ -153,7 +153,7 @@ frames:
     clean_fan_time: false
     cosy_sleep: 0
     dry_clean: false
-    dust_full: false
+    filter_clean_due: false
     eco_mode: false
     energy_save: false
     error_code: 0
@@ -178,8 +178,8 @@ frames:
     silky_cool: false
     sleep_mode: false
     strong_wind: false
-    swing_horizontal: 0
-    swing_vertical: 0
+    louver_swing_horizontal: 0
+    louver_swing_vertical: 0
     target_temperature: 24.0
     temperature_unit: false
     turbo_mode: false
@@ -197,7 +197,7 @@ frames:
     clean_fan_time: false
     cosy_sleep: 0
     dry_clean: false
-    dust_full: false
+    filter_clean_due: false
     eco_mode: false
     energy_save: false
     error_code: 0
@@ -222,8 +222,8 @@ frames:
     silky_cool: false
     sleep_mode: false
     strong_wind: false
-    swing_horizontal: 0
-    swing_vertical: 0
+    louver_swing_horizontal: 0
+    louver_swing_vertical: 0
     target_temperature: 24.0
     temperature_unit: false
     turbo_mode: false

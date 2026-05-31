@@ -21,7 +21,7 @@ frames:
       breezeless: 1              # prop 0x42,0x00 data=[0x01] → mode 1
       # Properties with data_len=0 (not supported on this unit):
       # 0x15 indoor_humidity, 0x3F error_code, 0x41 mode_query,
-      # 0x18 no_wind_sense, 0x32 wind_straight
+      # 0x18 breezeless, 0x32 wind_straight
     notes: "8 properties queried; 3 responded with data (tone, self_clean=0, prevent_straight_wind)."
 
   - name: "batch 2 — rate_select, ud_angle, lr_angle (+ unsupported)"
@@ -29,6 +29,6 @@ frames:
     body_hex: "b1 08 48 00 00 01 64 09 00 00 01 32 0a 00 00 01 32 0b 00 00 00 28 00 00 00 25 00 00 00 91 00 00 00 ab 00 00 00 00"
     ground_truth:
       rate_select: 100           # prop 0x48,0x00 data=[0x64] → 100
-      wind_swing_ud_angle: 50    # prop 0x09,0x00 data=[0x32] → 50 (non-regression)
-      wind_swing_lr_angle: 50    # prop 0x0A,0x00 data=[0x32] → 50 (non-regression)
+      louver_swing_angle_ud_enum: 50    # prop 0x09,0x00 data=[0x32] → 50 (non-regression)
+      louver_swing_angle_lr_enum: 50    # prop 0x0A,0x00 data=[0x32] → 50 (non-regression)
     notes: "8 properties queried; 3 responded with data. 0x0B pm25, 0x28 operating_time, 0x25 temp_ranges, 0x91 has_icheck, 0xAB indoor_unit_code all data_len=0."

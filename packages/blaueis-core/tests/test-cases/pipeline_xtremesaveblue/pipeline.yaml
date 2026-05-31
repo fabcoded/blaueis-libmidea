@@ -18,7 +18,7 @@ steps:
       fields.fan_speed.active_constraints.valid_range: [0, 102]
       fields.fan_speed.active_constraints.step: 1
       fields.eco_mode.feature_available: "always"
-      fields.swing_vertical.feature_available: "always"
+      fields.louver_swing_vertical.feature_available: "always"
       fields.operating_mode.feature_available: "always"
       # Caps NOT in B5 -> 'excluded' (device doesn't support)
       fields.buzzer.feature_available: "excluded"

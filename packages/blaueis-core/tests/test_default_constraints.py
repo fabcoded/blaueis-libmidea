@@ -49,8 +49,8 @@ C0_FIXTURE = REPO_TESTCASES / "xtremesaveblue_s11_frames" / "c0_frames.yaml"
 # from rsp_0xc0; cap only refines write constraints).
 PROMOTED_FIELDS = [
     "temperature_unit",
-    "swing_vertical",
-    "swing_horizontal",
+    "louver_swing_vertical",
+    "louver_swing_horizontal",
     "eco_mode",
     "turbo_mode",
     "fan_speed",
@@ -295,9 +295,9 @@ def main():
     # Cap 0x15 (swing) is in S1 with value 1 = both → upgrades to always.
     # Cap 0x22 (temperature_unit) is in S1 with value 0 = changeable → upgrades to always.
     check(
-        "swing_vertical (readable, cap 0x15 in S1) NOT regressed",
-        status["fields"]["swing_vertical"]["feature_available"] != "excluded",
-        f"got {status['fields']['swing_vertical']['feature_available']}",
+        "louver_swing_vertical (readable, cap 0x15 in S1) NOT regressed",
+        status["fields"]["louver_swing_vertical"]["feature_available"] != "excluded",
+        f"got {status['fields']['louver_swing_vertical']['feature_available']}",
     )
     check(
         "temperature_unit (readable, cap 0x22 in S1) NOT regressed",

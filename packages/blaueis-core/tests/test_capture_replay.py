@@ -45,8 +45,8 @@ FIXTURE = REPO_TESTCASES / "xtremesaveblue_s11_frames" / "c0_window_servicemenu.
 # 11 fields promoted from `capability` to `readable` by §2.
 PROMOTED_FIELDS = [
     "temperature_unit",
-    "swing_vertical",
-    "swing_horizontal",
+    "louver_swing_vertical",
+    "louver_swing_horizontal",
     "eco_mode",
     "turbo_mode",
     "fan_speed",
@@ -61,8 +61,8 @@ PROMOTED_FIELDS = [
 # their bit-width is 1; a few are uint8 with a wider range.
 EXPECTED_TYPE = {
     "temperature_unit": (bool,),
-    "swing_vertical": (int, bool),
-    "swing_horizontal": (int, bool),
+    "louver_swing_vertical": (int, bool),
+    "louver_swing_horizontal": (int, bool),
     "eco_mode": (bool,),
     "turbo_mode": (bool,),
     "fan_speed": (int,),

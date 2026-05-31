@@ -126,19 +126,19 @@ tests:
       cap_id: "0x1A"
       expected_supported: true
 
-  - field: swing_vertical
+  - field: louver_swing_vertical
     cap_check:
       cap_id: "0x15"
       expected_supported: true
 
   # ── swing: cap 0x15=1 (both axes) — positive/negative validation ─
-  - field: swing_vertical
+  - field: louver_swing_vertical
     value: 1
     note: "vertical swing ON — valid, cap 0x15=1 (both axes)"
     expected:
       valid: true
 
-  - field: swing_horizontal
+  - field: louver_swing_horizontal
     value: 1
     note: "horizontal swing ON — valid, cap 0x15=1 (both axes)"
     expected:
@@ -156,19 +156,19 @@ tests:
       expected_supported: true
     note: "cap 0x1E=1 reported but no app/remote button visible — UI-layer gating suspected"
 
-  - field: swing_horizontal
+  - field: louver_swing_horizontal
     cap_check:
       cap_id: "0x15"
       expected_supported: true
-    note: "cap 0x15=1 (both axes) — shared with swing_vertical"
+    note: "cap 0x15=1 (both axes) — shared with louver_swing_vertical"
 
-  - field: wind_swing_ud_angle
+  - field: louver_swing_angle_ud_enum
     cap_check:
       cap_id: "0x09"
       expected_supported: true
     note: "cap 0x09=1 — UD vane angle control available (B0/B1 property 0x09,0x00)"
 
-  - field: wind_swing_lr_angle
+  - field: louver_swing_angle_lr_enum
     cap_check:
       cap_id: "0x0A"
       expected_supported: true
