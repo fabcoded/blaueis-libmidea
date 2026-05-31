@@ -13,9 +13,14 @@
 #
 # This is NOT a wire-level protocol spec. Frame layouts, byte offsets, decode
 # formulas, and capability-TLV encodings live in the companion blaueis-hvacshark
-# repository. Wire details appear here only insofar as the codec needs them to
-# round-trip values (see `protocols:` / `decode:` / `encoding:` blocks on each
-# field) — but they are implementation mechanics, not the contract.
+# repository, under `protocols/midea/spec/`. Wire details appear here only
+# insofar as the codec needs them to round-trip values (see `protocols:` /
+# `decode:` / `encoding:` blocks on each field) — but they are implementation
+# mechanics, not the contract.
+#
+# Spec citations: bare-filename `sources:` / `section:` references in this file
+# — `serial_protocol.md §N`, `protocol_shared.md §N`, `protocol_xye.md`,
+# `serial_glossary.md` — resolve under `blaueis-hvacshark/protocols/midea/spec/`.
 #
 # ── File structure ────────────────────────────────────────────────────────────
 #
@@ -2830,8 +2835,7 @@ fields:
       _migration:
         _inferred_class: complex_function
         _inferred_reason: Pure derived field with no wire position of its own — user-visible value is synthesised from close_hour,
-          close_step_minutes, and close_min_raw via a multi-input formula. Worked example in serial_glossary_guide.md Part
-          3.
+          close_step_minutes, and close_min_raw via a multi-input formula.
       feature_available: excluded
       excluded_reasons:
       - unnecessary_automation
