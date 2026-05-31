@@ -218,3 +218,17 @@ our XtremeSaveBlue** (cap not advertised — bench scan + live HA snapshot).
   A single scalar `add:` can't express the piecewise ladder — implement it as
   a named decode transform on the same `decode_predicates` substrate this
   session introduced. Then `target_temperature` can sign off.
+
+### §13.9 — `night_light` (`never_observed`, hardware-absent)
+
+- **Current disposition:** excluded. A real on/off courtesy night-light LED
+  (decode correct: `body[10] bit4`), but **non-functional on our SKU** —
+  live-tested 2026-05-31, an HA write does not engage in cool/idle or in sleep
+  mode (readback stays off), while a preset write in the same run did stick, so
+  the write path works. The bit reads 0 in every capture. It is **capless** (no
+  B5 gate), so it cannot be surfaced only-where-supported; excluded so a dead
+  control is not shown here (NOT a display dimmer — display brightness is the
+  separate `screen_display`).
+- **Reopen condition:** a unit that physically has the night-light LED, where
+  the HA write engages (readback flips on, then clears on reset). On such a unit
+  it re-tiers to `always` (it has no cap to gate it).

@@ -87,3 +87,18 @@ fields:
         suggested_display_precision: 2
         off_behavior: available
 # ─── Copy to here ───────────────────────────────────────────────────
+#
+# ─── Deliberately OFF on this unit (negative profile, NOT pasted) ────
+#
+# Fields we live-tested on this SKU and chose to leave OFF — they are NOT in
+# the copy-paste block above (we don't want them). This records WHY, so the
+# choice is auditable and a future/different SKU can revisit it. Each entry is
+# also reflected in the canonical glossary (feature_available: excluded) with a
+# TODO_glossary.md §13 reopen condition.
+#
+#   night_light — excluded (never_observed). Live test 2026-05-31: the HA write
+#     does NOT engage (readback stays off in cool/idle and in sleep; a preset
+#     write in the same run DID stick, so the write path works) — this SKU has
+#     no physical night-light LED, firmware drops the write. Capless, so it can
+#     not be cap-gated only-where-supported; a dead control, left off. Reopen on
+#     a unit that has the LED. (glossary: excluded; TODO_glossary.md §13.9.)

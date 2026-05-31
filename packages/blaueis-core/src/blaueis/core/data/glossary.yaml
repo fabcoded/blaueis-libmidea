@@ -2515,11 +2515,17 @@ fields:
       sources:
       - serial_protocol.md §3.2/§4.1
     night_light:
-      description: 'Night light / LED dimmer: reduces display brightness during sleep.'
-      note: 'AC-internal display LED dimming during configured sleep hours whose function HA''s time-triggered automation against the existing screen_display select supersedes. Usage cannot be guaranteed in mixed setups — when both the AC''s sleep-hours timer and an HA automation target display brightness, the two compete. Surfaced for users who prefer the AC-side handler; HA-driven setups should disable this entity in favor of an HA automation toggling screen_display. See docs/disabled_fields.md §5.1 for the broader supersede rule.'
-      signoff: tbd
+      description: 'Courtesy night-light LED on the indoor unit (on/off). NOT display brightness — that is the separate screen_display control.'
       field_class: stateful_bool
-      feature_available: always
+      feature_available: excluded
+      excluded_reasons:
+        - never_observed
+      note: 'Live test (2026-05-31, own unit): writing it on does NOT engage — readback stays off in cool/idle AND in sleep
+        mode (2 paced reps each), while a climate preset write in the same run DID stick, so the write path works. The feature
+        is absent on our SKU (no physical night-light LED; firmware drops the write), and the bit reads 0 across all captures.
+        The decode is correct (body[10] bit4, plain bool) and the LED works on SKUs that have it, but night_light is capless (no
+        B5 gate) so it cannot be surfaced only-where-supported — excluded so a dead control is not shown here. Reopen: a unit
+        with the LED where the write engages. See TODO_glossary.md §13.9.'
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -3768,7 +3774,6 @@ fields:
     louver_swing_horizontal:
       description: Horizontal (left/right) air vane oscillation. Wire encoding uses 2 bits — 0x03=ON, 0x00=OFF.
       label: "Louver Swing Horizontal"
-      signoff: tbd
       field_class: stateful_enum
       feature_available: readable
       data_type: uint8
@@ -3860,7 +3865,10 @@ fields:
         - dudanov
         - Session 1 B5 query (0x15=1)
       xye_note: 'C6 byte[6] = 0x20 (horizontal). C4/C6/D0 byte[11] = 0x20. Three-state: 0x00/0x10/0x20/0x30.'
-      note: Secondary under-unit LR swing at body[7] bit 7 (mask 0x80). Hypothesis — not observed on own hardware.
+      note: 'Live (2026-05-31, own unit): HA write on/off engages and echoes on the 0xC0 response — body[7] bits[1:0] reads
+        back 3 (on) / 0 (off), confirmed across 2 paced reps, restored each time. Secondary under-unit LR swing (dual-louver
+        SKUs only) is a SEPARATE axis at body[19]/[20] bit 7 (mask 0x80), not body[7] — always off in our corpus, not
+        present on our hardware.'
       confidence: confirmed
       sources:
       - dudanov
