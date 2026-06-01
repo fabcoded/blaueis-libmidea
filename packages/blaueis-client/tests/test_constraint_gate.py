@@ -186,7 +186,7 @@ class TestMutexChainCrossesModeGate:
     """Hypothetical: cool-mode mutex chain forces a heat-only field truthy.
 
     The real glossary has only one truthy mutex force total
-    (no_wind_sense → breezeless=1, both valid in cool), so this scenario
+    (breezeless → breeze_away=1, both valid in cool), so this scenario
     can't occur today. The test synthesizes the chain by overriding the
     in-memory glossary — a regression guard for the day someone adds a
     truthy force that crosses a mode boundary.
