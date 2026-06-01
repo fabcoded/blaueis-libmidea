@@ -279,7 +279,7 @@ class TestMutexReportActivators:
         assert r["activators"] == []
 
     def test_real_glossary_supervisor(self):
-        """no_wind_sense → breezeless=1 is the known supervisor pair."""
+        """breezeless → breeze_away=1 is the known supervisor pair."""
         from pathlib import Path
 
         from blaueis.tools.glossary_lint import load_glossary
@@ -294,8 +294,8 @@ class TestMutexReportActivators:
         )
         r = build_mutex_report(load_glossary(path))
         assert any(
-            x["from"] == "no_wind_sense"
-            and x["to"] == "breezeless"
+            x["from"] == "breezeless"
+            and x["to"] == "breeze_away"
             and x["kind"] == "supervisor"
             for x in r["activators"]
         )

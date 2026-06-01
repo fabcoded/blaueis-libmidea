@@ -122,7 +122,7 @@ class TestForwardPass:
         expanded = db._expand_mutex_forces({"eco_mode": True}, af)
         assert expanded["turbo_mode"] == 0
         assert expanded["strong_wind"] == 0
-        assert expanded["no_wind_sense"] == 0
+        assert expanded["breezeless"] == 0
         assert expanded["jet_cool"] == 0
         assert expanded["frost_protection"] == 0
 
@@ -144,21 +144,21 @@ class TestForwardPass:
         expanded = db._expand_mutex_forces({"power": False}, af)
         assert expanded == {"power": False}
 
-    def test_transitive_no_wind_sense(self):
-        """no_wind_sense → breezeless=1 (truthy) → breezeless's own forces."""
+    def test_transitive_breezeless(self):
+        """breezeless → breeze_away=1 (truthy) → breeze_away's own forces."""
         db, af = _db_with_mode(2)
-        expanded = db._expand_mutex_forces({"no_wind_sense": True}, af)
-        # Direct from no_wind_sense
-        assert expanded["breezeless"] == 1
+        expanded = db._expand_mutex_forces({"breezeless": True}, af)
+        # Direct from breezeless
+        assert expanded["breeze_away"] == 1
         assert expanded["eco_mode"] == 0
         assert expanded["strong_wind"] == 0
         assert expanded["turbo_mode"] == 0
-        assert expanded["swing_vertical"] == 0
-        # Transitive from breezeless=1
-        assert expanded["breeze_away"] == 0
+        assert expanded["louver_swing_vertical"] == 0
+        # Transitive from breeze_away=1
         assert expanded["breeze_mild"] == 0
         assert expanded["jet_cool"] == 0
-        assert expanded["swing_horizontal"] == 0
+        assert expanded["wind_avoid"] == 0
+        assert expanded["louver_swing_horizontal"] == 0
 
     def test_empty_forces_pass_through(self):
         db, af = _db_with_mode(2)
@@ -261,11 +261,11 @@ class TestProtocolSplit:
         assert "breezeless" in b0
         assert len(x40) == 0
 
-    def test_no_wind_sense_expansion_spans_protocols(self):
+    def test_breezeless_expansion_spans_protocols(self):
         db, af = _db_with_mode(2)
-        expanded = db._expand_mutex_forces({"no_wind_sense": True}, af)
+        expanded = db._expand_mutex_forces({"breezeless": True}, af)
         x40, b0 = StatusDB._split_by_protocol(expanded, af)
         assert len(x40) > 0, "should have x40 fields"
         assert len(b0) > 0, "should have b0 fields"
-        assert "no_wind_sense" in b0
+        assert "breezeless" in b0
         assert "turbo_mode" in x40

@@ -25,13 +25,6 @@ jobs:
         # addopts is overridden to drop the `-p no:homeassistant -p no:socket`
         # flags from pyproject (those plugins aren't installed in CI).
         # test_device_live.py needs a real gateway over the network — ignored.
-        # The four --deselect'd tests are PRE-EXISTING failures from a
-        # `no_wind_sense` glossary rename (unrelated to any change here); they
-        # should be fixed/removed in a follow-up, then dropped from this list.
         run: |
           python -m pytest -o addopts="--import-mode=importlib" \
-            --ignore=packages/blaueis-client/tests/test_device_live.py \
-            --deselect "packages/blaueis-client/tests/test_mutex_forces.py::TestForwardPass::test_eco_mode_forces" \
-            --deselect "packages/blaueis-client/tests/test_mutex_forces.py::TestForwardPass::test_transitive_no_wind_sense" \
-            --deselect "packages/blaueis-client/tests/test_mutex_forces.py::TestProtocolSplit::test_no_wind_sense_expansion_spans_protocols" \
-            --deselect "packages/blaueis-tools/tests/test_glossary_lint.py::TestMutexReportActivators::test_real_glossary_supervisor"
+            --ignore=packages/blaueis-client/tests/test_device_live.py
