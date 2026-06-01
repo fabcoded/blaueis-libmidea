@@ -90,6 +90,10 @@ def build_status(device: str = "unknown", glossary: dict | None = None) -> dict:
             "phase": "boot",
             "glossary_version": glossary["meta"]["version"],
             "b5_received": False,
+            # Set True by finalize_capabilities at the end of the one boot
+            # capability scan. While False, B5 frames may demote (boot pages +
+            # finalize); once True, post-boot B5s are escalate-only (caps frozen).
+            "caps_finalized": False,
             "frame_counts": {},
         },
         "fields": status_fields,

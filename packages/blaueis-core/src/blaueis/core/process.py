@@ -29,10 +29,23 @@ from blaueis.core.codec import (
 
 log = logging.getLogger("blaueis.process")
 
+# Availability tiers that mean "the feature is present/usable on this unit".
+# A B5 cap value that moves a field OUT of this set (→ excluded/never) is a
+# demotion; post-boot demotions are the "cap killers" we block + log.
+_AVAILABLE_FA = ("always", "readable", "readable-opt")
+
+
+def _is_cap_demotion(current_fa: str | None, new_fa: str | None) -> bool:
+    """True when ``new_fa`` removes an availability the field currently has."""
+    return current_fa in _AVAILABLE_FA and new_fa not in _AVAILABLE_FA
+
+
 # ── B5 capability processing ─────────────────────────────────────────────
 
 
-def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict) -> None:
+def _apply_caps_to_fields(
+    status: dict, records: list[dict], glossary: dict, *, allow_demote: bool = True
+) -> None:
     """For each cap record, decode it and update every field that shares the cap_id.
 
     Used by both `process_b5` (real B5 frame path) and `apply_device_quirks`
@@ -71,7 +84,28 @@ def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict) -> 
 
                 cap_fa = decoded.get("feature_available")
                 if cap_fa and not glossary_pinned_excluded:
-                    status_field["feature_available"] = cap_fa
+                    cur_fa = status_field.get("feature_available")
+                    if not allow_demote and _is_cap_demotion(cur_fa, cap_fa):
+                        # Caps are queried once at boot and then frozen. A later
+                        # device-pushed / reconnect-replayed B5 that reports this
+                        # cap as not-supported must NOT silently gate off a
+                        # feature confirmed at boot (the "cap killer"). Block it,
+                        # count it, and log which cap/field so the source stays
+                        # observable. See finalize_capabilities (caps_finalized).
+                        counts = status.setdefault("meta", {}).setdefault(
+                            "frame_counts", {}
+                        )
+                        counts["cap_demotions_blocked"] = (
+                            counts.get("cap_demotions_blocked", 0) + 1
+                        )
+                        log.warning(
+                            "cap-killer blocked: cap %s would demote %s %s→%s "
+                            "after boot — ignored (caps frozen); blocked count=%d",
+                            cap_id, field_name, cur_fa, cap_fa,
+                            counts["cap_demotions_blocked"],
+                        )
+                    else:
+                        status_field["feature_available"] = cap_fa
 
                 ac = {}
                 for k in ("valid_range", "valid_set", "step", "correction", "slider", "values", "custom_value"):
@@ -114,6 +148,7 @@ def process_b5(
     glossary: dict,
     timestamp: str | None = None,
     frame_trusted: bool = True,
+    allow_demote: bool = True,
 ) -> bool:
     """Process a B5 capability frame and update the status file.
 
@@ -154,8 +189,11 @@ def process_b5(
         existing.append(rec)
     status["capabilities_raw"] = existing
 
-    # Decode each cap and update ALL fields that share this cap_id
-    _apply_caps_to_fields(status, records, glossary)
+    # Decode each cap and update ALL fields that share this cap_id.
+    # allow_demote is forwarded so the steady-state ingress path (post-boot
+    # B5s routed via Device._process_frame) can escalate/refresh but never
+    # silently demote a field confirmed by the one boot capability scan.
+    _apply_caps_to_fields(status, records, glossary, allow_demote=allow_demote)
 
     status["meta"]["b5_received"] = True
     status["meta"]["phase"] = "post_b5"
@@ -182,6 +220,13 @@ def finalize_capabilities(status: dict, glossary: dict):
             cap_id = cap_def.get("cap_id", "").lower()
             if cap_id and cap_id not in all_cap_ids:
                 status_field["feature_available"] = "excluded"
+
+    # The one boot capability scan is complete — freeze caps. From here on,
+    # Device._process_frame passes allow_demote=False into process_b5, so any
+    # later (unsolicited / reconnect-replayed) B5 may still ESCALATE a field or
+    # refresh its constraints, but can no longer silently DEMOTE one confirmed
+    # at boot. _apply_caps_to_fields logs + counts each blocked "cap killer".
+    status["meta"]["caps_finalized"] = True
 
 
 # ── Data frame processing (C0, C1, A1) ───────────────────────────────────

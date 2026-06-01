@@ -960,9 +960,31 @@ class Device:
                 # A B5 sets persistent capability state; pass the wire-integrity
                 # verdict so process_b5 discards a corrupted frame rather than
                 # letting a bad cap byte gate a field off until reload.
+                #
+                # Caps are queried once at boot. Once that scan has finalized,
+                # this is a post-boot B5 (unsolicited, or replayed by the gateway
+                # on a reconnect) — the suspected "cap killer". Log + count it so
+                # its origin is observable, and pass allow_demote=False so it can
+                # escalate/refresh but never silently demote a confirmed field.
+                caps_frozen = self._status.get("meta", {}).get("caps_finalized", False)
+                if caps_frozen:
+                    counts = self._status.setdefault("meta", {}).setdefault(
+                        "frame_counts", {}
+                    )
+                    counts["rsp_0xb5_post_boot"] = (
+                        counts.get("rsp_0xb5_post_boot", 0) + 1
+                    )
+                    log.warning(
+                        "post-boot B5 (caps frozen since boot): crc_ok=%s len=%dB "
+                        "count=%d — demotions will be blocked, escalations applied",
+                        parsed["crc_ok"] and parsed["checksum_ok"], len(body),
+                        counts["rsp_0xb5_post_boot"],
+                    )
+                    log.debug("post-boot B5 body: %s", bytes(body).hex())
                 next_frame = process_b5(
                     self._status, body, self._glossary, timestamp=ts,
                     frame_trusted=parsed["crc_ok"] and parsed["checksum_ok"],
+                    allow_demote=not caps_frozen,
                 )
                 if self._b5_state == "waiting":
                     self._b5_next_frame = next_frame
