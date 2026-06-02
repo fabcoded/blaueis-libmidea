@@ -9,7 +9,9 @@ from __future__ import annotations
 from blaueis.core.codec import load_glossary
 from blaueis.core.gate_anchors import (
     GATE_ANCHORS,
+    collect_glossary_gate_anchors,
     field_addresses,
+    verify_all_anchors,
     verify_gate_anchors,
 )
 
@@ -69,3 +71,24 @@ def test_wrong_protocol_is_caught() -> None:
 def test_registry_is_non_empty() -> None:
     """Guard against the skeleton silently shrinking to a vacuous pass."""
     assert len(GATE_ANCHORS) >= 7
+
+
+# ── gate-block anchor collection (G1: ready for when fields opt in) ───────
+
+
+def test_no_gate_blocks_in_glossary_yet() -> None:
+    """No field declares gate.interlocks yet — collection is empty (and inert)."""
+    assert collect_glossary_gate_anchors(load_glossary()) == {}
+
+
+def test_collect_gate_anchors_from_synthetic_glossary() -> None:
+    g = {"fields": {"control": {"turbo_mode": {
+        "description": "x",
+        "gate": {"interlocks": [{"field": "ptc_state", "at": "C0:9:4..3"}]},
+    }}}}
+    assert collect_glossary_gate_anchors(g) == {"ptc_state": "C0:9:4..3"}
+
+
+def test_verify_all_anchors_holds_on_live_glossary() -> None:
+    """Seed anchors + (currently empty) gate-block anchors all resolve."""
+    assert verify_all_anchors(load_glossary()) == []
