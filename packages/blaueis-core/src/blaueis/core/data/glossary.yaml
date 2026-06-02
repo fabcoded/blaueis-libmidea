@@ -4408,6 +4408,14 @@ fields:
         note: Restricted to compressor-active cooling and heating modes. Some
           device families further restrict via a B5 sub-capability (turbo-type
           mask) — verify per unit when that cap appears.
+      gate:
+        cap_mode: {cap_id: '0x1A'}
+        sources: own research
+        note: Cap 0x1A's active value carries a valid_set of operating-mode raws.
+          This marker makes the evaluator intersect the cap-permitted modes with
+          visible_in_modes, so a unit whose cap restricts turbo (e.g. cool-only)
+          is gated correctly rather than relying on the static list. Our unit
+          cap=1 yields cool+heat, matching visible_in_modes (no change here).
       mutual_exclusion:
         when_on:
           forces:
