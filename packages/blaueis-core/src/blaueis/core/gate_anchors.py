@@ -83,6 +83,27 @@ GATE_ANCHORS: dict[str, str] = {
 }
 
 
+def collect_glossary_gate_anchors(glossary: dict) -> dict[str, str]:
+    """Anchors declared in field ``gate.interlocks[].at`` → ``{dep_field: at}``.
+
+    Each interlock names a dependency field and the wire address its value lives
+    at; this surfaces those so :func:`verify_gate_anchors` checks them alongside
+    the seed registry. Empty until fields opt into ``gate:`` blocks.
+    """
+    found: dict[str, str] = {}
+    for fdef in walk_fields(glossary).values():
+        for il in (fdef.get("gate") or {}).get("interlocks") or []:
+            dep, at = il.get("field"), il.get("at")
+            if dep and at:
+                found[dep] = at
+    return found
+
+
+def verify_all_anchors(glossary: dict) -> list[str]:
+    """Verify the seed registry AND every glossary gate-block anchor."""
+    return verify_gate_anchors(glossary, {**GATE_ANCHORS, **collect_glossary_gate_anchors(glossary)})
+
+
 def verify_gate_anchors(
     glossary: dict, anchors: dict[str, str] | None = None
 ) -> list[str]:
