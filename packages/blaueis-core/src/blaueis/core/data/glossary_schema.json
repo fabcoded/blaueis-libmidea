@@ -356,6 +356,10 @@
           "$ref": "#/$defs/ux_block",
           "description": "UX-layer metadata: mode visibility fencing, hardware capability gating, provenance. Consumed by the mode gate (StatusDB), command builder UX masking, and HA entity visibility."
         },
+        "gate": {
+          "$ref": "#/$defs/gate_block",
+          "description": "Three-axis offer gate (capability ∧ mode ∧ interlock ∧ power ∧ ¬mutex). Optional, advisory; absent → field reduces to power_on ∧ ux visibility. Consumed by gate_eval.evaluate_offered. cap_mode marks the active capability's valid_set as operating-mode raws; interlocks carry the B1 dual key (field + at)."
+        },
         "ha": {
           "$ref": "#/$defs/ha_block",
           "description": "Home Assistant entity metadata: device_class, state_class, unit, precision, entity_category, off_behavior. Consumed by the HA integration's per-platform entity classes (sensor, binary_sensor, switch, select, number). Registry-disabled-default behaviour is driven by feature_available *-opt suffix, not a separate ha-block flag."
@@ -856,6 +860,74 @@
         "note": {
           "type": "string",
           "description": "Additional context about the UX constraint — edge cases, exceptions, device-family differences."
+        }
+      }
+    },
+    "gate_block": {
+      "type": "object",
+      "description": "Three-axis offer-gate declaration consumed by gate_eval.evaluate_offered. All keys optional; an absent block reduces to power_on ∧ ux visibility (parity).",
+      "additionalProperties": false,
+      "properties": {
+        "requires_power": {
+          "type": "boolean",
+          "description": "Whether the field is gated on device power (default true). Set false for power-independent fields."
+        },
+        "cap_mode": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cap_id"],
+          "properties": {
+            "cap_id": {
+              "type": "string",
+              "description": "The capability whose active value's valid_set is operating-mode raws. This marker is what makes the live active_constraints.valid_set mean MODES rather than field-values (the value-vs-mode axis distinction); without it a valid_set is never reinterpreted as modes."
+            }
+          },
+          "description": "Marks the field's cap-derived valid_set as an operating-mode restriction."
+        },
+        "mode_forks": {
+          "type": "array",
+          "description": "Cap-value → mode-set forks a valid_set cannot express (e.g. eco cool-only when 0x12==1). First matching fork wins.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["cap_id", "when_raw", "modes"],
+            "properties": {
+              "cap_id": { "type": "string" },
+              "when_raw": { "type": "integer" },
+              "modes": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "interlocks": {
+          "type": "array",
+          "description": "Cross-feature runtime gates. Each carries the B1 dual key: a field name (reads the retained value) AND its wire address (verify_gate_anchors checks it).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "at"],
+            "properties": {
+              "field": { "type": "string", "description": "Dependency field whose retained live value gates this one." },
+              "at": { "type": "string", "description": "Canonical wire address of the dependency, e.g. C0:9:4..3 or B1:0x67,0x00:0..0." },
+              "blocks_when": {
+                "type": "string",
+                "enum": ["nonzero", "truthy", "zero", "off"],
+                "description": "Polarity: block the offer when the dependency state is nonzero/truthy (default) or zero/off."
+              },
+              "note": { "type": "string" }
+            }
+          }
+        },
+        "mutex_group": {
+          "type": "string",
+          "description": "Name of a forced-off sibling cascade (e.g. breeze). Declared here; the existing mutual_exclusion cascade enforces it."
+        },
+        "sources": {
+          "type": "string",
+          "description": "Provenance note for the gate constraint."
+        },
+        "note": {
+          "type": "string",
+          "description": "Additional context — edge cases, device-family differences."
         }
       }
     },

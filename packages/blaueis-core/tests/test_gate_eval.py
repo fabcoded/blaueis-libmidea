@@ -8,6 +8,9 @@ unchanged — these exercise the evaluator directly with synthetic field defs.
 """
 from __future__ import annotations
 
+import pytest
+
+from blaueis.core.codec import load_glossary, walk_fields
 from blaueis.core.gate_eval import evaluate_offered
 from blaueis.core.ux_gating import is_field_visible
 
@@ -104,3 +107,39 @@ def test_multiple_axes_accumulate_in_blocked_by() -> None:
     gdef = {"ux": {"visible_in_modes": ["cool"]}, "gate": {"interlocks": [{"field": "y", "at": "C0:1:0..0"}]}}
     v = evaluate_offered(gdef, mode="heat", power_on=False, field_states={"y": 1})
     assert set(v.blocked_by) == {"power_off", "mode", "interlock:y"}
+
+
+# ── G2: real turbo_mode gate block (cap-mode axis live in the glossary) ───
+
+
+def test_turbo_mode_declares_cap_mode() -> None:
+    tm = walk_fields(load_glossary())["turbo_mode"]
+    assert tm.get("gate", {}).get("cap_mode", {}).get("cap_id") == "0x1A"
+
+
+@pytest.mark.parametrize(
+    "valid_set,mode,offered",
+    [
+        ([2, 4], "cool", True),   # cap=1 "both"      — our unit
+        ([2, 4], "heat", True),   # cap=1 "both"      — our unit
+        ([2], "cool", True),      # cap=0 "cool_only"
+        ([2], "heat", False),     # cap=0 "cool_only" — gated off in heat
+        ([4], "cool", False),     # cap=3 "heat_only" — gated off in cool
+        ([4], "heat", True),      # cap=3 "heat_only"
+    ],
+)
+def test_turbo_cap_mode_gates_against_live_caps(valid_set, mode, offered) -> None:
+    """Drive the REAL turbo_mode gdef with each cap's valid_set (operating-mode raws)."""
+    tm = walk_fields(load_glossary())["turbo_mode"]
+    v = evaluate_offered(tm, mode=mode, power_on=True, active_constraints={"valid_set": valid_set})
+    assert v.offered is offered
+
+
+def test_turbo_unit_cap1_unchanged_vs_static_list() -> None:
+    """Parity guard: our unit (cap=1 → [2,4]) offers exactly what visible_in_modes does."""
+    tm = walk_fields(load_glossary())["turbo_mode"]
+    ac = {"valid_set": [2, 4]}
+    for mode in ("cool", "heat", "auto", "dry", "fan_only"):
+        gated = evaluate_offered(tm, mode=mode, power_on=True, active_constraints=ac).offered
+        static = is_field_visible(tm, current_mode=mode)
+        assert gated == static, mode
