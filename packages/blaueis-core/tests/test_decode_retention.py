@@ -1,14 +1,14 @@
-"""Characterization tests for the decode-retention gate (process.py value slot).
+"""Decode-retention vs exposure at the process.py value-slot gate.
 
-Phase 0 of the decode-decoupling plan: pin the CURRENT behaviour so the Phase 1
-change is provable. Today ``process_data_frame`` discards a decoded value when the
-field's ``feature_available`` is ``excluded`` / ``capability`` / ``capability-opt``
-— so a hidden field has no retained value and an interlock reading it gets None.
+Decode-retention is decoupled from exposure: ``process_data_frame`` retains a
+decoded value for a confirmed-``excluded`` field so a gating interlock can read
+its live state, even though the field is never exposed as an entity. Only the
+pre-B5 ``capability`` / ``capability-opt`` window is still skipped — the decode is
+untrusted until B5 confirms which feature owns the byte.
 
-Phase 1 will flip ONLY the ``excluded`` row (retain confirmed-hidden values so a
-gate can read them) and KEEP the pre-B5 ``capability`` / ``capability-opt`` skip
-(decode untrusted until B5 confirms the byte's owner). When that lands, exactly the
-``excluded`` expectation in ``RETAINED_TODAY`` moves True; every other row stays.
+Phase 0 pinned the prior behaviour (``excluded`` discarded); Phase 1 flipped that
+single row of ``RETAINED_BY_AVAILABILITY`` to True. Every other row is unchanged —
+exposure and polling stay gated at ``available_fields`` / ``required_queries``.
 """
 from __future__ import annotations
 
@@ -29,20 +29,20 @@ def _c0_body_strong_wind_on() -> bytes:
     return bytes(body)
 
 
-# Retention per feature_available at the process.py value-slot gate, as it stands
-# TODAY. The skip set is {excluded, capability, capability-opt}; everything else is
-# retained. Phase 1 flips `excluded` -> True and nothing else.
-RETAINED_TODAY: dict[str, bool] = {
+# Retention per feature_available at the process.py value-slot gate. The skip set
+# is {capability, capability-opt} (pre-B5 untrusted window); everything else —
+# including confirmed `excluded` — retains its decoded value.
+RETAINED_BY_AVAILABILITY: dict[str, bool] = {
     "always": True,
     "readable": True,
     "readable-opt": True,
-    "excluded": False,        # <-- Phase 1 flips THIS to True
-    "capability": False,      # pre-B5 untrusted — stays discarded
-    "capability-opt": False,  # pre-B5 untrusted — stays discarded
+    "excluded": True,         # retained for interlock reads (not exposed/polled)
+    "capability": False,      # pre-B5 untrusted — discarded
+    "capability-opt": False,  # pre-B5 untrusted — discarded
 }
 
 
-@pytest.mark.parametrize("feature_available,retained", sorted(RETAINED_TODAY.items()))
+@pytest.mark.parametrize("feature_available,retained", sorted(RETAINED_BY_AVAILABILITY.items()))
 def test_retention_gate_characterization(feature_available: str, retained: bool) -> None:
     g = load_glossary()
     status = build_status(device="test", glossary=g)
@@ -55,18 +55,19 @@ def test_retention_gate_characterization(feature_available: str, retained: bool)
         assert slot is not None and slot["value"] is True
     else:
         assert slot is None, (
-            f"feature_available={feature_available!r} currently discards the decoded "
-            f"value; if this now retains, it is the Phase-1 change — update RETAINED_TODAY"
+            f"feature_available={feature_available!r} must stay discarded (pre-B5 "
+            f"untrusted window) — only 'excluded' was decoupled from exposure"
         )
 
 
-def test_excluded_value_is_discarded_today() -> None:
-    """C0a — the load-bearing baseline Phase 1 flips: excluded => no retained value."""
+def test_excluded_value_is_retained_for_interlocks() -> None:
+    """C0a/C1a — the decoupled behaviour: a confirmed-excluded field keeps its value."""
     g = load_glossary()
     status = build_status(device="test", glossary=g)
     status["fields"]["strong_wind"]["feature_available"] = "excluded"
     process_data_frame(status, _c0_body_strong_wind_on(), C0_PROTO, g)
-    assert read_field(status, "strong_wind") is None
+    slot = read_field(status, "strong_wind")
+    assert slot is not None and slot["value"] is True
 
 
 def test_available_value_is_retained() -> None:

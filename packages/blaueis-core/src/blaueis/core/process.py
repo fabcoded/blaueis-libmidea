@@ -279,9 +279,12 @@ def process_data_frame(
         if not status_field:
             continue
 
-        # Skip fields that are not available (excluded, or *capability* / *capability-opt*
-        # not yet resolved by B5 promotion)
-        if status_field["feature_available"] in ("excluded", "capability", "capability-opt"):
+        # Retain decoded values regardless of EXPOSURE so gating interlocks can
+        # read a field's live state even when it is hidden/excluded. Still skip the
+        # pre-B5 'capability'/'capability-opt' window: the decode is untrusted until
+        # B5 confirms which feature owns the byte. Exposure and polling stay gated at
+        # available_fields / required_queries — this loop governs RETENTION only.
+        if status_field["feature_available"] in ("capability", "capability-opt"):
             continue
 
         suppression = result.get("suppression")

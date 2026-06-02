@@ -1188,10 +1188,11 @@ def build_scan_queue(
             # Count fields whose protocols OR capability.frames intersect
             # this frame's triggers — capability-gated fields show up via
             # the latter and the label should reflect the full coverage.
-            # Skip fields whose feature_available is 'excluded': they are
-            # discarded at decode time by process_data_frame, so showing
-            # them in the operator-facing label would inflate the count
-            # past what actually populates state.
+            # Skip fields whose feature_available is 'excluded': since the
+            # decode-retention split they ARE retained in state, but they are
+            # neither exposed (available_fields) nor polled (required_queries),
+            # so counting them would inflate the operator-facing coverage label
+            # past what the query cycle actually surfaces.
             covered = 0
             for fname, fdef in fields_by_name.items():
                 fa = status["fields"].get(fname, {}).get("feature_available", "always")
