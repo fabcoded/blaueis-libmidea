@@ -1195,6 +1195,15 @@ class Device:
     def read_full(self, field_name: str) -> dict | None:
         return read_field(self._status, field_name)
 
+    def active_constraints(self, field_name: str) -> dict | None:
+        """Cap-derived constraints for a field (valid_set / valid_range / step …).
+
+        Written by the B5 cap pass (`_apply_caps_to_fields`) and consumed by the
+        gate evaluator's capability-mode axis. Returns None when the field has no
+        live constraints yet (pre-B5 or no cap)."""
+        f = self._status["fields"].get(field_name)
+        return f.get("active_constraints") if f else None
+
     def read_all_available(self) -> dict[str, object]:
         """Read all available fields. Returns {name: value}."""
         return {fname: self.read(fname) for fname in self.available_fields}

@@ -69,6 +69,29 @@ def test_cap_mode_unknown_mode_fails_open() -> None:
     assert evaluate_offered(CAP_MODE_GDEF, mode=None, power_on=True, active_constraints=ac).offered
 
 
+def test_cap_mode_inert_on_bool_default_valid_set() -> None:
+    # Pre-B5 permissive default carries a value-domain valid_set ([False, True]),
+    # NOT operating-mode raws. The cap-mode axis must stay inert (not read True→auto
+    # and block cool), so the field is offered per its logical mode rule.
+    ac = {"valid_set": [False, True]}
+    assert evaluate_offered(CAP_MODE_GDEF, mode="cool", power_on=True, active_constraints=ac).offered
+    assert evaluate_offered(CAP_MODE_GDEF, mode="heat", power_on=True, active_constraints=ac).offered
+
+
+def test_cap_mode_inert_on_non_mode_int_valid_set() -> None:
+    # A field-value valid_set that isn't all operating-mode raws (e.g. contains 6)
+    # is not reinterpreted as modes — axis inert.
+    ac = {"valid_set": [0, 6]}
+    assert evaluate_offered(CAP_MODE_GDEF, mode="cool", power_on=True, active_constraints=ac).offered
+
+
+def test_cap_mode_inert_on_malformed_active_constraints() -> None:
+    # Non-dict / non-list inputs (e.g. a stray mock) must never yield a spurious
+    # empty mode set that gates the field off — the axis stays inert.
+    for bad in (object(), "x", 5, {"valid_set": "nope"}, {"valid_set": 7}):
+        assert evaluate_offered(CAP_MODE_GDEF, mode="cool", power_on=True, active_constraints=bad).offered
+
+
 def test_valid_set_not_reinterpreted_without_cap_mode_marker() -> None:
     # Without gate.cap_mode, a valid_set is NOT treated as modes (the B2 trap):
     # a field-value valid_set must not gate the mode axis.

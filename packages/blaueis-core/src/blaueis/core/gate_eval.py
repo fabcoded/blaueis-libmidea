@@ -41,20 +41,30 @@ def _mode_name(mode: int | str | None) -> str | None:
     return None
 
 
+def _is_mode_raw(x: object) -> bool:
+    """True iff x is an operating-mode raw (int 1-5, excluding bool)."""
+    return isinstance(x, int) and not isinstance(x, bool) and x in MODE_INT_TO_NAME
+
+
 def _cap_mode_set(gate: dict, active_constraints: dict | None) -> set[str] | None:
     """Mode NAMES the active capability permits, or None when no cap-mode gate applies.
 
-    Only honoured when ``gate.cap_mode`` is declared — that marker is what makes the
-    live ``active_constraints.valid_set`` mean *operating-mode raws* rather than
-    field-value raws (the value-vs-mode axis trap). Without it we never reinterpret
-    a valid_set as modes.
+    Honoured only when ``gate.cap_mode`` is declared AND the live
+    ``active_constraints.valid_set`` is genuinely *operating-mode raws* (ints 1-5).
+    The pre-B5 permissive default carries a value-domain valid_set (e.g. turbo's
+    ``[False, True]`` on/off); reinterpreting that as modes would wrongly gate
+    everything to ``auto`` (True→1). So when the valid_set is not all mode-raws —
+    pre-B5, or a field-value constraint (the value-vs-mode axis trap) — the cap-mode
+    axis stays inert and the field falls back to its logical mode rule.
     """
-    if not gate.get("cap_mode") or not active_constraints:
+    if not gate.get("cap_mode") or not isinstance(active_constraints, dict):
         return None
     valid_set = active_constraints.get("valid_set")
-    if valid_set is None:
+    if not isinstance(valid_set, (list, tuple)) or not valid_set:
         return None
-    return {n for n in (_mode_name(r) for r in valid_set) if n is not None}
+    if not all(_is_mode_raw(r) for r in valid_set):
+        return None
+    return {MODE_INT_TO_NAME[r] for r in valid_set}
 
 
 def evaluate_offered(
