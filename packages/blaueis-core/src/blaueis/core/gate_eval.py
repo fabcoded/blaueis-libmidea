@@ -67,6 +67,25 @@ def _cap_mode_set(gate: dict, active_constraints: dict | None) -> set[str] | Non
     return {MODE_INT_TO_NAME[r] for r in valid_set}
 
 
+def _mode_fork_set(gate: dict, cap_values: dict | None) -> set[str] | None:
+    """Mode NAMES from the first matching ``gate.mode_forks`` entry, or None.
+
+    A fork maps a capability byte value to an explicit mode set the way a
+    ``valid_set`` cannot (e.g. eco cool-only when 0x12==1 vs cool/auto/dry when
+    ==2). Returns None when no fork is declared or none matches the unit's cap
+    bytes — leaving the logical mode rule unrestricted (fail open).
+    """
+    forks = gate.get("mode_forks") or []
+    if not forks or not isinstance(cap_values, dict):
+        return None
+    for fork in forks:
+        cap_id = str(fork.get("cap_id", "")).lower()
+        if cap_id and cap_values.get(cap_id) == fork.get("when_raw"):
+            modes = fork.get("modes")
+            return set(modes) if isinstance(modes, (list, tuple)) else None
+    return None
+
+
 def evaluate_offered(
     field_gdef: dict | None,
     *,
@@ -75,6 +94,7 @@ def evaluate_offered(
     active_constraints: dict | None = None,
     field_states: dict | None = None,
     caps: dict | None = None,
+    cap_values: dict | None = None,
 ) -> GateVerdict:
     """Evaluate whether a field should be offered, across all gate axes.
 
@@ -82,7 +102,8 @@ def evaluate_offered(
     ``power_on`` from the decoded status, ``active_constraints`` from the field's
     cap-derived constraints (``status['fields'][f]['active_constraints']``),
     ``field_states`` a {name: value} map for interlock dependencies (their now-
-    retained decoded values), ``caps`` the B5 flag bitmap for ``hardware_flag``.
+    retained decoded values), ``caps`` the B5 flag bitmap for ``hardware_flag``,
+    ``cap_values`` a {cap_id: raw_byte} map of the unit's B5 caps for mode forks.
     """
     gdef = field_gdef or {}
     gate = gdef.get("gate") or {}
@@ -95,7 +116,12 @@ def evaluate_offered(
     # ── mode axis: logical (visible_in_modes / hardware_flag) ∩ cap-derived ──
     if not is_field_visible(gdef, current_mode=mode, caps=caps):
         blocked.append("mode")
-    cap_modes = _cap_mode_set(gate, active_constraints)
+    # Cap-derived mode set = intersection of every declared cap restriction:
+    # the cap_mode valid_set and the matching mode_fork. None ⇒ that axis inert.
+    cap_modes = None
+    for restriction in (_cap_mode_set(gate, active_constraints), _mode_fork_set(gate, cap_values)):
+        if restriction is not None:
+            cap_modes = restriction if cap_modes is None else (cap_modes & restriction)
     if cap_modes is not None:
         name = _mode_name(mode)
         # name is None → mode unknown (pre-first-poll); fail open, matching is_field_visible.
