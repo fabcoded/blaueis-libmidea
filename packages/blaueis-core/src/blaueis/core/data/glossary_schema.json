@@ -913,6 +913,11 @@
                 "enum": ["nonzero", "truthy", "zero", "off"],
                 "description": "Polarity: block the offer when the dependency state is nonzero/truthy (default) or zero/off."
               },
+              "modes": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Operating modes in which this interlock applies. Omit = all modes. Required when the dependency bit is mode-multiplexed (e.g. auxiliary_heat_level shares C0:9 bit4 with eco_mode) so it isn't misread outside its meaningful modes."
+              },
               "note": { "type": "string" }
             }
           }

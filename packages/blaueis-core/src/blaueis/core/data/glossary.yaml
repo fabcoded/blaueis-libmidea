@@ -4355,6 +4355,19 @@ fields:
       ux:
         visible_in_modes: [cool, heat, fan_only]
         sources: community protocol research
+      gate:
+        interlocks:
+          - field: auxiliary_heat_level
+            at: 'C0:9:4..3'
+            blocks_when: nonzero
+            modes: [heat, auto]
+        sources: own research
+        note: The boost is gated off while the auxiliary electric heater (PTC) is
+          engaged. auxiliary_heat_level (C0:9 bits 3-4) is mode-multiplexed with
+          eco_mode (bit 4) in cool/dry, so the interlock is scoped to heat/auto
+          where the bits carry the PTC stage. Vacuous on a unit without PTC
+          (cap 0x19=0 ⇒ auxiliary_heat_level reads 0). signoff tbd — not
+          live-confirmed on this hardware (no PTC); faithful to the disable rule.
       mutual_exclusion:
         when_on:
           forces:
