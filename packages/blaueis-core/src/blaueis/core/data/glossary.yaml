@@ -2357,7 +2357,10 @@ fields:
         _inferred_reason: continuous numeric setpoint in [0,100] %; bidirectional; canonical example of the new stateful_numeric
           class
         _source: manual review during conservative migration pass
-      feature_available: readable
+      # Cap-gated (0x1F humidity control): hide until B5 confirms it. 'readable'
+      # over-exposed it as a dead sensor on units without the cap (cap-absent ⇒
+      # never demoted). Cap-coverage sweep, own research.
+      feature_available: capability
       data_type: uint8
       device_context: indoor_unit
       unit: '%'
@@ -3646,7 +3649,11 @@ fields:
       description: Silky cool / wind-free mode. Reduces draft sensation by redirecting airflow through micro-holes.
       signoff: tbd
       field_class: stateful_bool
-      feature_available: readable
+      # Cap-gated (0x18): hide until B5 confirms support, like the rest of the
+      # comfort family (anion/breeze/down_no_wind_feel). 'readable' over-exposed it
+      # as a dead entity on units that don't advertise the cap (cap-absent ⇒ never
+      # demoted). Cap-coverage sweep, own research.
+      feature_available: capability
       data_type: bool
       device_context: indoor_unit
       alt_names:
