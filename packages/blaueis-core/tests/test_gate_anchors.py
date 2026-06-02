@@ -73,12 +73,14 @@ def test_registry_is_non_empty() -> None:
     assert len(GATE_ANCHORS) >= 7
 
 
-# ── gate-block anchor collection (G1: ready for when fields opt in) ───────
+# ── gate-block anchor collection ─────────────────────────────────────────
 
 
-def test_no_gate_blocks_in_glossary_yet() -> None:
-    """No field declares gate.interlocks yet — collection is empty (and inert)."""
-    assert collect_glossary_gate_anchors(load_glossary()) == {}
+def test_glossary_gate_interlock_anchors_collected() -> None:
+    """The declared interlocks (G6: strong_wind → auxiliary_heat_level) surface
+    their dependency anchors for verify_all_anchors to check."""
+    collected = collect_glossary_gate_anchors(load_glossary())
+    assert collected.get("auxiliary_heat_level") == "C0:9:4..3"
 
 
 def test_collect_gate_anchors_from_synthetic_glossary() -> None:

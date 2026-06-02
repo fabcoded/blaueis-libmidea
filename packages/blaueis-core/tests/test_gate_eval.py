@@ -132,6 +132,44 @@ def test_multiple_axes_accumulate_in_blocked_by() -> None:
     assert set(v.blocked_by) == {"power_off", "mode", "interlock:y"}
 
 
+# ── G6: interlock mode guard (mode-multiplexed dependency bits) ───────────
+
+MODE_GUARDED_GDEF = {"gate": {"interlocks": [
+    {"field": "ptc", "at": "C0:9:4..3", "blocks_when": "nonzero", "modes": ["heat", "auto"]}]}}
+
+
+def test_interlock_mode_guard_applies_inside_modes() -> None:
+    v = evaluate_offered(MODE_GUARDED_GDEF, mode="heat", power_on=True, field_states={"ptc": 1})
+    assert not v.offered and v.blocked_by == ["interlock:ptc"]
+
+
+def test_interlock_mode_guard_inactive_outside_modes() -> None:
+    # In cool the guarded bit means something else (mode-mux) → interlock skipped
+    # even when the raw value is set, so a neighbour's bit can't spuriously block.
+    assert evaluate_offered(MODE_GUARDED_GDEF, mode="cool", power_on=True, field_states={"ptc": 1}).offered
+    assert evaluate_offered(MODE_GUARDED_GDEF, mode="dry", power_on=True, field_states={"ptc": 1}).offered
+
+
+def test_interlock_mode_guard_unknown_mode_skips() -> None:
+    # mode unknown → can't confirm applicability → skip (fail open).
+    assert evaluate_offered(MODE_GUARDED_GDEF, mode=None, power_on=True, field_states={"ptc": 1}).offered
+
+
+def test_strong_wind_elecheat_interlock_grounded() -> None:
+    """Real strong_wind gate: blocked in heat while auxiliary_heat_level is on,
+    but the mode guard keeps it offered in cool regardless (bit is eco there)."""
+    sw = walk_fields(load_glossary())["strong_wind"]
+    # heat + PTC engaged → boost gated off
+    assert not evaluate_offered(sw, mode="heat", power_on=True,
+                                field_states={"auxiliary_heat_level": 1}).offered
+    # heat + no PTC (our unit) → offered
+    assert evaluate_offered(sw, mode="heat", power_on=True,
+                            field_states={"auxiliary_heat_level": 0}).offered
+    # cool: mode guard inactive → offered even if the (eco) bit reads set
+    assert evaluate_offered(sw, mode="cool", power_on=True,
+                            field_states={"auxiliary_heat_level": 1}).offered
+
+
 # ── G2: real turbo_mode gate block (cap-mode axis live in the glossary) ───
 
 

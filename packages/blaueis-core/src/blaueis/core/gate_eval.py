@@ -14,7 +14,7 @@ Schema (all keys optional; see gating-audit design doc):
       requires_power: true            # default true
       cap_mode: {cap_id: '0x1A'}      # active cap's valid_set IS operating-mode raws
       interlocks:                     # B1 dual-key cross-feature gates
-        - {field: ptc_state, at: 'C0:9:4..3', blocks_when: nonzero}
+        - {field: auxiliary_heat_level, at: 'C0:9:4..3', blocks_when: nonzero, modes: [heat, auto]}
       mutex_group: breeze             # declared; the existing cascade enforces it
 """
 from __future__ import annotations
@@ -104,6 +104,16 @@ def evaluate_offered(
 
     # ── interlock axis: cross-feature live state (B1 fail-open if unknown) ──
     for il in gate.get("interlocks") or []:
+        # Optional mode guard: an interlock that reads a mode-multiplexed bit
+        # (e.g. auxiliary_heat_level shares C0:9 bit4 with eco_mode) is only
+        # meaningful in the modes where that bit carries the dependency's value.
+        # Outside those modes the interlock is inactive (the bit means something
+        # else), so skip it rather than misread a neighbour field's bit.
+        il_modes = il.get("modes")
+        if il_modes is not None:
+            name = _mode_name(mode)
+            if name is None or name not in il_modes:
+                continue
         fname = il.get("field")
         state = (field_states or {}).get(fname) if fname else None
         if state is None:
