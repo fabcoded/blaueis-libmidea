@@ -204,3 +204,52 @@ def test_turbo_unit_cap1_unchanged_vs_static_list() -> None:
         gated = evaluate_offered(tm, mode=mode, power_on=True, active_constraints=ac).offered
         static = is_field_visible(tm, current_mode=mode)
         assert gated == static, mode
+
+
+# ── G4: mode_forks axis (eco cap-value → mode-set fork) ──────────────────
+
+FORK_GDEF = {"ux": {"visible_in_modes": ["cool", "auto", "dry"]},
+             "gate": {"mode_forks": [
+                 {"cap_id": "0x12", "when_raw": 1, "modes": ["cool"]},
+                 {"cap_id": "0x12", "when_raw": 2, "modes": ["cool", "auto", "dry"]},
+             ]}}
+
+
+def test_mode_fork_first_match_restricts() -> None:
+    assert evaluate_offered(FORK_GDEF, mode="cool", power_on=True, cap_values={"0x12": 1}).offered
+    v = evaluate_offered(FORK_GDEF, mode="auto", power_on=True, cap_values={"0x12": 1})
+    assert not v.offered and any(b.startswith("cap_mode:") for b in v.blocked_by)
+
+
+def test_mode_fork_second_match_keeps_full_set() -> None:
+    for m in ("cool", "auto", "dry"):
+        assert evaluate_offered(FORK_GDEF, mode=m, power_on=True, cap_values={"0x12": 2}).offered
+
+
+def test_mode_fork_inert_without_match_or_caps() -> None:
+    # No matching fork (raw 0) or no caps → fork axis inert ⇒ logical mode rule only.
+    for cv in ({"0x12": 0}, {}, None, "notadict"):
+        assert evaluate_offered(FORK_GDEF, mode="auto", power_on=True, cap_values=cv).offered
+
+
+def test_eco_mode_fork_grounded_against_real_glossary() -> None:
+    eco = walk_fields(load_glossary())["eco_mode"]
+    # our unit (0x12=1, special eco) ⇒ cool only
+    assert evaluate_offered(eco, mode="cool", power_on=True, cap_values={"0x12": 1}).offered
+    assert not evaluate_offered(eco, mode="auto", power_on=True, cap_values={"0x12": 1}).offered
+    assert not evaluate_offered(eco, mode="dry", power_on=True, cap_values={"0x12": 1}).offered
+    # window variant (0x12=2) ⇒ cool/auto/dry
+    for m in ("cool", "auto", "dry"):
+        assert evaluate_offered(eco, mode=m, power_on=True, cap_values={"0x12": 2}).offered
+
+
+def test_cap_mode_and_fork_intersect() -> None:
+    # A field declaring both axes is gated by their intersection.
+    gdef = {"gate": {"cap_mode": {"cap_id": "0x1A"},
+                     "mode_forks": [{"cap_id": "0x12", "when_raw": 1, "modes": ["cool", "heat"]}]}}
+    # cap_mode [2,4]=cool,heat ∩ fork [cool,heat] = cool,heat → heat offered
+    assert evaluate_offered(gdef, mode="heat", power_on=True,
+                            active_constraints={"valid_set": [2, 4]}, cap_values={"0x12": 1}).offered
+    # cap_mode [2]=cool ∩ fork [cool,heat] = cool → heat blocked
+    assert not evaluate_offered(gdef, mode="heat", power_on=True,
+                                active_constraints={"valid_set": [2]}, cap_values={"0x12": 1}).offered

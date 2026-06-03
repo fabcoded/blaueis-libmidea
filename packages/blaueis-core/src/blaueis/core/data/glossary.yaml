@@ -1694,6 +1694,15 @@ fields:
       ux:
         visible_in_modes: [cool, auto, dry]
         sources: own observation
+      gate:
+        mode_forks:
+          - {cap_id: '0x12', when_raw: 1, modes: [cool]}
+          - {cap_id: '0x12', when_raw: 2, modes: [cool, auto, dry]}
+        sources: own research
+        note: Cap 0x12 forks eco's applicable mode set — special-eco (raw 1) restricts
+          to cool, window-eco (raw 2) keeps cool/auto/dry. Raw 0 = eco absent (the
+          presence axis excludes it). Our unit cap=1, so eco is cool-only;
+          visible_in_modes over-offers auto/dry without this fork.
       mutual_exclusion:
         when_on:
           forces:

@@ -1204,6 +1204,19 @@ class Device:
         f = self._status["fields"].get(field_name)
         return f.get("active_constraints") if f else None
 
+    def cap_values(self) -> dict[str, int]:
+        """The unit's B5 capability bytes as ``{cap_id: raw}`` (e.g. ``{'0x12': 1}``).
+
+        Built from the accumulated ``capabilities_raw`` records; consumed by the
+        gate evaluator's mode-fork axis. Empty before any B5 cap has arrived."""
+        out: dict[str, int] = {}
+        for rec in self._status.get("capabilities_raw", []):
+            cap_id = str(rec.get("cap_id", "")).lower()
+            data = rec.get("data") or []
+            if cap_id and data:
+                out[cap_id] = data[0]
+        return out
+
     def read_all_available(self) -> dict[str, object]:
         """Read all available fields. Returns {name: value}."""
         return {fname: self.read(fname) for fname in self.available_fields}
