@@ -52,6 +52,7 @@ cd packages/blaueis-client  && python3 -m pytest      # 147
 - [docs/operations.md](docs/operations.md) — install, systemd, config, update, debug, troubleshoot.
 - [docs/flight_recorder.md](docs/flight_recorder.md) — rolling in-memory debug buffer (design + rationale).
 - [docs/status_db.md](docs/status_db.md) — status dictionary schema and merge logic.
+- [docs/feature_gating.md](docs/feature_gating.md) — the offer gate: capability / mode / interlock axes, the `gate:` block schema, the evaluator, and bit-position anchors.
 
 > **A note on the name.** Blaueis is a small glacier in the Bavarian Alps,
 > retreating year by year. Use energy responsibly — climate change is real.
