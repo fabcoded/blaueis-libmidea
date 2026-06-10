@@ -55,15 +55,9 @@ from blaueis.core.inventory import (  # noqa: E402
     synthesize_override_snippet,
 )
 
-# Reuse the query list + helpers from ac_probe (same tool family,
-# different output).
-from blaueis.tools.ac_probe import (  # noqa: E402
-    B1_PROPERTY_IDS,
-    build_b1_property_query,
-    build_device_id_query,
-    build_direct_subpage_query,
-    build_group_query_raw,
-)
+# Canonical query list lives in core so the HA integration's scan and
+# this CLI inject identical coverage.
+from blaueis.core.scan_queries import build_scan_queries  # noqa: E402
 
 log = logging.getLogger("field_inventory")
 
@@ -74,56 +68,10 @@ log = logging.getLogger("field_inventory")
 
 
 def _build_query_list(glossary: dict, proto: int) -> list[tuple[str, bytes]]:
-    """Produce the (label, frame_bytes) list that the scan sends. Mirrors
-    ``ac_probe.probe()``'s query list — we want the same coverage so
-    directly-observed fields show up the same way."""
-    queries: list[tuple[str, bytes]] = []
-
-    # Glossary-defined frames
-    for fid in [
-        "cmd_0xb5_extended",
-        "cmd_0xb5_simple",
-        "cmd_0x41",
-        "cmd_0x41_group4_power",
-        "cmd_0x41_group5",
-        "cmd_0x41_ext",
-    ]:
-        spec = glossary.get("frames", {}).get(fid)
-        if not spec:
-            continue
-        bus = spec.get("bus", ["uart", "rt"])
-        if "uart" not in bus:
-            continue
-        try:
-            frame = build_frame_from_spec(fid, glossary, proto=proto)
-            queries.append((fid, frame))
-        except Exception as e:
-            log.debug("skip glossary frame %s: %s", fid, e)
-
-    for sp in [0x01, 0x02]:
-        queries.append((f"direct_subpage_0x{sp:02X}", build_direct_subpage_query(sp, proto=proto)))
-
-    BATCH = 8
-    for i in range(0, len(B1_PROPERTY_IDS), BATCH):
-        batch = B1_PROPERTY_IDS[i : i + BATCH]
-        ids = [(lo, hi) for lo, hi, _ in batch]
-        labels = [lbl for _, _, lbl in batch]
-        queries.append((f"B1_props_{'+'.join(labels)}", build_b1_property_query(ids, proto=proto)))
-
-    queries.append(("device_id_0x07", build_device_id_query(proto=proto)))
-
-    for page in [0x40, 0x42, 0x43, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F]:
-        queries.append((f"group_0x{page:02X}_v21", build_group_query_raw(page, variant=0x21, proto=proto)))
-
-    for page in [0x41, 0x43]:
-        queries.append(
-            (
-                f"group_0x{page:02X}_v21_rt_test",
-                build_group_query_raw(page, variant=0x21, proto=proto),
-            )
-        )
-
-    return queries
+    """Produce the (label, frame_bytes) list that the scan sends — the
+    canonical list from :mod:`blaueis.core.scan_queries`, shared with the
+    probe tool and the HA integration."""
+    return build_scan_queries(glossary, proto=proto)
 
 
 # ══════════════════════════════════════════════════════════════════════════
