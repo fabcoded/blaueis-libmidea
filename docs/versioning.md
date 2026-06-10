@@ -18,6 +18,13 @@ Every gateway / client pair tracks two independent values:
 
 Protocol bumps are rare and disruptive. Software bumps are routine.
 
+**Protocol version history:**
+
+| Ver | Date | Break |
+|---|---|---|
+| 1 | initial | PSK/HKDF session crypto, single shared key + nonce prefix |
+| 2 | 2026-06 | Direction-separated session keys/nonce prefixes; scrypt PSK stretching; client key confirmation on the first encrypted message. v1 peers refused. |
+
 ## 2. Handshake exchange
 
 The crypto `hello` / `hello_ok` envelope (encoded by `blaueis.core.crypto`)

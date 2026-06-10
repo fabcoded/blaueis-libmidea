@@ -17,7 +17,10 @@ import logging
 import time
 from dataclasses import dataclass
 
+from cryptography.exceptions import InvalidTag
+
 from blaueis.core.crypto import (
+    HandshakeError,
     complete_handshake_client,
     create_hello,
 )
@@ -86,7 +89,37 @@ class HvacClient:
             reply_raw = await asyncio.wait_for(self._ws.recv(), timeout=10.0)
             reply = json.loads(reply_raw)
             self._session = complete_handshake_client(self.psk, client_rand, reply)
-            log.info("Encrypted session established")
+
+            # Key confirmation (protocol v2): the gateway's first message
+            # after the handshake is the encrypted slot-hello. Decrypt it
+            # here so a PSK mismatch fails the connect with a clear
+            # HandshakeError instead of surfacing later as InvalidTag in
+            # the listen loop. The gateway may instead send a PLAINTEXT
+            # error (e.g. slot_pool_full) post-handshake — handle both.
+            first_raw = await asyncio.wait_for(self._ws.recv(), timeout=10.0)
+            first = json.loads(first_raw)
+            if "c" in first and "ct" in first:
+                try:
+                    msg = json.loads(self._session.decrypt(first))
+                except InvalidTag:
+                    raise HandshakeError(
+                        "PSK mismatch — key confirmation failed on the "
+                        "gateway's first encrypted message"
+                    ) from None
+                if msg.get("type") == "hello":
+                    self._handle_hello(msg)
+                else:  # unexpected but valid ciphertext — key confirmed
+                    log.warning("First encrypted message was %s, not hello", msg.get("type"))
+            elif first.get("type") == "error":
+                raise HandshakeError(
+                    f"Gateway refused connection: {first.get('code', 'error')} — "
+                    f"{first.get('msg', '')}"
+                )
+            else:
+                raise HandshakeError(
+                    f"Expected encrypted slot-hello after handshake, got {first.get('type')!r}"
+                )
+            log.info("Encrypted session established (key confirmed)")
         else:
             log.info("Connected without encryption")
 

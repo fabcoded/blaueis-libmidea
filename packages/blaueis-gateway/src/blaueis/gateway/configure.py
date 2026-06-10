@@ -11,7 +11,6 @@ Usage:
 """
 
 import argparse
-import hashlib
 import os
 import re
 import secrets
@@ -64,8 +63,15 @@ def validate_psk(psk):
 
 
 def psk_to_key(psk):
-    """SHA-256 the PSK string into a 32-byte AES-256 key."""
-    return hashlib.sha256(psk.encode("utf-8")).digest()
+    """Stretch the PSK string into a 32-byte AES-256 key.
+
+    Delegates to the shared derivation in :mod:`blaueis.core.crypto` —
+    the one function both ends of the wire must agree on (scrypt in
+    session-protocol v2).
+    """
+    from blaueis.core.crypto import psk_to_bytes
+
+    return psk_to_bytes(psk)
 
 
 def ask(prompt, default=None, validator=None):

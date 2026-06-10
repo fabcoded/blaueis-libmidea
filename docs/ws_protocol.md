@@ -37,6 +37,17 @@ client: close WS                                        gateway: release slot
 
 Structure handled by `blaueis.core.crypto.create_hello` / `complete_handshake_server`. Details in `crypto.py`; not reproduced here. Skipped entirely when the server runs with `--no-encrypt`.
 
+Session-protocol **v2** (2026-06): each direction derives its own session
+key and nonce prefix (no cross-direction nonce reuse), passphrases are
+stretched with scrypt, and the client performs key confirmation by
+decrypting the gateway's first encrypted message (the §3.1 slot `hello`)
+before declaring the session up — a PSK mismatch therefore fails the
+connect with a handshake error instead of surfacing later as a decrypt
+failure. The `hello` carries `version: 2`; v1 peers are refused with a
+version-mismatch handshake error per the
+[versioning policy](versioning.md). The encrypted-envelope format is
+unchanged from v1.
+
 ### 2.2 `subscribe` — per-socket filter (§4.1)
 
 ```json

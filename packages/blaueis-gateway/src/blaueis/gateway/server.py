@@ -22,6 +22,8 @@ import signal
 import sys
 import time
 
+from cryptography.exceptions import InvalidTag
+
 from blaueis.core.crypto import (
     HandshakeError,
     ReplayError,
@@ -290,6 +292,12 @@ class GatewayServer:
         self.debug_ring = debug_ring
         self.slot_pool = SlotPool(size=config.get("slot_pool_size", 8))
         self._bg_tasks: set[asyncio.Future] = set()
+        # Pre-auth flood guard: the slot pool only limits AUTHENTICATED
+        # clients; this caps connections sitting in the handshake window.
+        self._preauth_count = 0
+        self._preauth_max = config.get("preauth_max_connections", 8)
+        # PSK stretching (scrypt) is deliberately expensive — derive once.
+        self._psk_bytes: bytes | None = None
 
     async def _broadcast(self, msg: dict):
         """Send a message to all connected clients."""
@@ -364,6 +372,17 @@ class GatewayServer:
         """Process a message from a WebSocket client."""
         try:
             msg = client.decrypt(raw_msg)
+        except InvalidTag:
+            # Key mismatch (e.g. client configured with a wrong/stale PSK
+            # that somehow passed the handshake era) — close, don't keep a
+            # half-authenticated peer in the slot pool.
+            log.warning(
+                "Auth failure: undecryptable message from slot %s; closing",
+                client.sid,
+            )
+            with contextlib.suppress(Exception):
+                await client.ws.close(code=1008, reason="auth failure")
+            return
         except (ReplayError, json.JSONDecodeError) as e:
             log.warning("Client message error: %s", e)
             return
@@ -460,15 +479,26 @@ class GatewayServer:
 
         log.info("Client connected from %s", websocket.remote_address)
 
+        if self._preauth_count >= self._preauth_max:
+            log.warning(
+                "Pre-auth connection cap (%d) reached; rejecting %s",
+                self._preauth_max, websocket.remote_address,
+            )
+            with contextlib.suppress(Exception):
+                await websocket.close(code=1013, reason="try later")
+            return
+
         # Session handshake
         session = None
+        self._preauth_count += 1
         try:
             if not self.no_encrypt:
-                psk = psk_to_bytes(self.config["psk"])
+                if self._psk_bytes is None:
+                    self._psk_bytes = psk_to_bytes(self.config["psk"])
                 hello_raw = await asyncio.wait_for(websocket.recv(), timeout=10.0)
                 hello = json.loads(hello_raw)
                 hello_ok_msg, server_rand = create_hello_ok()
-                session = complete_handshake_server(psk, hello, server_rand)
+                session = complete_handshake_server(self._psk_bytes, hello, server_rand)
                 await websocket.send(json.dumps(hello_ok_msg))
                 log.info("Encrypted session established with %s", websocket.remote_address)
             else:
@@ -476,6 +506,8 @@ class GatewayServer:
         except (HandshakeError, TimeoutError) as e:
             log.warning("Handshake failed for %s: %s", websocket.remote_address, e)
             return
+        finally:
+            self._preauth_count -= 1
 
         try:
             sid = self.slot_pool.acquire()
