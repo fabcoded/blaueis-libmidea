@@ -30,6 +30,7 @@ from datetime import UTC, datetime
 
 from blaueis.client.status_db import StatusDB
 from blaueis.client.ws_client import HvacClient
+from blaueis.core.crypto import HandshakeError
 from blaueis.core.codec import (
     identify_frame,
     load_glossary,
@@ -172,6 +173,12 @@ class Device:
         self.on_connected: Callable[[], None] | None = None
         self.on_disconnected: Callable[[], None] | None = None
         self.on_gateway_stats: Callable[[dict], None] | None = None
+        # Fired (once) when a reconnect fails with a HandshakeError that
+        # indicates a credential problem (PSK mismatch / version refusal)
+        # rather than an unreachable gateway. The reconnect loop STOPS —
+        # retrying a wrong key forever is noise; the consumer should
+        # surface a reauth to the user and call start() again after fixing.
+        self.on_auth_failed: Callable[[str], None] | None = None
 
         # ── Frame observers ────────────────────────────────
         # Low-level hook surface: each observer is called synchronously
@@ -611,6 +618,15 @@ class Device:
                 if self._post_connect_task and not self._post_connect_task.done():
                     self._post_connect_task.cancel()
                 self._post_connect_task = asyncio.create_task(self._post_connect_init())
+                return
+            except HandshakeError as e:
+                # Credential problem (PSK mismatch / protocol-version
+                # refusal) — endless retry can't fix it. Stop and tell
+                # the consumer so it can ask the user to reauthorize.
+                log.error("Reconnect auth failure, stopping retries: %s", e)
+                self._running = False
+                if self.on_auth_failed:
+                    self.on_auth_failed(str(e))
                 return
             except Exception as e:
                 log.warning("Reconnect attempt %d failed: %s", attempt, e)
