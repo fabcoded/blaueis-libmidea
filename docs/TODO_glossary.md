@@ -2,8 +2,8 @@
 
 > The glossary (`glossary.yaml`) is the protocol data source-of-truth. A
 > handful of entries reference this doc from their `sources:` or `note:`
-> by stable section number — for codec frames sketched but not yet built
-> (§6) and for excluded fields' specific reopen conditions (§13). This is
+> by stable section number — for codec frame-builder status (§6)
+> and for excluded fields' specific reopen conditions (§13). This is
 > the living home for that deferred work, so an exclusion or a hypothesis
 > entry points somewhere real instead of carrying a dead promise.
 >
@@ -16,39 +16,32 @@
 > source paths, symbol names, line references, or copied material — same
 > leak bar as the glossary `note:` fields.
 
-## §6 — Codec design sketches (frames not yet built)
+## §6 — Codec frame builders (per-entry status)
 
-Frames the protocol model documents but our Python codec does not yet
-assemble. Each is referenced from the matching `cmd_*` glossary entry's
-`sources:`. The sketch records *why it's deferred* and *what building it
-would take*, so the glossary entry can stay `confidence: hypothesis`
-honestly.
+Frame-builder work referenced from the matching `cmd_*` glossary entries'
+`sources:`. Section numbers are stable anchors; entries state their current
+status rather than being removed when built.
 
 ### §6.1 — `cmd_0x41_ext` (extended state query, sub-page 0x02)
 
-- **Status:** not built by our codec; not observed in our captures.
-- **Why it matters:** three glossary fields decode from its response
-  (`rsp_0xc1_sub02`), so *some* controller issues this query — just not
-  the OEM WiFi dongle or extension board we have on the bench.
-- **To build:** assemble the fixed selector body (the `bytes_at` map on
-  the glossary entry documents the selector positions) and route the
-  `rsp_0xc1_sub02` reply through the existing C1 sub-page parser.
-- **To verify:** a capture from a controller that does emit it, or a
-  bench unit that answers the query we synthesize — confirming the three
-  dependent fields populate as decoded.
+- **Status:** built — the generic `bytes_at` body assembler
+  (`build_frame_from_spec`) constructs it, and the field-inventory tooling
+  issues it as a probe. The `rsp_0xc1_sub02` reply routes through the
+  existing C1 sub-page parser.
+- **Remaining:** evidence, not code. Never observed from a controller in
+  our captures, and our bench unit has not been confirmed to answer the
+  synthesized query — the three glossary fields that decode from
+  `rsp_0xc1_sub02` stay `confidence: hypothesis` until a capture confirms
+  they populate as decoded.
 
 ### §6.2 — `cmd_0xb0` property-set builder
 
-- **Status:** constructed on demand today, no general builder.
-- **Why it matters:** property-only fields (ionizer, breezeless, the
-  persistent buzzer alternative, and similar) each hand-roll their B0
-  frame; a shared builder would remove the duplication and make new
-  property writes a data-only change.
-- **To build:** a body assembler that walks each field's
-  `protocols.cmd_0xb0` entry (property ID + data bytes) the way the
-  `cmd_0x40` builder walks `decode` arrays.
-- **To verify:** round-trip — write via the builder, read the value back
-  via `rsp_0xb1` / `rsp_0xb1_prop`, confirm it matches.
+- **Status:** built and in live use — the shared body assembler
+  (`build_b0_command_body`) walks each field's `protocols.cmd_0xb0` entry
+  (property ID + data bytes) the way the `cmd_0x40` builder walks `decode`
+  arrays; property writes are a data-only change. Verified by encode
+  round-trip tests against `rsp_0xb1` / `rsp_0xb1_prop` decodes.
+- **Remaining:** nothing — the anchor stays because glossary entries cite it.
 
 ## §13 — Reopen conditions for excluded fields
 

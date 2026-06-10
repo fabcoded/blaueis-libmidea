@@ -618,19 +618,25 @@ frames:
     sources:
     - serial_protocol.md §3.1.4 documentation
     - TODO_glossary.md §6 design sketch
-    note: 'Not currently built by our codec. Not
+    note: 'Built by the generic bytes_at body assembler
 
-      observed in captures — the OEM WiFi dongle and extension
+      (build_frame_from_spec) and issued as a probe by the
 
-      board we have don''t issue this query, but the AC''s response
+      field-inventory tooling. Never observed from a controller in
+
+      our captures — the OEM WiFi dongle and extension board we
+
+      have don''t issue this query, but the AC''s response
 
       (rsp_0xc1_sub02) is referenced by three fields in the
 
-      glossary so some source sends it. Body form uses bytes_at
+      glossary so some source sends it; confirming a unit that
 
-      to document the selector bytes (optCommand=0x03 at body[4],
+      answers it remains open (TODO_glossary.md §6.1). Body form
 
-      queryStat=0x02 at body[7]).
+      uses bytes_at to document the selector bytes (optCommand=0x03
+
+      at body[4], queryStat=0x02 at body[7]).
 
       '
   cmd_0xb5_extended:
@@ -727,17 +733,23 @@ frames:
     confidence: hypothesis
     sources:
     - TODO_glossary.md §6 design sketch
-    note: 'Length varies per property write. No current Python builder —
+    note: 'Length varies per property write. Built by the shared B0
 
-      the codec constructs 0xB0 frames on demand for anion_ionizer,
+      body assembler (build_b0_command_body), which walks each
 
-      breezeless, buzzer''s persistent alternative, and similar
+      field''s cmd_0xb0 protocol entry grouped by property ID —
 
-      property-only fields. Reads of property values come back via
+      used by the live write path for anion_ionizer, breezeless,
 
-      rsp_0xb1 (simple data) or rsp_0xb1_prop (extended data, e.g.
+      buzzer''s persistent alternative, and similar property-only
 
-      target_temperature range values via cap 0x25).
+      fields, with encode round-trip test coverage. Reads of
+
+      property values come back via rsp_0xb1 (simple data) or
+
+      rsp_0xb1_prop (extended data, e.g. target_temperature range
+
+      values via cap 0x25).
 
       '
 # ── Protocol generations ──────────────────────────────────────────────────────

@@ -30,11 +30,10 @@ The three gating axes are **distinct** and must not be conflated:
 - **Mode** — *does it make sense in the current operating mode?* (intrinsic logic)
 - **Interlock** — *is a conflicting feature currently engaged?* (runtime live state)
 
-> **Status.** Live: the capability-presence axis, `cap_mode`, the interlock axis
-> (with its mode guard), the bit-position anchors, decode-retention, and the
-> cap-gating convention (§7). Pending: the **mode-fork** axis (§2.2) and its
-> `cap_values` evaluator input — schema-declared and implemented on a branch, held
-> for a live engagement test before merge. Sections below mark pending pieces.
+> **Status.** All axes are live: capability presence, `cap_mode`, the
+> **mode-fork** axis (§2.2) with its `cap_values` evaluator input, the interlock
+> axis (with its mode guard), the bit-position anchors, decode-retention, and
+> the cap-gating convention (§7).
 
 ## 2. Axes
 
@@ -54,11 +53,10 @@ Some caps restrict *which operating modes* a feature applies to. Two forms:
   (the **value-vs-mode trap**). The axis fires only when the live `valid_set` is all
   operating-mode raws (ints 1–5, excluding bool) — so a pre-B5 permissive default
   like `[False, True]` stays inert and the field falls back to its logical mode rule.
-- **`mode_forks: [{cap_id, when_raw, modes}]`** *(pending — eco-variant increment)* — a
+- **`mode_forks: [{cap_id, when_raw, modes}]`** — a
   cap-value → explicit mode-set fork a `valid_set` cannot express (e.g. an eco-variant
   cap whose value 1 ⇒ cool-only and value 2 ⇒ cool/auto/dry). First matching fork wins;
-  no match ⇒ inert. The schema accepts this today; the evaluator branch and the
-  `cap_values` plumbing land with the eco increment after live validation.
+  no match ⇒ inert. Live since the eco increment (validated by live engagement test).
 
 Effective modes = `visible_in_modes ∩ cap_mode_set ∩ mode_fork_set` (each absent axis
 contributes no restriction).
@@ -111,7 +109,7 @@ gate:
 
 ```
 evaluate_offered(field_gdef, *, mode, power_on, active_constraints=None,
-                 field_states=None, caps=None) -> GateVerdict
+                 field_states=None, caps=None, cap_values=None) -> GateVerdict
 ```
 
 A **pure function** returning `GateVerdict(offered: bool, blocked_by: list[str])`.
@@ -124,7 +122,7 @@ A **pure function** returning `GateVerdict(offered: bool, blocked_by: list[str])
 | `active_constraints` | `status['fields'][f]['active_constraints']` (cap-derived) |
 | `field_states` | `{name: value}` for interlock dependencies (retained values) |
 | `caps` | B5 flag bitmap (for `ux.hardware_flag`) |
-| `cap_values` *(pending)* | `{cap_id: raw}` of the unit's B5 caps — added by the eco increment for `mode_forks` |
+| `cap_values` | `{cap_id: raw}` of the unit's B5 caps — consumed by `mode_forks` |
 
 ## 5. Bit-position anchors — `core/gate_anchors.py`
 
