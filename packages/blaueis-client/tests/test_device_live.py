@@ -31,9 +31,7 @@ pytestmark = pytest.mark.asyncio
 
 async def _can_reach_gateway() -> bool:
     try:
-        _, writer = await asyncio.wait_for(
-            asyncio.open_connection(GATEWAY_HOST, GATEWAY_PORT), timeout=3
-        )
+        _, writer = await asyncio.wait_for(asyncio.open_connection(GATEWAY_HOST, GATEWAY_PORT), timeout=3)
         writer.close()
         await writer.wait_closed()
         return True
@@ -67,8 +65,7 @@ async def test_connect_and_discover(gateway_available):
         avail = device.available_fields
         assert len(avail) > 50, f"Expected >50 available fields, got {len(avail)}"
 
-        for field in ["power", "operating_mode", "target_temperature",
-                      "fan_speed", "indoor_temperature"]:
+        for field in ["power", "operating_mode", "target_temperature", "fan_speed", "indoor_temperature"]:
             assert field in avail, f"Missing core field: {field}"
 
         print(f"\nAvailable fields: {len(avail)}")

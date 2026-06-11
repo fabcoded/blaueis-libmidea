@@ -15,6 +15,7 @@ don't exist on the SKU. Anything more structured is deliberately not
 supported — if a rule needs cross-state predicates, it belongs in Python
 (named, in a predicate registry) rather than growing a DSL here.
 """
+
 from __future__ import annotations
 
 from typing import Any

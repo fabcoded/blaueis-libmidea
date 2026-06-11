@@ -43,20 +43,20 @@ import yaml
 # later need a one-line entry here. Order matters: more-specific
 # prefixes first.
 
-SCOPE_FLAT_BODY = "flat_body"          # scope = frame_id
-SCOPE_PROPERTY_TLV = "property_tlv"    # scope = (frame_id, property_id)
-SCOPE_CAPABILITY = "capability_tlv"    # scope = (frame_id, cap_id)
-SCOPE_CAP_DECODE = "cap_decode"        # scope = (cap_id, sub_name)
+SCOPE_FLAT_BODY = "flat_body"  # scope = frame_id
+SCOPE_PROPERTY_TLV = "property_tlv"  # scope = (frame_id, property_id)
+SCOPE_CAPABILITY = "capability_tlv"  # scope = (frame_id, cap_id)
+SCOPE_CAP_DECODE = "cap_decode"  # scope = (cap_id, sub_name)
 
 FRAME_SCOPE_RULES: list[tuple[str, str, str]] = [
     # (prefix, scope_type, class)
-    ("rsp_0xb1",      SCOPE_PROPERTY_TLV, "read"),
-    ("cmd_0xb0",      SCOPE_PROPERTY_TLV, "write"),
-    ("cmd_0xb1",      SCOPE_PROPERTY_TLV, "write"),
-    ("rsp_0xb5_tlv",  SCOPE_CAPABILITY,   "cap"),
-    ("rsp_0xb5",      SCOPE_CAPABILITY,   "cap"),
-    ("cmd_0x",        SCOPE_FLAT_BODY,    "write"),
-    ("rsp_0x",        SCOPE_FLAT_BODY,    "read"),
+    ("rsp_0xb1", SCOPE_PROPERTY_TLV, "read"),
+    ("cmd_0xb0", SCOPE_PROPERTY_TLV, "write"),
+    ("cmd_0xb1", SCOPE_PROPERTY_TLV, "write"),
+    ("rsp_0xb5_tlv", SCOPE_CAPABILITY, "cap"),
+    ("rsp_0xb5", SCOPE_CAPABILITY, "cap"),
+    ("cmd_0x", SCOPE_FLAT_BODY, "write"),
+    ("rsp_0x", SCOPE_FLAT_BODY, "read"),
 ]
 
 
@@ -125,30 +125,39 @@ def build_position_catalogue(glossary: dict) -> list[dict]:
     """
     records: list[dict] = []
 
-    def _emit(field: str, fdef: dict, scope_type: str, cls: str,
-              frame_id: str, scope_extra: str, step: dict,
-              property_id: str | None = None,
-              cap_id: str | None = None) -> None:
+    def _emit(
+        field: str,
+        fdef: dict,
+        scope_type: str,
+        cls: str,
+        frame_id: str,
+        scope_extra: str,
+        step: dict,
+        property_id: str | None = None,
+        cap_id: str | None = None,
+    ) -> None:
         offset = step["offset"]
         high, low = step["bits"]
         scope_key = frame_id if not scope_extra else f"{frame_id}/{scope_extra}"
         for bit in range(low, high + 1):
-            records.append({
-                "field": field,
-                "field_class": fdef.get("field_class"),
-                "feature_available": fdef.get("feature_available"),
-                "class": cls,
-                "frame": frame_id,
-                "scope_type": scope_type,
-                "scope_key": scope_key,
-                "byte": offset,
-                "bit_high": high,
-                "bit_low": low,
-                "bit": bit,
-                "encoding": step.get("encoding"),
-                "property_id": property_id,
-                "cap_id": cap_id,
-            })
+            records.append(
+                {
+                    "field": field,
+                    "field_class": fdef.get("field_class"),
+                    "feature_available": fdef.get("feature_available"),
+                    "class": cls,
+                    "frame": frame_id,
+                    "scope_type": scope_type,
+                    "scope_key": scope_key,
+                    "byte": offset,
+                    "bit_high": high,
+                    "bit_low": low,
+                    "bit": bit,
+                    "encoding": step.get("encoding"),
+                    "property_id": property_id,
+                    "cap_id": cap_id,
+                }
+            )
 
     fields_root = glossary.get("fields") or {}
     for sec in ("sensor", "control"):
@@ -168,16 +177,20 @@ def build_position_catalogue(glossary: dict) -> list[dict]:
                     if scope_type == SCOPE_PROPERTY_TLV:
                         prop = step.get("property_id")
                         if prop is None:
-                            _emit(fname, fdef, scope_type, cls, pkey,
-                                  scope_extra="<missing-property_id>",
-                                  step=step)
+                            _emit(fname, fdef, scope_type, cls, pkey, scope_extra="<missing-property_id>", step=step)
                         else:
-                            _emit(fname, fdef, scope_type, cls, pkey,
-                                  scope_extra=f"prop={prop}", step=step,
-                                  property_id=prop)
+                            _emit(
+                                fname,
+                                fdef,
+                                scope_type,
+                                cls,
+                                pkey,
+                                scope_extra=f"prop={prop}",
+                                step=step,
+                                property_id=prop,
+                            )
                     else:
-                        _emit(fname, fdef, scope_type, cls, pkey,
-                              scope_extra="", step=step)
+                        _emit(fname, fdef, scope_type, cls, pkey, scope_extra="", step=step)
 
             # capability.frames.* / capability.decode.* — scope by cap_id.
             cap = fdef.get("capability")
@@ -187,17 +200,30 @@ def build_position_catalogue(glossary: dict) -> list[dict]:
                     if not isinstance(fdata, dict):
                         continue
                     for step in _walk_decode_steps(fdata.get("decode")):
-                        _emit(fname, fdef, SCOPE_CAPABILITY, "cap", fkey,
-                              scope_extra=f"cap={cap_id}", step=step,
-                              cap_id=cap_id)
+                        _emit(
+                            fname,
+                            fdef,
+                            SCOPE_CAPABILITY,
+                            "cap",
+                            fkey,
+                            scope_extra=f"cap={cap_id}",
+                            step=step,
+                            cap_id=cap_id,
+                        )
                 for subname, sub in (cap.get("decode") or {}).items():
                     if not isinstance(sub, dict):
                         continue
                     for step in _walk_decode_steps(sub.get("decode")):
-                        _emit(fname, fdef, SCOPE_CAP_DECODE, "cap",
-                              "capability.decode",
-                              scope_extra=f"cap={cap_id}/{subname}",
-                              step=step, cap_id=cap_id)
+                        _emit(
+                            fname,
+                            fdef,
+                            SCOPE_CAP_DECODE,
+                            "cap",
+                            "capability.decode",
+                            scope_extra=f"cap={cap_id}/{subname}",
+                            step=step,
+                            cap_id=cap_id,
+                        )
 
     return records
 
@@ -205,8 +231,7 @@ def build_position_catalogue(glossary: dict) -> list[dict]:
 # ── Collision detection ───────────────────────────────────────────────
 
 
-def find_collisions(catalogue: list[dict],
-                    allow: list[dict] | None = None) -> list[dict]:
+def find_collisions(catalogue: list[dict], allow: list[dict] | None = None) -> list[dict]:
     """Return un-allowlisted same-bit collisions.
 
     Each result entry:
@@ -235,9 +260,7 @@ def find_collisions(catalogue: list[dict],
         for entry in allow:
             try:
                 fields_t = tuple(sorted(entry["fields"]))
-                allow_keys.add(
-                    (entry["scope"], entry["byte"], entry["bit"], fields_t)
-                )
+                allow_keys.add((entry["scope"], entry["byte"], entry["bit"], fields_t))
             except (KeyError, TypeError):
                 continue
 
@@ -248,15 +271,17 @@ def find_collisions(catalogue: list[dict],
             continue
         if (scope, byte, bit, tuple(owners)) in allow_keys:
             continue
-        out.append({
-            "scope_key": scope,
-            "byte": byte,
-            "bit": bit,
-            "fields": owners,
-            "class": recs[0]["class"],
-            "frame": recs[0]["frame"],
-            "scope_type": recs[0]["scope_type"],
-        })
+        out.append(
+            {
+                "scope_key": scope,
+                "byte": byte,
+                "bit": bit,
+                "fields": owners,
+                "class": recs[0]["class"],
+                "frame": recs[0]["frame"],
+                "scope_type": recs[0]["scope_type"],
+            }
+        )
     out.sort(key=lambda r: (r["class"], r["scope_key"], r["byte"], r["bit"]))
     return out
 
@@ -281,12 +306,14 @@ def find_shared_bytes(catalogue: list[dict]) -> list[dict]:
         per_bit = bit_owners[(scope, byte)]
         if any(len(set(v)) > 1 for v in per_bit.values()):
             continue  # has same-bit collisions; covered by find_collisions
-        out.append({
-            "scope_key": scope,
-            "byte": byte,
-            "owners": owners_sorted,
-            "bit_layout": {b: sorted(set(v)) for b, v in sorted(per_bit.items())},
-        })
+        out.append(
+            {
+                "scope_key": scope,
+                "byte": byte,
+                "owners": owners_sorted,
+                "bit_layout": {b: sorted(set(v)) for b, v in sorted(per_bit.items())},
+            }
+        )
     out.sort(key=lambda r: (r["scope_key"], r["byte"]))
     return out
 

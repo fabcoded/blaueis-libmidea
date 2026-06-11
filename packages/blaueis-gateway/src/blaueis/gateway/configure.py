@@ -11,6 +11,7 @@ Usage:
 """
 
 import argparse
+import contextlib
 import os
 import re
 import secrets
@@ -254,10 +255,8 @@ def write_instance_config(name, serial_port, baud, ws_port, psk, device_name, ip
         # Best-effort close — the success path already closed `fd`, so a
         # second close raises EBADF; swallow it so the original error
         # surfaces.
-        try:
+        with contextlib.suppress(OSError):
             os.close(fd)
-        except OSError:
-            pass
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
         raise

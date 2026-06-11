@@ -58,11 +58,11 @@ def test_every_frame_is_wire_valid():
 
 def test_coverage_groups_present():
     labels = [label for label, _ in _queries()]
-    b1_batches = [l for l in labels if l.startswith("B1_props_")]
+    b1_batches = [lbl for lbl in labels if lbl.startswith("B1_props_")]
     assert len(b1_batches) == math.ceil(len(B1_PROPERTY_IDS) / 8)
     assert "device_id_0x07" in labels
-    assert sum(1 for l in labels if l.startswith("direct_subpage_")) == 2
-    assert sum(1 for l in labels if l.startswith("group_0x")) >= 13
+    assert sum(1 for lbl in labels if lbl.startswith("direct_subpage_")) == 2
+    assert sum(1 for lbl in labels if lbl.startswith("group_0x")) >= 13
     # Total floor: 6 glossary frames + 2 subpages + batches + 0x07 + 15 groups
     assert len(labels) >= 24 + len(b1_batches)
 

@@ -17,6 +17,7 @@ Schema (all keys optional; see gating-audit design doc):
         - {field: auxiliary_heat_level, at: 'C0:9:4..3', blocks_when: nonzero, modes: [heat, auto]}
       mutex_group: breeze             # declared; the existing cascade enforces it
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -146,9 +147,7 @@ def evaluate_offered(
             # dependency absent / cap-absent / not yet decoded → vacuously satisfied
             continue
         blocks_when = il.get("blocks_when", "nonzero")
-        if blocks_when in ("nonzero", "truthy") and state:
-            blocked.append(f"interlock:{fname}")
-        elif blocks_when in ("zero", "off") and not state:
+        if blocks_when in ("nonzero", "truthy") and state or blocks_when in ("zero", "off") and not state:
             blocked.append(f"interlock:{fname}")
 
     # ── mutex axis: declared via gate.mutex_group; the existing breeze cascade

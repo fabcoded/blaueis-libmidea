@@ -38,7 +38,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 import websockets  # noqa: E402
 from blaueis.core.codec import build_frame_from_spec, load_glossary  # noqa: E402
 from blaueis.core.crypto import complete_handshake_client, create_hello, psk_to_bytes  # noqa: E402
-from blaueis.core.frame import build_frame, parse_frame  # noqa: E402
+from blaueis.core.frame import parse_frame  # noqa: E402
 
 log = logging.getLogger("ac_probe")
 
@@ -51,7 +51,6 @@ from blaueis.core.scan_queries import (  # noqa: E402,F401  (re-exported)
     build_group_query_raw,
     build_optcommand_query,
 )
-
 
 # ── Probe logic ─────────────────────────────────────────────────────────
 

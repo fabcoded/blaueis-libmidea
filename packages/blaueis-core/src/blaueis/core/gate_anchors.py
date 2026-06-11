@@ -22,6 +22,7 @@ Note a field can sit at *different* addresses per protocol — ``eco_mode`` is
 written at ``W40:9:7..7`` but read back at ``C0:9:4..4`` — so an anchor is always
 protocol-qualified; the status-read protocol is the one a gate predicate consults.
 """
+
 from __future__ import annotations
 
 from blaueis.core.codec import walk_fields
@@ -73,9 +74,9 @@ def field_addresses(glossary: dict, field: str, proto_code: str) -> list[str]:
 # the live glossary. Do NOT edit an entry to make a failing check pass: a mismatch
 # means a rename/decode drift to fix at the source, which is the whole point.
 GATE_ANCHORS: dict[str, str] = {
-    "strong_wind": "C0:8:5..5",        # the boost ("Turbo") control acts here
-    "turbo_mode": "C0:10:1..1",        # distinct bit; preset mis-targets this (wiring bug)
-    "eco_mode": "C0:9:4..4",           # status read; cmd writes W40:9:7..7 (per-protocol differs)
+    "strong_wind": "C0:8:5..5",  # the boost ("Turbo") control acts here
+    "turbo_mode": "C0:10:1..1",  # distinct bit; preset mis-targets this (wiring bug)
+    "eco_mode": "C0:9:4..4",  # status read; cmd writes W40:9:7..7 (per-protocol differs)
     "sleep_mode": "C0:10:0..0",
     "natural_wind": "C0:9:1..1",
     "jet_cool": "B1:0x67,0x00:0..0",
@@ -104,9 +105,7 @@ def verify_all_anchors(glossary: dict) -> list[str]:
     return verify_gate_anchors(glossary, {**GATE_ANCHORS, **collect_glossary_gate_anchors(glossary)})
 
 
-def verify_gate_anchors(
-    glossary: dict, anchors: dict[str, str] | None = None
-) -> list[str]:
+def verify_gate_anchors(glossary: dict, anchors: dict[str, str] | None = None) -> list[str]:
     """Check each anchored field still resolves to its declared wire address.
 
     Returns a list of human-readable problems (empty => every anchor holds).
@@ -124,7 +123,5 @@ def verify_gate_anchors(
                 f"{proto_code} decode (rename / decode drift?)"
             )
         elif expected not in resolved:
-            problems.append(
-                f"{field}: anchor {expected!r} != resolved {resolved} (bit-position drift)"
-            )
+            problems.append(f"{field}: anchor {expected!r} != resolved {resolved} (bit-position drift)")
     return problems

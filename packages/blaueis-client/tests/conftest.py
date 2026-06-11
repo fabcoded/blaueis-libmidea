@@ -72,9 +72,11 @@ class MockWebSocket:
 
     def feed_frame(self, hex_str: str, direction: str = "rx"):
         """Add a frame message to be received."""
-        self.feed_json({
-            "type": "frame",
-            "hex": hex_str,
-            "ts": 1000.0,
-            "dir": direction,
-        })
+        self.feed_json(
+            {
+                "type": "frame",
+                "hex": hex_str,
+                "ts": 1000.0,
+                "dir": direction,
+            }
+        )

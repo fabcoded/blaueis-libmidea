@@ -1,4 +1,5 @@
 """Tests for the per-subscriber subscribe filter (include + annotate)."""
+
 from __future__ import annotations
 
 import asyncio
@@ -29,8 +30,11 @@ def server() -> GatewayServer:
     root.setLevel(VERBOSE)
     root.addHandler(ring)
     config = {
-        "frame_spacing_ms": 0, "stats_interval": 0, "fake_ip": "10.0.0.1",
-        "uart_baud": 9600, "slot_pool_size": 4,
+        "frame_spacing_ms": 0,
+        "stats_interval": 0,
+        "fake_ip": "10.0.0.1",
+        "uart_baud": 9600,
+        "slot_pool_size": 4,
     }
     return GatewayServer(config, no_encrypt=True, debug_ring=ring)
 
@@ -57,6 +61,7 @@ def _raw() -> bytes:
 
 # ── Default subscription ──────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_default_subscription_is_rx_only(server) -> None:
     client = FakeClient(sid=0)
@@ -75,9 +80,16 @@ async def test_default_has_no_annotation_fields(server) -> None:
     client = FakeClient(sid=0)
     server._clients.add(client)
 
-    server._on_uart_frame(_raw(), ts=0.0, direction="rx", meta={
-        "origin": "gw:handshake", "msg_id": 0xC0, "req_id": 7,
-    })
+    server._on_uart_frame(
+        _raw(),
+        ts=0.0,
+        direction="rx",
+        meta={
+            "origin": "gw:handshake",
+            "msg_id": 0xC0,
+            "req_id": 7,
+        },
+    )
     await asyncio.sleep(0)
 
     [frame_msg] = [m for m in client.sent if m.get("type") == "frame"]
@@ -88,14 +100,18 @@ async def test_default_has_no_annotation_fields(server) -> None:
 
 # ── subscribe handler ─────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_subscribe_sets_include_and_annotate(server) -> None:
     client = FakeClient(sid=0)
-    raw_msg = json.dumps({
-        "type": "subscribe", "ref": 1,
-        "include": ["rx", "tx"],
-        "annotate": ["origin", "reply_to"],
-    })
+    raw_msg = json.dumps(
+        {
+            "type": "subscribe",
+            "ref": 1,
+            "include": ["rx", "tx"],
+            "annotate": ["origin", "reply_to"],
+        }
+    )
     await server._handle_client_message(client, raw_msg)
 
     assert client.include_kinds == {"rx", "tx"}
@@ -112,11 +128,14 @@ async def test_subscribe_rejects_unknown_values(server) -> None:
     client = FakeClient(sid=0)
     # 'origin' is a valid annotate field but 'only_mine' is not; include
     # rejects 'provenance' — never a kind.
-    raw_msg = json.dumps({
-        "type": "subscribe", "ref": 2,
-        "include": ["provenance"],
-        "annotate": ["only_mine"],
-    })
+    raw_msg = json.dumps(
+        {
+            "type": "subscribe",
+            "ref": 2,
+            "include": ["provenance"],
+            "annotate": ["only_mine"],
+        }
+    )
     await server._handle_client_message(client, raw_msg)
 
     [reply] = client.sent
@@ -130,11 +149,14 @@ async def test_subscribe_rejects_unknown_values(server) -> None:
 @pytest.mark.asyncio
 async def test_subscribe_rejects_non_list_arguments(server) -> None:
     client = FakeClient(sid=0)
-    raw_msg = json.dumps({
-        "type": "subscribe", "ref": 3,
-        "include": "rx",  # must be a list
-        "annotate": [],
-    })
+    raw_msg = json.dumps(
+        {
+            "type": "subscribe",
+            "ref": 3,
+            "include": "rx",  # must be a list
+            "annotate": [],
+        }
+    )
     await server._handle_client_message(client, raw_msg)
 
     [reply] = client.sent
@@ -142,6 +164,7 @@ async def test_subscribe_rejects_non_list_arguments(server) -> None:
 
 
 # ── Subscriber behaviour after subscribe ──────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_subscribed_tx_receives_tx_frames(server) -> None:
@@ -163,12 +186,17 @@ async def test_annotate_adds_only_requested_fields(server) -> None:
     client.annotate_fields = {"origin", "reply_to"}
     server._clients.add(client)
 
-    server._on_uart_frame(_raw(), ts=0.0, direction="rx", meta={
-        "origin": "gw:handshake",
-        "req_id": 42,
-        "msg_id": 0xC0,
-        "reply_to": {"req_id": 42, "origin": "ws:1", "confidence": "confirmed"},
-    })
+    server._on_uart_frame(
+        _raw(),
+        ts=0.0,
+        direction="rx",
+        meta={
+            "origin": "gw:handshake",
+            "req_id": 42,
+            "msg_id": 0xC0,
+            "reply_to": {"req_id": 42, "origin": "ws:1", "confidence": "confirmed"},
+        },
+    )
     await asyncio.sleep(0)
 
     [frame_msg] = [m for m in client.sent if m.get("type") == "frame"]

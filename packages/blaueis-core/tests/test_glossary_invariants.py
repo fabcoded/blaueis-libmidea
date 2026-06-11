@@ -121,11 +121,7 @@ def main():
             for bit in range(low, high + 1):
                 bit_owners.setdefault((offset, bit), []).append(fname)
 
-    collisions = {
-        slot: sorted(set(owners))
-        for slot, owners in bit_owners.items()
-        if len(set(owners)) > 1
-    }
+    collisions = {slot: sorted(set(owners)) for slot, owners in bit_owners.items() if len(set(owners)) > 1}
 
     check(
         f"no byte-slot collisions within cmd_0x40 ({len(bit_owners)} slots claimed)",

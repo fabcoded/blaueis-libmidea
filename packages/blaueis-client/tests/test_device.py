@@ -50,10 +50,7 @@ def test_init_defaults():
     # confirmation; 'excluded' is always excluded.
     avail = d.available_fields
     assert len(avail) > 0
-    assert all(
-        f["feature_available"] in ("always", "readable", "readable-opt")
-        for f in avail.values()
-    )
+    assert all(f["feature_available"] in ("always", "readable", "readable-opt") for f in avail.values())
 
 
 def test_init_status_has_fields():
@@ -79,6 +76,7 @@ def test_process_b5_frames():
 
     # Finalize
     from blaueis.core.process import finalize_capabilities
+
     finalize_capabilities(d._status, d._glossary)
 
     avail = d.available_fields
@@ -98,6 +96,7 @@ async def test_process_c0_frame():
     d._process_frame(B5_EXTENDED_HEX)
     d._process_frame(B5_SIMPLE_HEX)
     from blaueis.core.process import finalize_capabilities
+
     finalize_capabilities(d._status, d._glossary)
 
     # Now process C0 — ingest runs as a scheduled task
@@ -145,6 +144,7 @@ async def test_state_change_callback():
     d._process_frame(B5_EXTENDED_HEX)
     d._process_frame(B5_SIMPLE_HEX)
     from blaueis.core.process import finalize_capabilities
+
     finalize_capabilities(d._status, d._glossary)
 
     changes = []
@@ -175,6 +175,7 @@ def test_required_queries_include_groups_after_b5():
     d._process_frame(B5_EXTENDED_HEX)
     d._process_frame(B5_SIMPLE_HEX)
     from blaueis.core.process import finalize_capabilities
+
     finalize_capabilities(d._status, d._glossary)
 
     queries = d.required_queries
@@ -249,8 +250,7 @@ def test_build_c1_group_query_page_and_appliance(query_key, expected_page):
     assert frame is not None, f"no frame built for {query_key}"
     parsed = parse_frame(frame)
     assert parsed["appliance"] == 0xAC, (
-        f"{query_key}: appliance=0x{parsed['appliance']:02X}, expected 0xAC "
-        f"(page leaked into appliance arg)"
+        f"{query_key}: appliance=0x{parsed['appliance']:02X}, expected 0xAC (page leaked into appliance arg)"
     )
     assert parsed["body"][3] == expected_page, (
         f"{query_key}: body[3]=0x{parsed['body'][3]:02X}, expected 0x{expected_page:02X}"
@@ -265,6 +265,7 @@ def test_available_fields_structure():
     d._process_frame(B5_EXTENDED_HEX)
     d._process_frame(B5_SIMPLE_HEX)
     from blaueis.core.process import finalize_capabilities
+
     finalize_capabilities(d._status, d._glossary)
 
     avail = d.available_fields

@@ -43,9 +43,7 @@ def _is_cap_demotion(current_fa: str | None, new_fa: str | None) -> bool:
 # ── B5 capability processing ─────────────────────────────────────────────
 
 
-def _apply_caps_to_fields(
-    status: dict, records: list[dict], glossary: dict, *, allow_demote: bool = True
-) -> None:
+def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict, *, allow_demote: bool = True) -> None:
     """For each cap record, decode it and update every field that shares the cap_id.
 
     Used by both `process_b5` (real B5 frame path) and `apply_device_quirks`
@@ -92,16 +90,15 @@ def _apply_caps_to_fields(
                         # feature confirmed at boot (the "cap killer"). Block it,
                         # count it, and log which cap/field so the source stays
                         # observable. See finalize_capabilities (caps_finalized).
-                        counts = status.setdefault("meta", {}).setdefault(
-                            "frame_counts", {}
-                        )
-                        counts["cap_demotions_blocked"] = (
-                            counts.get("cap_demotions_blocked", 0) + 1
-                        )
+                        counts = status.setdefault("meta", {}).setdefault("frame_counts", {})
+                        counts["cap_demotions_blocked"] = counts.get("cap_demotions_blocked", 0) + 1
                         log.warning(
                             "cap-killer blocked: cap %s would demote %s %s→%s "
                             "after boot — ignored (caps frozen); blocked count=%d",
-                            cap_id, field_name, cur_fa, cap_fa,
+                            cap_id,
+                            field_name,
+                            cur_fa,
+                            cap_fa,
                             counts["cap_demotions_blocked"],
                         )
                     else:
@@ -167,8 +164,7 @@ def process_b5(
         counts = status.setdefault("meta", {}).setdefault("frame_counts", {})
         counts["rsp_0xb5_bad"] = counts.get("rsp_0xb5_bad", 0) + 1
         log.warning(
-            "Discarding B5 with failed integrity (CRC/checksum) — capabilities "
-            "not applied; bad-B5 count=%d",
+            "Discarding B5 with failed integrity (CRC/checksum) — capabilities not applied; bad-B5 count=%d",
             counts["rsp_0xb5_bad"],
         )
         return False  # do not page further based on a corrupt frame

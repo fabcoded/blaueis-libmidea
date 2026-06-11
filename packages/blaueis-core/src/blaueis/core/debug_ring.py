@@ -30,6 +30,7 @@ Usage:
 
     dump = ring.dump_jsonl()
 """
+
 from __future__ import annotations
 
 import collections
@@ -44,23 +45,24 @@ from typing import Any, Iterable
 # Anything not in this list (and not a standard LogRecord attribute) is
 # dropped — callers should put ad-hoc fields in `ctx={...}`.
 _KNOWN_FIELDS: tuple[str, ...] = (
-    "event",       # verb-noun: uart_rx, uart_tx, ws_in, ws_out, ws_connect,
-                   # ws_disconnect, state, loop, err, log
-    "port",        # uart | ws | internal
-    "peer",        # ac | gw:<role> | ws:<slot>
-    "origin",      # who caused this transmission (same vocabulary as peer)
-    "sid",         # client slot id
-    "req_id",      # monotonic per-client request id (echoes the WS `ref` field)
-    "msg_id",      # Midea protocol sequence byte
-    "tx_seq",      # gateway-local monotonic transmit counter
-    "hex",         # hex dump of a frame
-    "len",         # frame byte length
-    "reply_to",    # {req_id, origin, confidence} — advisory, may be null
-    "ctx",         # free-form dict for fields outside this schema
+    "event",  # verb-noun: uart_rx, uart_tx, ws_in, ws_out, ws_connect,
+    # ws_disconnect, state, loop, err, log
+    "port",  # uart | ws | internal
+    "peer",  # ac | gw:<role> | ws:<slot>
+    "origin",  # who caused this transmission (same vocabulary as peer)
+    "sid",  # client slot id
+    "req_id",  # monotonic per-client request id (echoes the WS `ref` field)
+    "msg_id",  # Midea protocol sequence byte
+    "tx_seq",  # gateway-local monotonic transmit counter
+    "hex",  # hex dump of a frame
+    "len",  # frame byte length
+    "reply_to",  # {req_id, origin, confidence} — advisory, may be null
+    "ctx",  # free-form dict for fields outside this schema
 )
 
 
 # ── Handler ───────────────────────────────────────────────────────────────
+
 
 class DebugRing(logging.Handler):
     """Byte-sized circular buffer implemented as a logging handler.
@@ -145,14 +147,18 @@ class DebugRing(logging.Handler):
             # Format once, stash the text; no repeat formatting at dump time.
             payload["exc"] = self.format(
                 logging.LogRecord(
-                    record.name, record.levelno, record.pathname, record.lineno,
-                    record.msg, record.args, record.exc_info, record.funcName,
+                    record.name,
+                    record.levelno,
+                    record.pathname,
+                    record.lineno,
+                    record.msg,
+                    record.args,
+                    record.exc_info,
+                    record.funcName,
                 )
             )
 
-        encoded = json.dumps(
-            payload, default=_json_default, separators=(",", ":"), ensure_ascii=False
-        )
+        encoded = json.dumps(payload, default=_json_default, separators=(",", ":"), ensure_ascii=False)
         return (encoded + "\n").encode("utf-8")
 
     # ── snapshot / dump / clear ───────────────────────────────────────
@@ -179,6 +185,7 @@ class DebugRing(logging.Handler):
 
 # ── Helper ────────────────────────────────────────────────────────────────
 
+
 def log_event(
     logger: logging.Logger,
     level: int,
@@ -196,24 +203,44 @@ def log_event(
     extra = {"event": event}
     for k, v in fields.items():
         if k in reserved:
-            raise ValueError(
-                f"field name {k!r} collides with a LogRecord attribute"
-            )
+            raise ValueError(f"field name {k!r} collides with a LogRecord attribute")
         extra[k] = v
     logger.log(level, msg, extra=extra)
 
 
 # LogRecord attributes as of CPython 3.11 — passing any of these in `extra`
 # raises KeyError inside logging.Logger.makeRecord, so we guard up front.
-_RESERVED_LOGRECORD_ATTRS: frozenset[str] = frozenset({
-    "args", "asctime", "created", "exc_info", "exc_text", "filename",
-    "funcName", "levelname", "levelno", "lineno", "message", "module",
-    "msecs", "msg", "name", "pathname", "process", "processName",
-    "relativeCreated", "stack_info", "thread", "threadName", "taskName",
-})
+_RESERVED_LOGRECORD_ATTRS: frozenset[str] = frozenset(
+    {
+        "args",
+        "asctime",
+        "created",
+        "exc_info",
+        "exc_text",
+        "filename",
+        "funcName",
+        "levelname",
+        "levelno",
+        "lineno",
+        "message",
+        "module",
+        "msecs",
+        "msg",
+        "name",
+        "pathname",
+        "process",
+        "processName",
+        "relativeCreated",
+        "stack_info",
+        "thread",
+        "threadName",
+        "taskName",
+    }
+)
 
 
 # ── JSON default ──────────────────────────────────────────────────────────
+
 
 def _json_default(obj: Any) -> Any:
     if isinstance(obj, (bytes, bytearray)):

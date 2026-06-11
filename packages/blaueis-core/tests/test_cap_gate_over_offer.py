@@ -6,6 +6,7 @@ which left them exposed as dead entities on units that never advertise the cap
 'capability' — hidden until B5 promotes — like the rest of the cap-gated family.
 See the cap-coverage sweep.
 """
+
 from __future__ import annotations
 
 from blaueis.core.codec import load_glossary, walk_fields

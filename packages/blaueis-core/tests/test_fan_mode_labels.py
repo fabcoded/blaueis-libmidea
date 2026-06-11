@@ -6,6 +6,7 @@ Covers:
   - Both fields survive _apply_caps_to_fields → active_constraints
   - Real B5 (stepless cap 0x10=1) produces custom_value + labelled values
 """
+
 from pathlib import Path
 
 import yaml
@@ -13,10 +14,7 @@ from blaueis.core.codec import decode_enum_cap, load_glossary
 from blaueis.core.process import finalize_capabilities, process_raw_frame
 from blaueis.core.status import build_status
 
-B5_FIXTURE = (
-    Path(__file__).resolve().parent
-    / "test-cases/xtremesaveblue_s1/b5_frames.yaml"
-)
+B5_FIXTURE = Path(__file__).resolve().parent / "test-cases/xtremesaveblue_s1/b5_frames.yaml"
 
 
 # ── Unit: decode_enum_cap ──────────────────────────────────────────────────
@@ -31,9 +29,9 @@ _CAP_DEF_WITH_LABELS = {
             "correction": "clamp",
             "custom_value": {"label": "Custom"},
             "values": {
-                "ultra_low": {"raw": 1,  "label": "Ultra Low"},
-                "low":       {"raw": 40, "label": "Low"},
-                "auto":      {"raw": 102, "label": "Auto"},
+                "ultra_low": {"raw": 1, "label": "Ultra Low"},
+                "low": {"raw": 40, "label": "Low"},
+                "auto": {"raw": 102, "label": "Auto"},
             },
         }
     }
@@ -62,7 +60,7 @@ def test_decode_enum_cap_no_custom_value_absent():
                 "feature_available": "always",
                 "valid_set": [40, 60, 80, 102],
                 "values": {
-                    "low":  {"raw": 40, "label": "Low"},
+                    "low": {"raw": 40, "label": "Low"},
                     "high": {"raw": 80, "label": "High"},
                 },
             }
@@ -73,6 +71,7 @@ def test_decode_enum_cap_no_custom_value_absent():
 
 
 # ── Integration: real B5 stepless cap → active_constraints ────────────────
+
 
 def _load_b5_status():
     glossary = load_glossary()

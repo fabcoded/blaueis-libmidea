@@ -6,10 +6,10 @@ operating-mode raws); and the interlock axis (fail-open when the dependency stat
 is unknown). No glossary `gate:` blocks exist yet, so production behaviour is
 unchanged — these exercise the evaluator directly with synthetic field defs.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from blaueis.core.codec import load_glossary, walk_fields
 from blaueis.core.gate_eval import evaluate_offered
 from blaueis.core.ux_gating import is_field_visible
@@ -134,8 +134,9 @@ def test_multiple_axes_accumulate_in_blocked_by() -> None:
 
 # ── G6: interlock mode guard (mode-multiplexed dependency bits) ───────────
 
-MODE_GUARDED_GDEF = {"gate": {"interlocks": [
-    {"field": "ptc", "at": "C0:9:4..3", "blocks_when": "nonzero", "modes": ["heat", "auto"]}]}}
+MODE_GUARDED_GDEF = {
+    "gate": {"interlocks": [{"field": "ptc", "at": "C0:9:4..3", "blocks_when": "nonzero", "modes": ["heat", "auto"]}]}
+}
 
 
 def test_interlock_mode_guard_applies_inside_modes() -> None:
@@ -160,14 +161,11 @@ def test_strong_wind_elecheat_interlock_grounded() -> None:
     but the mode guard keeps it offered in cool regardless (bit is eco there)."""
     sw = walk_fields(load_glossary())["strong_wind"]
     # heat + PTC engaged → boost gated off
-    assert not evaluate_offered(sw, mode="heat", power_on=True,
-                                field_states={"auxiliary_heat_level": 1}).offered
+    assert not evaluate_offered(sw, mode="heat", power_on=True, field_states={"auxiliary_heat_level": 1}).offered
     # heat + no PTC (our unit) → offered
-    assert evaluate_offered(sw, mode="heat", power_on=True,
-                            field_states={"auxiliary_heat_level": 0}).offered
+    assert evaluate_offered(sw, mode="heat", power_on=True, field_states={"auxiliary_heat_level": 0}).offered
     # cool: mode guard inactive → offered even if the (eco) bit reads set
-    assert evaluate_offered(sw, mode="cool", power_on=True,
-                            field_states={"auxiliary_heat_level": 1}).offered
+    assert evaluate_offered(sw, mode="cool", power_on=True, field_states={"auxiliary_heat_level": 1}).offered
 
 
 # ── G2: real turbo_mode gate block (cap-mode axis live in the glossary) ───
@@ -181,12 +179,12 @@ def test_turbo_mode_declares_cap_mode() -> None:
 @pytest.mark.parametrize(
     "valid_set,mode,offered",
     [
-        ([2, 4], "cool", True),   # cap=1 "both"      — our unit
-        ([2, 4], "heat", True),   # cap=1 "both"      — our unit
-        ([2], "cool", True),      # cap=0 "cool_only"
-        ([2], "heat", False),     # cap=0 "cool_only" — gated off in heat
-        ([4], "cool", False),     # cap=3 "heat_only" — gated off in cool
-        ([4], "heat", True),      # cap=3 "heat_only"
+        ([2, 4], "cool", True),  # cap=1 "both"      — our unit
+        ([2, 4], "heat", True),  # cap=1 "both"      — our unit
+        ([2], "cool", True),  # cap=0 "cool_only"
+        ([2], "heat", False),  # cap=0 "cool_only" — gated off in heat
+        ([4], "cool", False),  # cap=3 "heat_only" — gated off in cool
+        ([4], "heat", True),  # cap=3 "heat_only"
     ],
 )
 def test_turbo_cap_mode_gates_against_live_caps(valid_set, mode, offered) -> None:
@@ -208,11 +206,15 @@ def test_turbo_unit_cap1_unchanged_vs_static_list() -> None:
 
 # ── G4: mode_forks axis (eco cap-value → mode-set fork) ──────────────────
 
-FORK_GDEF = {"ux": {"visible_in_modes": ["cool", "auto", "dry"]},
-             "gate": {"mode_forks": [
-                 {"cap_id": "0x12", "when_raw": 1, "modes": ["cool"]},
-                 {"cap_id": "0x12", "when_raw": 2, "modes": ["cool", "auto", "dry"]},
-             ]}}
+FORK_GDEF = {
+    "ux": {"visible_in_modes": ["cool", "auto", "dry"]},
+    "gate": {
+        "mode_forks": [
+            {"cap_id": "0x12", "when_raw": 1, "modes": ["cool"]},
+            {"cap_id": "0x12", "when_raw": 2, "modes": ["cool", "auto", "dry"]},
+        ]
+    },
+}
 
 
 def test_mode_fork_first_match_restricts() -> None:
@@ -245,11 +247,17 @@ def test_eco_mode_fork_grounded_against_real_glossary() -> None:
 
 def test_cap_mode_and_fork_intersect() -> None:
     # A field declaring both axes is gated by their intersection.
-    gdef = {"gate": {"cap_mode": {"cap_id": "0x1A"},
-                     "mode_forks": [{"cap_id": "0x12", "when_raw": 1, "modes": ["cool", "heat"]}]}}
+    gdef = {
+        "gate": {
+            "cap_mode": {"cap_id": "0x1A"},
+            "mode_forks": [{"cap_id": "0x12", "when_raw": 1, "modes": ["cool", "heat"]}],
+        }
+    }
     # cap_mode [2,4]=cool,heat ∩ fork [cool,heat] = cool,heat → heat offered
-    assert evaluate_offered(gdef, mode="heat", power_on=True,
-                            active_constraints={"valid_set": [2, 4]}, cap_values={"0x12": 1}).offered
+    assert evaluate_offered(
+        gdef, mode="heat", power_on=True, active_constraints={"valid_set": [2, 4]}, cap_values={"0x12": 1}
+    ).offered
     # cap_mode [2]=cool ∩ fork [cool,heat] = cool → heat blocked
-    assert not evaluate_offered(gdef, mode="heat", power_on=True,
-                                active_constraints={"valid_set": [2]}, cap_values={"0x12": 1}).offered
+    assert not evaluate_offered(
+        gdef, mode="heat", power_on=True, active_constraints={"valid_set": [2]}, cap_values={"0x12": 1}
+    ).offered

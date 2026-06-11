@@ -10,10 +10,10 @@ Phase 0 pinned the prior behaviour (``excluded`` discarded); Phase 1 flipped tha
 single row of ``RETAINED_BY_AVAILABILITY`` to True. Every other row is unchanged —
 exposure and polling stay gated at ``available_fields`` / ``required_queries``.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from blaueis.core.codec import load_glossary
 from blaueis.core.process import process_data_frame
 from blaueis.core.query import read_field
@@ -36,8 +36,8 @@ RETAINED_BY_AVAILABILITY: dict[str, bool] = {
     "always": True,
     "readable": True,
     "readable-opt": True,
-    "excluded": True,         # retained for interlock reads (not exposed/polled)
-    "capability": False,      # pre-B5 untrusted — discarded
+    "excluded": True,  # retained for interlock reads (not exposed/polled)
+    "capability": False,  # pre-B5 untrusted — discarded
     "capability-opt": False,  # pre-B5 untrusted — discarded
 }
 

@@ -6,6 +6,7 @@ Covers:
   - The `debug_dump` WS message returns the ring contents to the requester.
   - Slot pool exhaustion rejects new clients without touching existing ones.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -18,6 +19,7 @@ from blaueis.gateway.server import GatewayServer
 from blaueis.gateway.uart_protocol import VERBOSE
 
 # ── Fixtures ──────────────────────────────────────────────────────────────
+
 
 @pytest.fixture(autouse=True)
 def _isolate_root_logger():
@@ -81,10 +83,12 @@ class FakeClient:
 
 # ── _on_uart_frame ────────────────────────────────────────────────────────
 
+
 def test_on_uart_frame_emits_ring_record_without_clients(server, ring):
     # RX frame from AC — realistic Midea UART layout.
-    raw = bytes.fromhex("AA 20 AC 00 00 00 00 00 02 03 C0 01 86 66 7F 7F"
-                        "00 00 80 00 00 64 44 0A 70 00 00 00 00 00 00 00 00 01")
+    raw = bytes.fromhex(
+        "AA 20 AC 00 00 00 00 00 02 03 C0 01 86 66 7F 7F00 00 80 00 00 64 44 0A 70 00 00 00 00 00 00 00 00 01"
+    )
 
     server._on_uart_frame(raw, ts=1.234, direction="rx")
 
@@ -131,6 +135,7 @@ async def test_on_uart_frame_broadcasts_only_when_clients_connected(server, ring
 
 # ── debug_dump handler ────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_debug_dump_returns_ring_contents(server, ring):
     # Prime the ring with an event so the dump is non-empty.
@@ -155,8 +160,11 @@ async def test_debug_dump_returns_ring_contents(server, ring):
 @pytest.mark.asyncio
 async def test_debug_dump_error_when_ring_disabled(ring):
     config = {
-        "frame_spacing_ms": 0, "stats_interval": 0,
-        "fake_ip": "10.0.0.1", "uart_baud": 9600, "slot_pool_size": 2,
+        "frame_spacing_ms": 0,
+        "stats_interval": 0,
+        "fake_ip": "10.0.0.1",
+        "uart_baud": 9600,
+        "slot_pool_size": 2,
     }
     srv = GatewayServer(config, no_encrypt=True, debug_ring=None)
     fc = FakeClient()
@@ -172,10 +180,14 @@ async def test_debug_dump_error_when_ring_disabled(ring):
 
 # ── Slot pool integration ─────────────────────────────────────────────────
 
+
 def test_slot_pool_size_honours_config(ring):
     config = {
-        "frame_spacing_ms": 0, "stats_interval": 0,
-        "fake_ip": "10.0.0.1", "uart_baud": 9600, "slot_pool_size": 3,
+        "frame_spacing_ms": 0,
+        "stats_interval": 0,
+        "fake_ip": "10.0.0.1",
+        "uart_baud": 9600,
+        "slot_pool_size": 3,
     }
     srv = GatewayServer(config, no_encrypt=True, debug_ring=ring)
     assert srv.slot_pool.size == 3
@@ -184,5 +196,6 @@ def test_slot_pool_size_honours_config(ring):
     srv.slot_pool.acquire()
     srv.slot_pool.acquire()
     from blaueis.gateway.slot_pool import SlotPoolExhausted
+
     with pytest.raises(SlotPoolExhausted):
         srv.slot_pool.acquire()

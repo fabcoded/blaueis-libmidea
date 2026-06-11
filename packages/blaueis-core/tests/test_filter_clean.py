@@ -29,19 +29,13 @@ def _c0_body(b13: int = 0, b10: int = 0) -> bytes:
 
 
 def test_filter_clean_due_decodes_body13_bit5():
-    assert decode_frame_fields(_c0_body(b13=0x20), "rsp_0xc0", GLOSSARY)[
-        "filter_clean_due"
-    ]["value"] is True
-    assert decode_frame_fields(_c0_body(b13=0x00), "rsp_0xc0", GLOSSARY)[
-        "filter_clean_due"
-    ]["value"] is False
+    assert decode_frame_fields(_c0_body(b13=0x20), "rsp_0xc0", GLOSSARY)["filter_clean_due"]["value"] is True
+    assert decode_frame_fields(_c0_body(b13=0x00), "rsp_0xc0", GLOSSARY)["filter_clean_due"]["value"] is False
 
 
 def test_filter_clean_due_ignores_old_body10_bit6():
     # the prior (wrong) position must no longer drive the flag
-    assert decode_frame_fields(_c0_body(b10=0x40), "rsp_0xc0", GLOSSARY)[
-        "filter_clean_due"
-    ]["value"] is False
+    assert decode_frame_fields(_c0_body(b10=0x40), "rsp_0xc0", GLOSSARY)["filter_clean_due"]["value"] is False
 
 
 # ── encode: reset sets body[10] bit7, preserves siblings ────────────
@@ -70,9 +64,7 @@ def test_reset_sets_bit7_and_preserves_live_siblings():
         catch_cold=False,
         night_light=True,
     )
-    body = build_command_body(
-        status, {"filter_clean_reset": True}, GLOSSARY, skip_preflight=True
-    )["body"]
+    body = build_command_body(status, {"filter_clean_reset": True}, GLOSSARY, skip_preflight=True)["body"]
     assert body[10] & 0x80, "reset bit7 must be set"
     assert body[10] & 0x01, "sleep_mode (bit0) preserved"
     assert body[10] & 0x02, "turbo_mode (bit1) preserved"
@@ -82,9 +74,7 @@ def test_reset_sets_bit7_and_preserves_live_siblings():
 
 def test_normal_set_does_not_fire_reset():
     status = _status_with_body10(sleep_mode=True)
-    body = build_command_body(
-        status, {"sleep_mode": False}, GLOSSARY, skip_preflight=True
-    )["body"]
+    body = build_command_body(status, {"sleep_mode": False}, GLOSSARY, skip_preflight=True)["body"]
     assert not (body[10] & 0x80), "bit7 must stay clear on a non-reset SET"
 
 

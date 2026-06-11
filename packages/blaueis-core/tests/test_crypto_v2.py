@@ -15,8 +15,6 @@ import hashlib
 import json
 
 import pytest
-from cryptography.exceptions import InvalidTag
-
 from blaueis.core.crypto import (
     PROTOCOL_VERSION,
     HandshakeError,
@@ -29,6 +27,7 @@ from blaueis.core.crypto import (
     generate_psk,
     psk_to_bytes,
 )
+from cryptography.exceptions import InvalidTag
 
 
 def _pair(psk: bytes | None = None):

@@ -5,6 +5,7 @@ callback dispatch, and read consistency.
 
 Usage:  python -m pytest packages/blaueis-client/tests/test_status_db.py -v
 """
+
 from __future__ import annotations
 
 import asyncio

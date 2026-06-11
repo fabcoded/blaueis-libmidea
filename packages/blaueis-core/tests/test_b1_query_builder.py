@@ -1,4 +1,5 @@
 """Tests for blaueis.core.frame.build_b1_property_query."""
+
 from __future__ import annotations
 
 import pytest

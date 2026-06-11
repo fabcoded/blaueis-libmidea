@@ -809,7 +809,7 @@ def decode_frame_fields(
         if record_by_prop is not None:
             prop_id = ploc.get("property_id")
             if not prop_id:
-                for step in (ploc.get("decode") or []):
+                for step in ploc.get("decode") or []:
                     if step.get("property_id"):
                         prop_id = step["property_id"]
                         break

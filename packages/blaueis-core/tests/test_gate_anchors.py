@@ -4,6 +4,7 @@ These pin every gate/interlock reference to BOTH a field name and a physical wir
 address, so a rename or a decode-offset edit fails CI instead of silently re-aiming
 a gate at the wrong bit. Phase-0 skeleton: the seed registry + the drift detectors.
 """
+
 from __future__ import annotations
 
 from blaueis.core.codec import load_glossary
@@ -84,10 +85,16 @@ def test_glossary_gate_interlock_anchors_collected() -> None:
 
 
 def test_collect_gate_anchors_from_synthetic_glossary() -> None:
-    g = {"fields": {"control": {"turbo_mode": {
-        "description": "x",
-        "gate": {"interlocks": [{"field": "ptc_state", "at": "C0:9:4..3"}]},
-    }}}}
+    g = {
+        "fields": {
+            "control": {
+                "turbo_mode": {
+                    "description": "x",
+                    "gate": {"interlocks": [{"field": "ptc_state", "at": "C0:9:4..3"}]},
+                }
+            }
+        }
+    }
     assert collect_glossary_gate_anchors(g) == {"ptc_state": "C0:9:4..3"}
 
 

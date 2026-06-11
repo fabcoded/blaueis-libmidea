@@ -25,17 +25,21 @@ Structured-provenance fields (`alt_names:` and `sources:` inside `glossary.yaml`
 pip install -e packages/blaueis-core packages/blaueis-gateway packages/blaueis-client packages/blaueis-tools
 ```
 
-Each package has its own tests and ruff config.
+Each package has its own tests; the ruff config is shared at the repo root
+(`pyproject.toml`, ruff 0.11.x — pinned in `.pre-commit-config.yaml` and the
+CI lint job).
 
 ## Running tests and linting
 
 ```sh
-# From each package directory:
+# Lint from the repo root:
 ruff check && ruff format --check
+# Tests from each package directory:
 python3 -m pytest
 ```
 
-Tests must stay green on every PR. Approximate counts today: core 83, gateway 43, client 147, tools 48.
+Lint and tests must stay green on every PR (both are CI gates). Approximate
+test counts today: core 277, gateway 45, client 203, tools 60.
 
 ## What good PRs look like
 

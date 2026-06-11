@@ -47,7 +47,7 @@ def tx_prop(body, prop):
     while i + 3 <= len(body):
         p, _t, ln = body[i], body[i + 1], body[i + 2]
         if p == prop:
-            return body[i + 3:i + 3 + ln]
+            return body[i + 3 : i + 3 + ln]
         i += 3 + ln
     return None
 
@@ -66,11 +66,11 @@ def enc(field, value, prop):
 
 # 1. breeze_away (0x42) — the LIVE field on our SKU; off=1, on=2, 0=neutral.
 print("\n1. breeze_away (0x42) — prevent-straight-wind / Breeze Away (LIVE on our SKU)")
-check("decode raw 1 -> off-value 1", dec(0x42, 1, "breeze_away") == {"value": 1}, f"got {dec(0x42,1,'breeze_away')}")
-check("decode raw 2 -> on-value 2", dec(0x42, 2, "breeze_away") == {"value": 2}, f"got {dec(0x42,2,'breeze_away')}")
-check("decode raw 0 -> neutral 0", dec(0x42, 0, "breeze_away") == {"value": 0}, f"got {dec(0x42,0,'breeze_away')}")
-check("encode on(2)  -> 0x42=0x02", enc("breeze_away", 2, 0x42) == bytes([2]), f"got {enc('breeze_away',2,0x42)}")
-check("encode off(1) -> 0x42=0x01", enc("breeze_away", 1, 0x42) == bytes([1]), f"got {enc('breeze_away',1,0x42)}")
+check("decode raw 1 -> off-value 1", dec(0x42, 1, "breeze_away") == {"value": 1}, f"got {dec(0x42, 1, 'breeze_away')}")
+check("decode raw 2 -> on-value 2", dec(0x42, 2, "breeze_away") == {"value": 2}, f"got {dec(0x42, 2, 'breeze_away')}")
+check("decode raw 0 -> neutral 0", dec(0x42, 0, "breeze_away") == {"value": 0}, f"got {dec(0x42, 0, 'breeze_away')}")
+check("encode on(2)  -> 0x42=0x02", enc("breeze_away", 2, 0x42) == bytes([2]), f"got {enc('breeze_away', 2, 0x42)}")
+check("encode off(1) -> 0x42=0x01", enc("breeze_away", 1, 0x42) == bytes([1]), f"got {enc('breeze_away', 1, 0x42)}")
 
 # 2. breezeless (0x18) — no-wind feel; bool off=0/on=1.   [capability-tier]
 print("\n2. breezeless (0x18) — no-wind / Breezeless  [capability-tier, awaiting field feedback]")
@@ -86,8 +86,10 @@ check("decode raw 1 -> True", dec(0x33, 1, "wind_avoid") == {"value": True})
 # KNOWN DIFFERENCE: the OEM Lua decode folds raw 0x02 -> on; our codec reads
 # bit-0 (-> off). Documented, not asserted as correct — awaiting a unit that
 # actually emits 0x02 on 0x33 to settle whether to fold it.
-check("decode raw 2 -> False (codec bit-0; OEM folds 2->on — KNOWN gap, awaiting feedback)",
-      dec(0x33, 2, "wind_avoid") == {"value": False})
+check(
+    "decode raw 2 -> False (codec bit-0; OEM folds 2->on — KNOWN gap, awaiting feedback)",
+    dec(0x33, 2, "wind_avoid") == {"value": False},
+)
 
 # 4. breeze_mild (0x43) — non-consecutive enum off=0x01 / on=0x03.   [capability-tier]
 print("\n4. breeze_mild (0x43) — Breeze Mild  [capability-tier, awaiting field feedback]")
@@ -105,8 +107,14 @@ def dec_t(prop, typ, data, field):
 
 
 # auto_prevent_straight_wind (0x26,0x02) — bool off=0/on=1 (automatic deflect-up).
-check("auto_prevent_straight_wind raw 0 -> False", dec_t(0x26, 0x02, [0], "auto_prevent_straight_wind") == {"value": False})
-check("auto_prevent_straight_wind raw 1 -> True", dec_t(0x26, 0x02, [1], "auto_prevent_straight_wind") == {"value": True})
+check(
+    "auto_prevent_straight_wind raw 0 -> False",
+    dec_t(0x26, 0x02, [0], "auto_prevent_straight_wind") == {"value": False},
+)
+check(
+    "auto_prevent_straight_wind raw 1 -> True",
+    dec_t(0x26, 0x02, [1], "auto_prevent_straight_wind") == {"value": True},
+)
 
 # wind_around / Cascade (0x59) — 2-byte composite: byte0 = on/off state,
 # byte1 = up/down direction sub-mode.
@@ -119,8 +127,10 @@ check("wind_around_ud_mode byte1=2 -> lower(2)", dec_t(0x59, 0x00, [1, 2], "wind
 # Upper(2)/Lower(3) semantics are NOT represented. KNOWN capability-tier gap,
 # awaiting the directional-enum relabel + a unit that exposes 0x58.
 check("prevent_straight_wind_lr raw 0 -> False", dec_t(0x58, 0x00, [0], "prevent_straight_wind_lr") == {"value": False})
-check("prevent_straight_wind_lr raw 2 -> False (bit-0 model; direction lost — KNOWN gap, awaiting feedback)",
-      dec_t(0x58, 0x00, [2], "prevent_straight_wind_lr") == {"value": False})
+check(
+    "prevent_straight_wind_lr raw 2 -> False (bit-0 model; direction lost — KNOWN gap, awaiting feedback)",
+    dec_t(0x58, 0x00, [2], "prevent_straight_wind_lr") == {"value": False},
+)
 
 # 5. Glossary value-enum consistency with the documented characterization.
 print("\n5. Glossary value-enum consistency")
@@ -135,18 +145,21 @@ def field(name):
                 r = f(v)
                 if r:
                     return r
+
     return f(G)
 
 
 ba = field("breeze_away")
 bm = field("breeze_mild")
-check("breeze_away values off=1/on=2/neutral=0",
-      ba["values"]["off"]["raw"] == 1 and ba["values"]["on"]["raw"] == 2
-      and ba["values"]["neutral_unset"]["raw"] == 0)
-check("breeze_away neutral not user-selectable",
-      ba["values"]["neutral_unset"].get("user_selectable") is False)
-check("breeze_mild values off=0x01/on=0x03 (non-consecutive)",
-      bm["values"]["off"]["raw"] == 1 and bm["values"]["on"]["raw"] == 3)
+check(
+    "breeze_away values off=1/on=2/neutral=0",
+    ba["values"]["off"]["raw"] == 1 and ba["values"]["on"]["raw"] == 2 and ba["values"]["neutral_unset"]["raw"] == 0,
+)
+check("breeze_away neutral not user-selectable", ba["values"]["neutral_unset"].get("user_selectable") is False)
+check(
+    "breeze_mild values off=0x01/on=0x03 (non-consecutive)",
+    bm["values"]["off"]["raw"] == 1 and bm["values"]["on"]["raw"] == 3,
+)
 
 print(f"\n{'=' * 48}\nResults: {passed} passed, {failed} failed / {passed + failed} total")
 

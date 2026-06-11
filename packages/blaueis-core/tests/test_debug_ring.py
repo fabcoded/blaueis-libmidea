@@ -1,4 +1,5 @@
 """Tests for blaueis.core.debug_ring.DebugRing."""
+
 from __future__ import annotations
 
 import json
@@ -9,6 +10,7 @@ import pytest
 from blaueis.core.debug_ring import DebugRing, log_event
 
 # ── fixtures ──────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def ring() -> DebugRing:
@@ -27,6 +29,7 @@ def logger(ring: DebugRing) -> logging.Logger:
 
 
 # ── basic append / record shape ──────────────────────────────────────────
+
 
 def test_append_single_record(ring: DebugRing, logger: logging.Logger) -> None:
     logger.info("hello")
@@ -57,11 +60,17 @@ def test_record_ends_with_newline(ring: DebugRing, logger: logging.Logger) -> No
 
 # ── schema: known fields pass through ────────────────────────────────────
 
+
 def test_known_fields_propagate(ring: DebugRing, logger: logging.Logger) -> None:
     log_event(
-        logger, logging.DEBUG, "uart_rx",
-        port="uart", peer="ac", msg_id=0x41,
-        len=32, hex="aa 20 ac 00 00 00",
+        logger,
+        logging.DEBUG,
+        "uart_rx",
+        port="uart",
+        peer="ac",
+        msg_id=0x41,
+        len=32,
+        hex="aa 20 ac 00 00 00",
         reply_to={"req_id": 7, "origin": "ws:2", "confidence": "confirmed"},
         ctx={"free_form": 123},
     )
@@ -72,9 +81,7 @@ def test_known_fields_propagate(ring: DebugRing, logger: logging.Logger) -> None
     assert rec["msg_id"] == 0x41
     assert rec["len"] == 32
     assert rec["hex"] == "aa 20 ac 00 00 00"
-    assert rec["reply_to"] == {
-        "req_id": 7, "origin": "ws:2", "confidence": "confirmed"
-    }
+    assert rec["reply_to"] == {"req_id": 7, "origin": "ws:2", "confidence": "confirmed"}
     assert rec["ctx"] == {"free_form": 123}
 
 
@@ -91,8 +98,7 @@ def test_log_event_rejects_reserved_attr_collision(logger: logging.Logger) -> No
 
 
 def test_tx_seq_and_slot_pass_through(ring: DebugRing, logger: logging.Logger) -> None:
-    log_event(logger, logging.DEBUG, "uart_tx",
-              tx_seq=4711, sid=2, origin="ws:2", req_id=99)
+    log_event(logger, logging.DEBUG, "uart_tx", tx_seq=4711, sid=2, origin="ws:2", req_id=99)
     rec = json.loads(ring.snapshot()[0])
     assert rec["tx_seq"] == 4711
     assert rec["sid"] == 2
@@ -101,6 +107,7 @@ def test_tx_seq_and_slot_pass_through(ring: DebugRing, logger: logging.Logger) -
 
 
 # ── byte-sized eviction ───────────────────────────────────────────────────
+
 
 def test_evicts_oldest_when_over_cap() -> None:
     r = DebugRing(size_bytes=512)
@@ -144,6 +151,7 @@ def test_single_outsized_record_kept() -> None:
 
 # ── clear ─────────────────────────────────────────────────────────────────
 
+
 def test_clear(ring: DebugRing, logger: logging.Logger) -> None:
     logger.info("a")
     logger.info("b")
@@ -156,6 +164,7 @@ def test_clear(ring: DebugRing, logger: logging.Logger) -> None:
 
 # ── propagation off ───────────────────────────────────────────────────────
 
+
 def test_does_not_propagate_to_root(ring: DebugRing, logger: logging.Logger, caplog) -> None:
     # With logger.propagate=False (set in fixture) nothing should reach caplog,
     # which attaches at the root.
@@ -166,6 +175,7 @@ def test_does_not_propagate_to_root(ring: DebugRing, logger: logging.Logger, cap
 
 
 # ── concurrency smoke test ────────────────────────────────────────────────
+
 
 def test_concurrent_appends() -> None:
     r = DebugRing(size_bytes=1_000_000)
@@ -195,6 +205,7 @@ def test_concurrent_appends() -> None:
 
 # ── exc_info capture ─────────────────────────────────────────────────────
 
+
 def test_exception_captured(ring: DebugRing, logger: logging.Logger) -> None:
     try:
         raise ValueError("boom")
@@ -209,6 +220,7 @@ def test_exception_captured(ring: DebugRing, logger: logging.Logger) -> None:
 
 # ── byte dump round-trip ──────────────────────────────────────────────────
 
+
 def test_dump_jsonl_round_trip(ring: DebugRing, logger: logging.Logger) -> None:
     logger.info("one")
     logger.info("two")
@@ -220,6 +232,7 @@ def test_dump_jsonl_round_trip(ring: DebugRing, logger: logging.Logger) -> None:
 
 
 # ── size validation ───────────────────────────────────────────────────────
+
 
 def test_rejects_zero_size() -> None:
     with pytest.raises(ValueError):

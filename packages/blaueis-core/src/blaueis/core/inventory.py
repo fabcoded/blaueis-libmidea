@@ -878,10 +878,7 @@ def generate_markdown_report(
     # Leading HTML comment — survives as plain text in any markdown
     # viewer; users can see when the report was generated without
     # parsing the JSON sidecar or opening diagnostics.
-    lines.append(
-        f"<!-- Field inventory generated {now_human} "
-        f'(label: "{label}") -->'
-    )
+    lines.append(f'<!-- Field inventory generated {now_human} (label: "{label}") -->')
     lines.append("")
     lines.append(f"# Field inventory — {label}")
     lines.append("")

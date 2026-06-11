@@ -14,7 +14,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from blaueis.tools.glossary_collisions import (
     SCOPE_CAPABILITY,
     SCOPE_FLAT_BODY,
@@ -27,8 +26,7 @@ from blaueis.tools.glossary_collisions import (
 )
 
 GLOSSARY_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "blaueis-core" / "src" / "blaueis" / "core" / "data" / "glossary.yaml"
+    Path(__file__).resolve().parents[2] / "blaueis-core" / "src" / "blaueis" / "core" / "data" / "glossary.yaml"
 )
 
 
@@ -87,22 +85,12 @@ def test_property_tlv_scoping_isolates_records() -> None:
                 "field_a": {
                     "field_class": "sensor",
                     "feature_available": "readable",
-                    "protocols": {
-                        "rsp_0xb1": {
-                            "decode": [{"property_id": "0xAA,0x00",
-                                        "offset": 0, "bits": [7, 0]}]
-                        }
-                    },
+                    "protocols": {"rsp_0xb1": {"decode": [{"property_id": "0xAA,0x00", "offset": 0, "bits": [7, 0]}]}},
                 },
                 "field_b": {
                     "field_class": "sensor",
                     "feature_available": "readable",
-                    "protocols": {
-                        "rsp_0xb1": {
-                            "decode": [{"property_id": "0xBB,0x00",
-                                        "offset": 0, "bits": [7, 0]}]
-                        }
-                    },
+                    "protocols": {"rsp_0xb1": {"decode": [{"property_id": "0xBB,0x00", "offset": 0, "bits": [7, 0]}]}},
                 },
             },
             "control": {},
@@ -130,11 +118,7 @@ def test_capability_scoping_isolates_cap_records() -> None:
                     "feature_available": "capability",
                     "capability": {
                         "cap_id": "0x1E",
-                        "frames": {
-                            "rsp_0xb5_tlv": {
-                                "decode": [{"offset": 0, "bits": [0, 0]}]
-                            }
-                        },
+                        "frames": {"rsp_0xb5_tlv": {"decode": [{"offset": 0, "bits": [0, 0]}]}},
                     },
                 },
                 "cap_b": {
@@ -142,11 +126,7 @@ def test_capability_scoping_isolates_cap_records() -> None:
                     "feature_available": "capability",
                     "capability": {
                         "cap_id": "0x33",
-                        "frames": {
-                            "rsp_0xb5_tlv": {
-                                "decode": [{"offset": 0, "bits": [0, 0]}]
-                            }
-                        },
+                        "frames": {"rsp_0xb5_tlv": {"decode": [{"offset": 0, "bits": [0, 0]}]}},
                     },
                 },
             },
@@ -164,20 +144,12 @@ def test_flat_body_collision_detected() -> None:
                 "field_x": {
                     "field_class": "stateful_bool",
                     "feature_available": "always",
-                    "protocols": {
-                        "cmd_0x40": {
-                            "decode": [{"offset": 5, "bits": [0, 0]}]
-                        }
-                    },
+                    "protocols": {"cmd_0x40": {"decode": [{"offset": 5, "bits": [0, 0]}]}},
                 },
                 "field_y": {
                     "field_class": "stateful_bool",
                     "feature_available": "always",
-                    "protocols": {
-                        "cmd_0x40": {
-                            "decode": [{"offset": 5, "bits": [0, 0]}]
-                        }
-                    },
+                    "protocols": {"cmd_0x40": {"decode": [{"offset": 5, "bits": [0, 0]}]}},
                 },
             },
         }
@@ -200,20 +172,13 @@ def test_logic_combiner_step_is_skipped() -> None:
                     "field_class": "sensor",
                     "feature_available": "readable",
                     "protocols": {
-                        "rsp_0xc0": {
-                            "decode": [{"logic": "or",
-                                        "sources": [{"offset": 1, "bits": [0, 0]}]}]
-                        }
+                        "rsp_0xc0": {"decode": [{"logic": "or", "sources": [{"offset": 1, "bits": [0, 0]}]}]}
                     },
                 },
                 "owner": {
                     "field_class": "sensor",
                     "feature_available": "readable",
-                    "protocols": {
-                        "rsp_0xc0": {
-                            "decode": [{"offset": 1, "bits": [0, 0]}]
-                        }
-                    },
+                    "protocols": {"rsp_0xc0": {"decode": [{"offset": 1, "bits": [0, 0]}]}},
                 },
             },
             "control": {},
@@ -235,20 +200,12 @@ def test_shared_byte_no_bit_overlap_is_not_a_collision() -> None:
                 "fan_speed_demo": {
                     "field_class": "stateful_enum",
                     "feature_available": "always",
-                    "protocols": {
-                        "cmd_0x40": {
-                            "decode": [{"offset": 3, "bits": [6, 0]}]
-                        }
-                    },
+                    "protocols": {"cmd_0x40": {"decode": [{"offset": 3, "bits": [6, 0]}]}},
                 },
                 "timer_bit_demo": {
                     "field_class": "stateful_bool",
                     "feature_available": "excluded",
-                    "protocols": {
-                        "cmd_0x40": {
-                            "decode": [{"offset": 3, "bits": [7, 7]}]
-                        }
-                    },
+                    "protocols": {"cmd_0x40": {"decode": [{"offset": 3, "bits": [7, 7]}]}},
                 },
             },
         }
@@ -269,29 +226,18 @@ def test_allowlist_match_silences_collision() -> None:
                 "field_x": {
                     "field_class": "stateful_bool",
                     "feature_available": "always",
-                    "protocols": {
-                        "cmd_0x40": {
-                            "decode": [{"offset": 5, "bits": [0, 0]}]
-                        }
-                    },
+                    "protocols": {"cmd_0x40": {"decode": [{"offset": 5, "bits": [0, 0]}]}},
                 },
                 "field_y": {
                     "field_class": "stateful_bool",
                     "feature_available": "always",
-                    "protocols": {
-                        "cmd_0x40": {
-                            "decode": [{"offset": 5, "bits": [0, 0]}]
-                        }
-                    },
+                    "protocols": {"cmd_0x40": {"decode": [{"offset": 5, "bits": [0, 0]}]}},
                 },
             },
         }
     }
     cat = build_position_catalogue(g)
-    allow = [
-        {"scope": "cmd_0x40", "byte": 5, "bit": 0,
-         "fields": ["field_x", "field_y"], "reason": "test"}
-    ]
+    allow = [{"scope": "cmd_0x40", "byte": 5, "bit": 0, "fields": ["field_x", "field_y"], "reason": "test"}]
     assert find_collisions(cat, allow=allow) == []
 
 
@@ -305,20 +251,14 @@ def test_allowlist_field_set_must_match_exactly() -> None:
                 f"field_{n}": {
                     "field_class": "stateful_bool",
                     "feature_available": "always",
-                    "protocols": {
-                        "cmd_0x40": {
-                            "decode": [{"offset": 5, "bits": [0, 0]}]
-                        }
-                    },
-                } for n in ("x", "y", "z")
+                    "protocols": {"cmd_0x40": {"decode": [{"offset": 5, "bits": [0, 0]}]}},
+                }
+                for n in ("x", "y", "z")
             },
         }
     }
     cat = build_position_catalogue(g)
-    allow = [
-        {"scope": "cmd_0x40", "byte": 5, "bit": 0,
-         "fields": ["field_x", "field_y"], "reason": "test"}
-    ]
+    allow = [{"scope": "cmd_0x40", "byte": 5, "bit": 0, "fields": ["field_x", "field_y"], "reason": "test"}]
     cols = find_collisions(cat, allow=allow)
     # Three-way collision is NOT covered by the two-way allowlist entry.
     assert len(cols) == 1
@@ -340,12 +280,10 @@ def test_glossary_has_no_unexempted_collisions(catalogue: list[dict]) -> None:
     new collision appears OR a fix doesn't shrink the pending list."""
     cols = find_collisions(catalogue, allow=KNOWN_PENDING_COLLISIONS)
     if cols:
-        lines = [
-            f"  {c['class']}: {c['scope_key']} body[{c['byte']}] bit {c['bit']}: {c['fields']}"
-            for c in cols
-        ]
+        lines = [f"  {c['class']}: {c['scope_key']} body[{c['byte']}] bit {c['bit']}: {c['fields']}" for c in cols]
         pytest.fail(
-            "New same-bit collisions detected:\n" + "\n".join(lines)
+            "New same-bit collisions detected:\n"
+            + "\n".join(lines)
             + "\n\nEither fix the glossary or add to KNOWN_PENDING_COLLISIONS."
         )
 
@@ -355,10 +293,7 @@ def test_known_pending_collisions_still_present(catalogue: list[dict]) -> None:
     If a collision in the list has been fixed in the glossary (no longer
     detectable), drop the entry — leaving stale entries hides regressions
     and rots the TODO list."""
-    actual = {
-        (c["scope_key"], c["byte"], c["bit"], tuple(c["fields"]))
-        for c in find_collisions(catalogue)
-    }
+    actual = {(c["scope_key"], c["byte"], c["bit"], tuple(c["fields"])) for c in find_collisions(catalogue)}
     stale = []
     for entry in KNOWN_PENDING_COLLISIONS:
         key = (entry["scope"], entry["byte"], entry["bit"], tuple(sorted(entry["fields"])))

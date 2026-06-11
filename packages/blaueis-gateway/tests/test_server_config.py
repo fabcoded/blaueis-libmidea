@@ -163,8 +163,10 @@ websocket:
 security:
   psk: cafe
 """
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as gf, \
-         tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as inf:
+    with (
+        tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as gf,
+        tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as inf,
+    ):
         gf.write(global_yaml)
         gf.flush()
         inf.write(instance_yaml)
@@ -221,11 +223,17 @@ def test_pi_stats_type_field():
 def test_pi_stats_has_expected_keys():
     stats = get_pi_stats()
     expected = {
-        "type", "uptime_s", "cpu_percent", "ram_total_mb", "ram_used_mb",
-        "temp_c", "platform",
+        "type",
+        "uptime_s",
+        "cpu_percent",
+        "ram_total_mb",
+        "ram_used_mb",
+        "temp_c",
+        "platform",
         # Process-level fields — added so subscribers can tell a service
         # restart apart from a Pi reboot.
-        "process_started_at", "process_uptime_s",
+        "process_started_at",
+        "process_uptime_s",
     }
     assert expected.issubset(stats.keys())
 

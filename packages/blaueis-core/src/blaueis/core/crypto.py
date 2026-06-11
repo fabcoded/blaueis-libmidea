@@ -145,9 +145,7 @@ def _derive_direction(psk: bytes, salt: bytes, info: bytes) -> tuple[bytes, byte
     return key, nonce_prefix
 
 
-def derive_session(
-    psk: bytes, client_rand: bytes, server_rand: bytes, role: str
-) -> Session:
+def derive_session(psk: bytes, client_rand: bytes, server_rand: bytes, role: str) -> Session:
     """Derive the direction-separated session for one side.
 
     ``role`` is ``"client"`` or ``"server"``: both sides derive the same

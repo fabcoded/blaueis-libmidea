@@ -1,4 +1,5 @@
 """Tests for blaueis.gateway.slot_pool.SlotPool."""
+
 from __future__ import annotations
 
 import threading

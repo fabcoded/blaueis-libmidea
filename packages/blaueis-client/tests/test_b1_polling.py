@@ -1,11 +1,12 @@
 """Tests for Device's B1 property polling integration."""
+
 from __future__ import annotations
 
-import pytest
 from blaueis.client.device import Device, _parse_b1_property_id
 from blaueis.core.frame import parse_frame
 
 # ── _parse_b1_property_id ────────────────────────────────────────────────
+
 
 def test_parse_string() -> None:
     assert _parse_b1_property_id("0x42,0x00") == (0x42, 0x00)
@@ -100,6 +101,7 @@ def test_dedupes_same_prop_across_fields() -> None:
 
 
 # ── _build_query_frame dispatches to B1 builder ─────────────────────────
+
 
 def test_build_query_frame_b1_batch_0() -> None:
     dev = Device.__new__(Device)

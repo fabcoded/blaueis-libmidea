@@ -15,6 +15,7 @@ Checks per field:
 
 Exit 0 = clean, 1 = violations printed.
 """
+
 from __future__ import annotations
 
 import sys
@@ -144,8 +145,7 @@ def lint(glossary: dict) -> list[str]:
                 for m in visible_modes:
                     if m not in VALID_MODES:
                         errors.append(
-                            f"{name}: ux.visible_in_modes contains unknown "
-                            f"mode '{m}' (valid: {sorted(VALID_MODES)})"
+                            f"{name}: ux.visible_in_modes contains unknown mode '{m}' (valid: {sorted(VALID_MODES)})"
                         )
 
         mex = fdef.get("mutual_exclusion") or {}
@@ -158,25 +158,19 @@ def lint(glossary: dict) -> list[str]:
 
         if visible_modes is None:
             errors.append(
-                f"{name}: has mutual_exclusion but no ux.visible_in_modes "
-                f"(overlay cannot resolve mode gating)"
+                f"{name}: has mutual_exclusion but no ux.visible_in_modes (overlay cannot resolve mode gating)"
             )
 
         for target, forced_value in forces.items():
             if target not in names:
-                errors.append(
-                    f"{name}: forces '{target}' which is not a defined field"
-                )
+                errors.append(f"{name}: forces '{target}' which is not a defined field")
                 continue
             target_def = glossary[target]
             domain = field_value_domain(target_def)
             default = field_default(target_def)
             if target_def.get("data_type") == "bool":
                 if forced_value not in (0, 1, True, False):
-                    errors.append(
-                        f"{name}: forces {target}={forced_value!r} but target "
-                        f"is bool (expected 0/1)"
-                    )
+                    errors.append(f"{name}: forces {target}={forced_value!r} but target is bool (expected 0/1)")
             elif domain and forced_value not in domain and forced_value != default:
                 errors.append(
                     f"{name}: forces {target}={forced_value!r} not in domain "
@@ -190,7 +184,11 @@ def lint(glossary: dict) -> list[str]:
             if _is_truthy_force(forced_value, default):
                 target_visible = (target_def.get("ux") or {}).get("visible_in_modes")
                 subset_error = _mode_subset_error(
-                    name, visible_modes, target, target_visible, forced_value,
+                    name,
+                    visible_modes,
+                    target,
+                    target_visible,
+                    forced_value,
                 )
                 if subset_error:
                     errors.append(subset_error)
@@ -208,8 +206,7 @@ def lint(glossary: dict) -> list[str]:
             a_default = field_default(glossary.get(a, {}))
             if forced_b != b_default and forced_a != a_default:
                 errors.append(
-                    f"mutex cycle: {a} forces {b}={forced_b} AND "
-                    f"{b} forces {a}={forced_a} (both non-default)"
+                    f"mutex cycle: {a} forces {b}={forced_b} AND {b} forces {a}={forced_a} (both non-default)"
                 )
 
     return errors
@@ -286,11 +283,14 @@ def build_mutex_report(glossary: dict) -> dict:
                 continue
             ratio = len(common) / min(len(na), len(nb))
             if ratio >= 0.67:
-                missing_siblings.append({
-                    "a": a, "b": b,
-                    "common": sorted(common),
-                    "overlap": round(ratio, 2),
-                })
+                missing_siblings.append(
+                    {
+                        "a": a,
+                        "b": b,
+                        "common": sorted(common),
+                        "overlap": round(ratio, 2),
+                    }
+                )
 
     activators = []
     for a, fdef in glossary.items():
@@ -310,10 +310,7 @@ def build_mutex_report(glossary: dict) -> dict:
             reverse = fb.get(a, "__missing__")
             if reverse == "__missing__":
                 kind = "pure_activator"
-                desc = (
-                    f"{a} auto-engages {b}={v!r}; {b} has no reverse edge, "
-                    f"so it stays on when {a} is disabled"
-                )
+                desc = f"{a} auto-engages {b}={v!r}; {b} has no reverse edge, so it stays on when {a} is disabled"
             elif _is_falsy_force(reverse):
                 kind = "supervisor"
                 desc = (
@@ -327,10 +324,16 @@ def build_mutex_report(glossary: dict) -> dict:
                     f"mutual activation (also flagged by cycle lint if both "
                     f"non-default)"
                 )
-            activators.append({
-                "from": a, "to": b, "value": v,
-                "kind": kind, "reverse": reverse, "description": desc,
-            })
+            activators.append(
+                {
+                    "from": a,
+                    "to": b,
+                    "value": v,
+                    "kind": kind,
+                    "reverse": reverse,
+                    "description": desc,
+                }
+            )
 
     return {
         "asymmetric": asymmetric,
@@ -373,10 +376,7 @@ def format_mutex_report(report: dict) -> str:
             "enforces the mutex, but documenting it helps the overlay and UI."
         )
         for f in sibs:
-            lines.append(
-                f"  • {f['a']} ↔ {f['b']}: overlap={f['overlap']}, "
-                f"common=[{', '.join(f['common'])}]"
-            )
+            lines.append(f"  • {f['a']} ↔ {f['b']}: overlap={f['overlap']}, common=[{', '.join(f['common'])}]")
         lines.append("")
 
     if acts:
@@ -387,9 +387,7 @@ def format_mutex_report(report: dict) -> str:
             "layer on top of each other."
         )
         for f in acts:
-            lines.append(
-                f"  • [{f['kind']}] {f['from']} → {f['to']}={f['value']!r}"
-            )
+            lines.append(f"  • [{f['kind']}] {f['from']} → {f['to']}={f['value']!r}")
             lines.append(f"      {f['description']}")
 
     return "\n".join(lines)
@@ -402,7 +400,9 @@ def main() -> int:
         here = Path(__file__).resolve()
         candidates = [
             here.parents[4] / "blaueis-core" / "src" / "blaueis" / "core" / "data" / "glossary.yaml",
-            Path("/workspaces/hvac-shark-dev/blaueis-ha-midea/custom_components/blaueis_midea/lib/blaueis/core/data/glossary.yaml"),
+            Path(
+                "/workspaces/hvac-shark-dev/blaueis-ha-midea/custom_components/blaueis_midea/lib/blaueis/core/data/glossary.yaml"
+            ),
         ]
         path = next((p for p in candidates if p.exists()), candidates[0])
 
@@ -420,13 +420,11 @@ def main() -> int:
         return 1
 
     mex_count = sum(
-        1 for f in glossary.values()
+        1
+        for f in glossary.values()
         if isinstance(f, dict) and (f.get("mutual_exclusion") or {}).get("when_on", {}).get("forces")
     )
-    ux_count = sum(
-        1 for f in glossary.values()
-        if isinstance(f, dict) and (f.get("ux") or {}).get("visible_in_modes")
-    )
+    ux_count = sum(1 for f in glossary.values() if isinstance(f, dict) and (f.get("ux") or {}).get("visible_in_modes"))
     print(f"clean: {len(glossary)} fields, {ux_count} with ux, {mex_count} with mex — {path.name}")
 
     report = build_mutex_report(glossary)

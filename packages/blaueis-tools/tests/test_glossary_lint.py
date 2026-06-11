@@ -8,6 +8,7 @@ then B must also be visible in M — otherwise enabling A in M would try to forc
 B truthy in a mode where B cannot exist. Falsy forces (value=0/False) are always
 safe because turning a sibling off is universally valid.
 """
+
 from __future__ import annotations
 
 from blaueis.tools.glossary_lint import (
@@ -18,7 +19,8 @@ from blaueis.tools.glossary_lint import (
 
 
 def _field(
-    *, data_type: str = "bool",
+    *,
+    data_type: str = "bool",
     default: int | None = 0,
     visible_in_modes: list | None = None,
     forces: dict | None = None,
@@ -32,7 +34,8 @@ def _field(
     if forces is not None:
         d["mutual_exclusion"] = {"when_on": {"forces": forces}}
         d.setdefault("ux", {}).setdefault(
-            "visible_in_modes", visible_in_modes or ["cool", "heat"],
+            "visible_in_modes",
+            visible_in_modes or ["cool", "heat"],
         )
     if values is not None:
         d["capability"] = {"values": values}
@@ -64,7 +67,8 @@ class TestModeSubsetTruthy:
         """jet_cool (cool) → frost_protection=1 (heat) — the motivating bad case."""
         g = {
             "jet_cool": _field(
-                visible_in_modes=["cool"], forces={"frost_protection": 1},
+                visible_in_modes=["cool"],
+                forces={"frost_protection": 1},
             ),
             "frost_protection": _field(visible_in_modes=["heat"]),
         }
@@ -149,7 +153,9 @@ class TestEnumForces:
                 forces={"b": 0},
             ),
             "b": _field(
-                data_type="uint8", default=0, visible_in_modes=["heat"],
+                data_type="uint8",
+                default=0,
+                visible_in_modes=["heat"],
                 values={"off": {"raw": 0}, "on": {"raw": 1}},
             ),
         }
@@ -285,18 +291,11 @@ class TestMutexReportActivators:
         from blaueis.tools.glossary_lint import load_glossary
 
         here = Path(__file__).resolve()
-        root = next(
-            p for p in here.parents if (p / "packages" / "blaueis-core").exists()
-        )
-        path = (
-            root / "packages" / "blaueis-core" / "src" / "blaueis" / "core"
-            / "data" / "glossary.yaml"
-        )
+        root = next(p for p in here.parents if (p / "packages" / "blaueis-core").exists())
+        path = root / "packages" / "blaueis-core" / "src" / "blaueis" / "core" / "data" / "glossary.yaml"
         r = build_mutex_report(load_glossary(path))
         assert any(
-            x["from"] == "breezeless"
-            and x["to"] == "breeze_away"
-            and x["kind"] == "supervisor"
+            x["from"] == "breezeless" and x["to"] == "breeze_away" and x["kind"] == "supervisor"
             for x in r["activators"]
         )
 
@@ -309,31 +308,43 @@ class TestMutexReportFormat:
         assert "No uncovered" in out
 
     def test_rendered_includes_activator(self):
-        out = format_mutex_report({
-            "asymmetric": [], "missing_siblings": [],
-            "activators": [{
-                "from": "nws", "to": "bl", "value": 1,
-                "kind": "supervisor", "reverse": 0,
-                "description": "nws auto-engages bl",
-            }],
-        })
+        out = format_mutex_report(
+            {
+                "asymmetric": [],
+                "missing_siblings": [],
+                "activators": [
+                    {
+                        "from": "nws",
+                        "to": "bl",
+                        "value": 1,
+                        "kind": "supervisor",
+                        "reverse": 0,
+                        "description": "nws auto-engages bl",
+                    }
+                ],
+            }
+        )
         assert "[supervisor]" in out
         assert "nws" in out and "bl" in out
 
     def test_rendered_includes_suggestion(self):
-        out = format_mutex_report({
-            "asymmetric": [{"from": "a", "to": "b", "value": 0}],
-            "missing_siblings": [],
-        })
+        out = format_mutex_report(
+            {
+                "asymmetric": [{"from": "a", "to": "b", "value": 0}],
+                "missing_siblings": [],
+            }
+        )
         assert "b.mutual_exclusion.when_on.forces.a: 0" in out
 
     def test_rendered_includes_overlap(self):
-        out = format_mutex_report({
-            "asymmetric": [],
-            "missing_siblings": [
-                {"a": "eco", "b": "sleep", "common": ["turbo"], "overlap": 1.0},
-            ],
-        })
+        out = format_mutex_report(
+            {
+                "asymmetric": [],
+                "missing_siblings": [
+                    {"a": "eco", "b": "sleep", "common": ["turbo"], "overlap": 1.0},
+                ],
+            }
+        )
         assert "eco" in out and "sleep" in out
         assert "turbo" in out
 
@@ -350,9 +361,7 @@ class TestRealGlossaryReport:
         from blaueis.tools.glossary_lint import load_glossary
 
         here = Path(__file__).resolve()
-        root = next(
-            p for p in here.parents if (p / "packages" / "blaueis-core").exists()
-        )
+        root = next(p for p in here.parents if (p / "packages" / "blaueis-core").exists())
         path = root / "packages" / "blaueis-core" / "src" / "blaueis" / "core" / "data" / "glossary.yaml"
         r = build_mutex_report(load_glossary(path))
 
@@ -378,9 +387,7 @@ class TestRealGlossaryClean:
 
         # Walk up from this test file to repo root, then to glossary.yaml.
         here = Path(__file__).resolve()
-        root = next(
-            p for p in here.parents if (p / "packages" / "blaueis-core").exists()
-        )
+        root = next(p for p in here.parents if (p / "packages" / "blaueis-core").exists())
         path = root / "packages" / "blaueis-core" / "src" / "blaueis" / "core" / "data" / "glossary.yaml"
         assert path.exists(), f"glossary not found at {path}"
         errs = lint(load_glossary(path))

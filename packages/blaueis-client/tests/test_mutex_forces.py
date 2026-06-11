@@ -10,6 +10,7 @@ These test internal methods directly — no lock, no I/O.
 
 Usage:  python -m pytest packages/blaueis-client/tests/test_mutex_forces.py -v
 """
+
 from __future__ import annotations
 
 from blaueis.client.status_db import StatusDB
@@ -63,8 +64,8 @@ class TestModeGate:
         db, af = _db_with_mode(2)  # cool
         changes = {
             "frost_protection": True,  # heat only → reject
-            "eco_mode": True,          # cool/auto/dry → accept
-            "turbo_mode": True,        # cool/heat → accept
+            "eco_mode": True,  # cool/auto/dry → accept
+            "turbo_mode": True,  # cool/heat → accept
         }
         accepted, rejected = db._apply_mode_gate(changes, af)
         assert "frost_protection" in rejected
@@ -130,7 +131,8 @@ class TestForwardPass:
         """Caller-set value takes precedence over forced value."""
         db, af = _db_with_mode(4)
         expanded = db._expand_mutex_forces(
-            {"frost_protection": True, "turbo_mode": True}, af,
+            {"frost_protection": True, "turbo_mode": True},
+            af,
         )
         assert expanded["turbo_mode"] is True  # caller wins over forces
 
@@ -170,7 +172,7 @@ class TestForwardPass:
         db = StatusDB()
         synth = {}
         for i in range(15):
-            forces = {f"chain_{i+1}": 1} if i < 14 else {}
+            forces = {f"chain_{i + 1}": 1} if i < 14 else {}
             synth[f"chain_{i}"] = {
                 "data_type": "bool",
                 "mutual_exclusion": {"when_on": {"forces": forces}},

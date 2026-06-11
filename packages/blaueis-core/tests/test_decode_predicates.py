@@ -33,9 +33,7 @@ def _c0(mode_raw: int, b13: int, b2_low: int = 9) -> bytes:
 
 
 def _target(mode_raw: int, b13: int, b2_low: int = 9):
-    return decode_frame_fields(_c0(mode_raw, b13, b2_low), "rsp_0xc0", GLOSSARY)[
-        "target_temperature"
-    ]["value"]
+    return decode_frame_fields(_c0(mode_raw, b13, b2_low), "rsp_0xc0", GLOSSARY)["target_temperature"]["value"]
 
 
 # ── predicate unit behaviour ────────────────────────────────────────

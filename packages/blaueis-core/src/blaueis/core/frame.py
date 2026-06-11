@@ -490,5 +490,5 @@ def build_version_response(appliance: int = 0xAC, proto: int = 0, sub: int = 0) 
     # Minimal version body: "V1.0.0" zero-padded
     version = b"V1.0.0"
     body = bytearray(20)
-    body[:len(version)] = version
+    body[: len(version)] = version
     return build_frame(bytes(body), msg_type=0x13, appliance=appliance, proto=proto, sub=sub)

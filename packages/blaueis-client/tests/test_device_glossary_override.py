@@ -11,8 +11,6 @@ glossary plumbing. No WebSocket, no handshake.
 
 from __future__ import annotations
 
-import pytest
-
 from blaueis.client.device import Device
 
 
@@ -56,10 +54,7 @@ def test_override_flips_feature_available_to_never():
     )
     fa = _get_field_feature_available(device, "screen_display")
     assert fa == "excluded"
-    assert (
-        "fields.control.screen_display.feature_available"
-        in device.glossary_override_affected
-    )
+    assert "fields.control.screen_display.feature_available" in device.glossary_override_affected
 
 
 def test_override_does_not_mutate_base_glossary():
@@ -68,7 +63,9 @@ def test_override_does_not_mutate_base_glossary():
     own patched copy; the global glossary stays pristine."""
     override = {"fields": {"control": {"screen_display": {"feature_available": "excluded"}}}}
     dev_patched = Device(
-        host="127.0.0.1", port=65535, psk="0" * 32,
+        host="127.0.0.1",
+        port=65535,
+        psk="0" * 32,
         glossary_overrides=override,
     )
     dev_clean = Device(host="127.0.0.1", port=65536, psk="0" * 32)
@@ -82,11 +79,13 @@ def test_meta_override_silently_stripped():
     """Overrides of the protected ``meta`` block must be dropped without
     failing. The rest of the override must still apply."""
     override = {
-        "meta": {"version": "99.0.0"},   # stripped
+        "meta": {"version": "99.0.0"},  # stripped
         "fields": {"control": {"screen_display": {"feature_available": "excluded"}}},
     }
     device = Device(
-        host="127.0.0.1", port=65535, psk="0" * 32,
+        host="127.0.0.1",
+        port=65535,
+        psk="0" * 32,
         glossary_overrides=override,
     )
     # meta.version should come from the on-disk glossary, not "99.0.0".
@@ -99,7 +98,9 @@ def test_empty_override_dict_equivalent_to_none():
     """An empty dict is treated the same as None — no override, no
     affected paths."""
     device = Device(
-        host="127.0.0.1", port=65535, psk="0" * 32,
+        host="127.0.0.1",
+        port=65535,
+        psk="0" * 32,
         glossary_overrides={},
     )
     assert device.glossary_override_affected == []
@@ -110,7 +111,9 @@ def test_override_list_of_affected_is_a_copy():
     mutate without affecting the Device's internal state."""
     override = {"fields": {"control": {"screen_display": {"feature_available": "excluded"}}}}
     device = Device(
-        host="127.0.0.1", port=65535, psk="0" * 32,
+        host="127.0.0.1",
+        port=65535,
+        psk="0" * 32,
         glossary_overrides=override,
     )
     paths = device.glossary_override_affected

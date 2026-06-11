@@ -40,7 +40,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "blaueis-core" / "s
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "blaueis-client" / "src"))
 
 from blaueis.core.codec import (  # noqa: E402
-    build_frame_from_spec,  # noqa: E402
     identify_frame,
     load_glossary,
     walk_fields,  # noqa: E402

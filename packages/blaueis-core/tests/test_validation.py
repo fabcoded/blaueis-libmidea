@@ -72,17 +72,27 @@ def test_field_unknown() -> None:
 
 
 def test_range_value_inside_passes() -> None:
-    g = _glossary("target_temperature", {
-        "description": "x", "data_type": "float", "range": [16.0, 30.5],
-    })
+    g = _glossary(
+        "target_temperature",
+        {
+            "description": "x",
+            "data_type": "float",
+            "range": [16.0, 30.5],
+        },
+    )
     assert validate_set("target_temperature", 22.0, {}, g).ok
 
 
 @pytest.mark.parametrize("v", [15.5, 31.0, -5, 100])
 def test_range_value_outside_rejected(v: float) -> None:
-    g = _glossary("target_temperature", {
-        "description": "x", "data_type": "float", "range": [16.0, 30.5],
-    })
+    g = _glossary(
+        "target_temperature",
+        {
+            "description": "x",
+            "data_type": "float",
+            "range": [16.0, 30.5],
+        },
+    )
     out = validate_set("target_temperature", v, {}, g)
     assert isinstance(out, OutOfRange)
     assert out.field_name == "target_temperature"
@@ -92,9 +102,14 @@ def test_range_value_outside_rejected(v: float) -> None:
 
 
 def test_range_boundary_values_inclusive() -> None:
-    g = _glossary("x", {
-        "description": "x", "data_type": "float", "range": [0, 100],
-    })
+    g = _glossary(
+        "x",
+        {
+            "description": "x",
+            "data_type": "float",
+            "range": [0, 100],
+        },
+    )
     assert validate_set("x", 0, {}, g).ok
     assert validate_set("x", 100, {}, g).ok
 
@@ -102,9 +117,14 @@ def test_range_boundary_values_inclusive() -> None:
 def test_range_skipped_for_bool_value() -> None:
     """Booleans don't get range-checked even if a range is declared
     (defensive — no field should declare both, but sanity)."""
-    g = _glossary("x", {
-        "description": "x", "data_type": "bool", "range": [0, 100],
-    })
+    g = _glossary(
+        "x",
+        {
+            "description": "x",
+            "data_type": "bool",
+            "range": [0, 100],
+        },
+    )
     assert validate_set("x", True, {}, g).ok
 
 
@@ -112,13 +132,18 @@ def test_range_absent_means_no_check() -> None:
     g = _glossary("x", {"description": "x", "data_type": "float"})
     # Any value passes when no range is declared.
     assert validate_set("x", 10**9, {}, g).ok
-    assert validate_set("x", -10**9, {}, g).ok
+    assert validate_set("x", -(10**9), {}, g).ok
 
 
 def test_malformed_range_skipped() -> None:
-    g = _glossary("x", {
-        "description": "x", "data_type": "float", "range": [16],
-    })
+    g = _glossary(
+        "x",
+        {
+            "description": "x",
+            "data_type": "float",
+            "range": [16],
+        },
+    )
     assert validate_set("x", 22, {}, g).ok
 
 
@@ -126,24 +151,32 @@ def test_malformed_range_skipped() -> None:
 
 
 def test_enum_value_in_set_passes() -> None:
-    g = _glossary("operating_mode", {
-        "description": "x", "data_type": "uint8",
-        "values": {
-            "cool": {"raw": 0x40},
-            "heat": {"raw": 0x80},
+    g = _glossary(
+        "operating_mode",
+        {
+            "description": "x",
+            "data_type": "uint8",
+            "values": {
+                "cool": {"raw": 0x40},
+                "heat": {"raw": 0x80},
+            },
         },
-    })
+    )
     assert validate_set("operating_mode", 0x40, {}, g).ok
 
 
 def test_enum_value_not_in_set_rejected() -> None:
-    g = _glossary("operating_mode", {
-        "description": "x", "data_type": "uint8",
-        "values": {
-            "cool": {"raw": 0x40},
-            "heat": {"raw": 0x80},
+    g = _glossary(
+        "operating_mode",
+        {
+            "description": "x",
+            "data_type": "uint8",
+            "values": {
+                "cool": {"raw": 0x40},
+                "heat": {"raw": 0x80},
+            },
         },
-    })
+    )
     out = validate_set("operating_mode", 0x99, {}, g)
     assert isinstance(out, NotInEnum)
     assert out.value == 0x99
@@ -153,10 +186,14 @@ def test_enum_value_not_in_set_rejected() -> None:
 def test_enum_skipped_for_bool() -> None:
     """Boolean fields: HA service contract handles bool conversion;
     enum gate would over-fire on True/False."""
-    g = _glossary("x", {
-        "description": "x", "data_type": "bool",
-        "values": {"on": {"raw": 1}, "off": {"raw": 0}},
-    })
+    g = _glossary(
+        "x",
+        {
+            "description": "x",
+            "data_type": "bool",
+            "values": {"on": {"raw": 1}, "off": {"raw": 0}},
+        },
+    )
     # True doesn't equal 1 in the same comparison if bools are excluded;
     # validator should let it through and let HA upstream handle.
     assert validate_set("x", True, {}, g).ok
@@ -166,10 +203,14 @@ def test_enum_block_without_raw_keys_does_not_constrain() -> None:
     """A `values:` block with descriptive entries but no `raw:` keys
     (rare, but seen in glossary entries that document but don't enum)
     must not reject any value — there's nothing to check against."""
-    g = _glossary("x", {
-        "description": "x", "data_type": "uint8",
-        "values": {"cool": {"description": "Cooling mode"}},
-    })
+    g = _glossary(
+        "x",
+        {
+            "description": "x",
+            "data_type": "uint8",
+            "values": {"cool": {"description": "Cooling mode"}},
+        },
+    )
     assert validate_set("x", 99, {}, g).ok
 
 
@@ -240,7 +281,8 @@ def test_range_fires_before_mode_when_value_out_of_range() -> None:
     g = _glossary(
         "target_temperature",
         {
-            "description": "x", "data_type": "float",
+            "description": "x",
+            "data_type": "float",
             "range": [16.0, 30.5],
             "valid_modes": ["cool"],
         },
@@ -255,7 +297,8 @@ def test_in_range_value_still_subject_to_mode_gate() -> None:
     g = _glossary(
         "target_temperature",
         {
-            "description": "x", "data_type": "float",
+            "description": "x",
+            "data_type": "float",
             "range": [16.0, 30.5],
             "valid_modes": ["cool"],
         },

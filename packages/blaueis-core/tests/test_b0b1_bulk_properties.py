@@ -376,7 +376,8 @@ def test_field_invariants():
     )
 
     check(
-        f"all {len(new_fields)} bulk-added fields exist in glossary (got {sum(1 for n in new_fields if n in cat_index)}/{len(new_fields)})",
+        f"all {len(new_fields)} bulk-added fields exist in glossary "
+        f"(got {sum(1 for n in new_fields if n in cat_index)}/{len(new_fields)})",
         all(n in cat_index for n in new_fields),
         f"missing: {[n for n in new_fields if n not in cat_index]}",
     )

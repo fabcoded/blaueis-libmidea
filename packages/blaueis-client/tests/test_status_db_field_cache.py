@@ -21,14 +21,11 @@ test is resilient to internal refactors.
 
 from __future__ import annotations
 
-import asyncio
 import time
 
 import pytest
-
 from blaueis.client.status_db import StatusDB
 from blaueis.core.codec import build_field_map, decode_frame_fields, load_glossary
-
 
 # ──────────────────────────────────────────────────────────────────────
 #   Correctness + invalidation

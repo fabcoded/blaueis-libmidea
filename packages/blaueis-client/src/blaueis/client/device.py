@@ -354,8 +354,7 @@ class Device:
         capped = min(float(duration_s), self.MAX_TEST_SUPPRESSION_S)
         self._test_suppression_until = time.monotonic() + capped
         log.warning(
-            "Test suppression active for %.1fs — frames dropped, "
-            "entity availability will fade",
+            "Test suppression active for %.1fs — frames dropped, entity availability will fade",
             capped,
         )
         return capped
@@ -987,21 +986,21 @@ class Device:
                 # escalate/refresh but never silently demote a confirmed field.
                 caps_frozen = self._status.get("meta", {}).get("caps_finalized", False)
                 if caps_frozen:
-                    counts = self._status.setdefault("meta", {}).setdefault(
-                        "frame_counts", {}
-                    )
-                    counts["rsp_0xb5_post_boot"] = (
-                        counts.get("rsp_0xb5_post_boot", 0) + 1
-                    )
+                    counts = self._status.setdefault("meta", {}).setdefault("frame_counts", {})
+                    counts["rsp_0xb5_post_boot"] = counts.get("rsp_0xb5_post_boot", 0) + 1
                     log.warning(
                         "post-boot B5 (caps frozen since boot): crc_ok=%s len=%dB "
                         "count=%d — demotions will be blocked, escalations applied",
-                        parsed["crc_ok"] and parsed["checksum_ok"], len(body),
+                        parsed["crc_ok"] and parsed["checksum_ok"],
+                        len(body),
                         counts["rsp_0xb5_post_boot"],
                     )
                     log.debug("post-boot B5 body: %s", bytes(body).hex())
                 next_frame = process_b5(
-                    self._status, body, self._glossary, timestamp=ts,
+                    self._status,
+                    body,
+                    self._glossary,
+                    timestamp=ts,
                     frame_trusted=parsed["crc_ok"] and parsed["checksum_ok"],
                     allow_demote=not caps_frozen,
                 )

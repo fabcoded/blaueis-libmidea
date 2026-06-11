@@ -6,6 +6,21 @@ on:
     branches: [main]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Same 0.11.x line as .pre-commit-config.yaml — bump both together.
+      - name: Install ruff
+        run: pip install 'ruff==0.11.*'
+      - name: ruff check
+        run: ruff check
+      - name: ruff format --check
+        run: ruff format --check
+
   pytest:
     runs-on: ubuntu-latest
     steps:

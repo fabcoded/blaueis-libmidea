@@ -110,8 +110,12 @@ class StatusDB:
                 fm = build_field_map(self._glossary, protocol_key)
                 self._field_map_cache[protocol_key] = fm
             process_data_frame(
-                self._status, body, protocol_key, self._glossary,
-                timestamp=timestamp, field_map=fm,
+                self._status,
+                body,
+                protocol_key,
+                self._glossary,
+                timestamp=timestamp,
+                field_map=fm,
             )
             self._detect_changes(snapshot, available_fields)
         self._flush_events()
@@ -155,13 +159,18 @@ class StatusDB:
             # Mask + clamp run against the effective mode: the one the
             # caller is switching to, falling back to the current one.
             effective_mode = expanded.get(
-                "operating_mode", self.read("operating_mode"),
+                "operating_mode",
+                self.read("operating_mode"),
             )
             expanded = self._mask_mode_invalid_forces(
-                expanded, all_fields, effective_mode,
+                expanded,
+                all_fields,
+                effective_mode,
             )
             expanded = self._apply_constraint_gate(
-                expanded, all_fields, effective_mode,
+                expanded,
+                all_fields,
+                effective_mode,
             )
 
             # Step 3: Split by protocol, build frames, send
@@ -170,7 +179,9 @@ class StatusDB:
 
             if x40:
                 result = build_command_body(
-                    self._status, x40, self._glossary,
+                    self._status,
+                    x40,
+                    self._glossary,
                 )
                 if result["body"] is not None:
                     frame = build_frame(result["body"], msg_type=0x02)
@@ -179,13 +190,16 @@ class StatusDB:
                     results["cmd_0x40"] = result
                 elif result.get("preflight"):
                     log.warning(
-                        "Command blocked by preflight: %s", result["preflight"],
+                        "Command blocked by preflight: %s",
+                        result["preflight"],
                     )
                     results["cmd_0x40"] = result
 
             if b0:
                 result = build_b0_command_body(
-                    self._status, b0, self._glossary,
+                    self._status,
+                    b0,
+                    self._glossary,
                 )
                 if result["body"] is not None:
                     frame = build_frame(result["body"], msg_type=0x02)
@@ -202,7 +216,8 @@ class StatusDB:
     # ── Feature gate ──────────────────────────────────────
 
     def _apply_feature_gate(
-        self, changes: dict,
+        self,
+        changes: dict,
     ) -> tuple[dict, dict]:
         """Reject writes to fields whose feature_available is 'excluded'.
 
@@ -210,19 +225,25 @@ class StatusDB:
         and is set by B5 capability processing. Missing key defaults to
         'always' (accept) so pre-B5 state does not block writes.
         """
+
         def rejects(fname: str, _value: object) -> str | None:
-            fa = self._status["fields"].get(fname, {}).get(
-                "feature_available", "always",
+            fa = (
+                self._status["fields"]
+                .get(fname, {})
+                .get(
+                    "feature_available",
+                    "always",
+                )
             )
-            return (
-                "feature not supported on this device" if fa == "excluded" else None
-            )
+            return "feature not supported on this device" if fa == "excluded" else None
+
         return self._filter_gate(changes, rejects, "Feature gate")
 
     # ── Power gate ────────────────────────────────────────
 
     def _apply_power_gate(
-        self, changes: dict,
+        self,
+        changes: dict,
     ) -> tuple[dict, dict]:
         """When power is off, only `power` itself may be written.
 
@@ -237,10 +258,8 @@ class StatusDB:
             return changes, {}
 
         def rejects(fname: str, _value: object) -> str | None:
-            return (
-                None if fname == "power"
-                else "device is off — only power can be written"
-            )
+            return None if fname == "power" else "device is off — only power can be written"
+
         return self._filter_gate(changes, rejects, "Power gate")
 
     @staticmethod
@@ -269,7 +288,9 @@ class StatusDB:
     # ── Mode gate ─────────────────────────────────────────
 
     def _apply_mode_gate(
-        self, changes: dict, all_fields: dict,
+        self,
+        changes: dict,
+        all_fields: dict,
     ) -> tuple[dict, dict]:
         """Check visible_in_modes for each field. Reject wrong-mode writes.
 
@@ -296,9 +317,11 @@ class StatusDB:
             else:
                 rejected[fname] = f"requires mode {modes}, current={effective_mode}"
                 log.warning(
-                    "Mode gate rejected %s=%r: visible_in_modes=%s, "
-                    "effective_mode=%s",
-                    fname, value, modes, effective_mode,
+                    "Mode gate rejected %s=%r: visible_in_modes=%s, effective_mode=%s",
+                    fname,
+                    value,
+                    modes,
+                    effective_mode,
                 )
 
         return accepted, rejected
@@ -306,7 +329,10 @@ class StatusDB:
     # ── Post-expansion mode mask ──────────────────────────
 
     def _mask_mode_invalid_forces(
-        self, expanded: dict, all_fields: dict, effective_mode: object,
+        self,
+        expanded: dict,
+        all_fields: dict,
+        effective_mode: object,
     ) -> dict:
         """Mask truthy mutex-forced fields that are mode-invalid.
 
@@ -332,9 +358,11 @@ class StatusDB:
                 continue
             safe = default_for_masked_field(gdef)
             log.warning(
-                "mutex force produced mode-invalid %s=%r in mode=%s — "
-                "masking to %r (glossary inconsistency?)",
-                fname, value, effective_mode, safe,
+                "mutex force produced mode-invalid %s=%r in mode=%s — masking to %r (glossary inconsistency?)",
+                fname,
+                value,
+                effective_mode,
+                safe,
             )
             out[fname] = safe
         return out
@@ -342,7 +370,10 @@ class StatusDB:
     # ── Constraint gate ───────────────────────────────────
 
     def _apply_constraint_gate(
-        self, changes: dict, all_fields: dict, effective_mode: object,
+        self,
+        changes: dict,
+        all_fields: dict,
+        effective_mode: object,
     ) -> dict:
         """Clamp values to the active cap envelope.
 
@@ -386,17 +417,18 @@ class StatusDB:
             clamped = self._clamp_to_envelope(value, envelope)
             if clamped is _DROP:
                 log.warning(
-                    "constraint gate: dropped %s=%r (feature disabled on "
-                    "this unit, valid_set empty)",
-                    fname, value,
+                    "constraint gate: dropped %s=%r (feature disabled on this unit, valid_set empty)",
+                    fname,
+                    value,
                 )
                 out.pop(fname, None)
                 continue
             if clamped != value:
                 log.warning(
-                    "constraint gate: clamped %s=%r → %r "
-                    "(envelope=%s, mode=%s)",
-                    fname, value, clamped,
+                    "constraint gate: clamped %s=%r → %r (envelope=%s, mode=%s)",
+                    fname,
+                    value,
+                    clamped,
                     self._envelope_summary(envelope),
                     effective_mode,
                 )
@@ -428,11 +460,7 @@ class StatusDB:
 
     def _mode_label(self, raw_mode: object) -> str | None:
         """Map operating_mode raw (int) to its glossary label (cool, heat, ...)."""
-        gdef = (
-            self._glossary.get("fields", {})
-            .get("control", {})
-            .get("operating_mode", {})
-        )
+        gdef = self._glossary.get("fields", {}).get("control", {}).get("operating_mode", {})
         for label, entry in (gdef.get("values") or {}).items():
             if isinstance(entry, dict) and entry.get("raw") == raw_mode:
                 return label
@@ -449,7 +477,9 @@ class StatusDB:
     # ── Mutex expansion ───────────────────────────────────
 
     def _expand_mutex_forces(
-        self, changes: dict, all_fields: dict,
+        self,
+        changes: dict,
+        all_fields: dict,
     ) -> dict:
         """Expand mutual_exclusion.when_on.forces for active fields.
 
@@ -462,10 +492,7 @@ class StatusDB:
         expanded = dict(changes)
 
         # Forward pass — truthy fields trigger their forces
-        queue = [
-            f for f, v in expanded.items()
-            if self._is_active_value(all_fields.get(f, {}), v)
-        ]
+        queue = [f for f, v in expanded.items() if self._is_active_value(all_fields.get(f, {}), v)]
         seen = set(queue)
         depth = 0
         max_depth = 10
@@ -475,20 +502,14 @@ class StatusDB:
             next_queue = []
             for fname in queue:
                 gdef = all_fields.get(fname, {})
-                forces = (
-                    gdef.get("mutual_exclusion", {})
-                    .get("when_on", {})
-                    .get("forces", {})
-                )
+                forces = gdef.get("mutual_exclusion", {}).get("when_on", {}).get("forces", {})
                 for target, forced_val in forces.items():
                     if target in expanded:
                         continue
                     expanded[target] = forced_val
-                    if (
-                        target not in seen
-                        and self._is_active_value(
-                            all_fields.get(target, {}), forced_val,
-                        )
+                    if target not in seen and self._is_active_value(
+                        all_fields.get(target, {}),
+                        forced_val,
                     ):
                         next_queue.append(target)
                         seen.add(target)
@@ -533,7 +554,8 @@ class StatusDB:
 
     @staticmethod
     def _split_by_protocol(
-        changes: dict, all_fields: dict,
+        changes: dict,
+        all_fields: dict,
     ) -> tuple[dict, dict]:
         x40 = {}
         b0 = {}
@@ -569,7 +591,9 @@ class StatusDB:
         return snap
 
     def _detect_changes(
-        self, snapshot: dict[str, object], available_fields: dict | None,
+        self,
+        snapshot: dict[str, object],
+        available_fields: dict | None,
     ) -> None:
         if available_fields is None:
             return

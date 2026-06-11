@@ -6,6 +6,7 @@ Allocates the lowest-free slot number on acquire; returns it to the pool on
 release. Not a monotonic counter — a reconnecting client may receive the same
 slot number as a previous connection. Ring-record timestamps disambiguate.
 """
+
 from __future__ import annotations
 
 import threading
@@ -47,9 +48,7 @@ class SlotPool:
                 if slot not in self._in_use:
                     self._in_use.add(slot)
                     return slot
-            raise SlotPoolExhausted(
-                f"all {self._size} slots in use"
-            )
+            raise SlotPoolExhausted(f"all {self._size} slots in use")
 
     def release(self, slot: int) -> None:
         """Return a slot to the pool. Unknown slot ids are silently ignored."""

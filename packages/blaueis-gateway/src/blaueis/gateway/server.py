@@ -22,8 +22,6 @@ import signal
 import sys
 import time
 
-from cryptography.exceptions import InvalidTag
-
 from blaueis.core.crypto import (
     HandshakeError,
     ReplayError,
@@ -35,6 +33,7 @@ from blaueis.core.debug_ring import DebugRing, log_event
 from blaueis.core.frame import FrameError, extract_msg_id, validate_frame
 from blaueis.gateway.slot_pool import SlotPool, SlotPoolExhausted
 from blaueis.gateway.uart_protocol import VERBOSE, UartProtocol
+from cryptography.exceptions import InvalidTag
 
 log = logging.getLogger("hvac_gateway")
 
@@ -50,7 +49,9 @@ def _get_version() -> str:
         result = subprocess.run(
             ["git", "describe", "--tags", "--always", "--dirty"],
             cwd=INSTALL_DIR,
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0:
             return result.stdout.strip()
@@ -154,10 +155,17 @@ def load_config(global_path: str = None, instance_path: str = None, legacy_path:
         # Pass-through for top-level tuning / debug flags so instance YAML can
         # override the defaults in the `config = {...}` block above.
         for k in (
-            "mirror_tx_gateway", "mirror_tx_all",
-            "debug_ring_enabled", "debug_ring_size_mb", "slot_pool_size",
-            "max_queue", "frame_spacing_ms", "stats_interval",
-            "fake_ip", "signal_level", "allow_remote_update",
+            "mirror_tx_gateway",
+            "mirror_tx_all",
+            "debug_ring_enabled",
+            "debug_ring_size_mb",
+            "slot_pool_size",
+            "max_queue",
+            "frame_spacing_ms",
+            "stats_interval",
+            "fake_ip",
+            "signal_level",
+            "allow_remote_update",
         ):
             if k in inst:
                 config[k] = inst[k]
@@ -241,9 +249,15 @@ def get_pi_stats() -> dict:
 # Event kinds a subscriber can opt in/out of. Provenance is NEVER a filter
 # dimension (flight_recorder.md §1.1).
 _VALID_INCLUDE_KINDS = frozenset({"rx", "tx", "ignored"})
-_VALID_ANNOTATE_FIELDS = frozenset({
-    "origin", "req_id", "msg_id", "tx_seq", "reply_to",
-})
+_VALID_ANNOTATE_FIELDS = frozenset(
+    {
+        "origin",
+        "req_id",
+        "msg_id",
+        "tx_seq",
+        "reply_to",
+    }
+)
 
 
 class ClientConnection:
@@ -330,9 +344,13 @@ class GatewayServer:
 
         # Ring record — every known provenance field passes through.
         log_event(
-            log, VERBOSE, event,
-            port="uart", peer="ac",
-            len=len(raw), hex=hex_dump,
+            log,
+            VERBOSE,
+            event,
+            port="uart",
+            peer="ac",
+            len=len(raw),
+            hex=hex_dump,
             msg_id=msg_id,
             tx_seq=meta.get("tx_seq"),
             origin=meta.get("origin"),
@@ -396,7 +414,9 @@ class GatewayServer:
                 validate_frame(frame_bytes)
                 origin = f"ws:{client.sid}" if client.sid is not None else "ws:?"
                 ok = await self.protocol.queue_frame(
-                    frame_bytes, origin=origin, req_id=ref,
+                    frame_bytes,
+                    origin=origin,
+                    req_id=ref,
                 )
                 if ok:
                     await client.send({"type": "ack", "ref": ref, "status": "queued"})
@@ -411,12 +431,14 @@ class GatewayServer:
             await client.send({"type": "pong"})
 
         elif msg_type == "version":
-            await client.send({
-                "type": "version",
-                "version": GW_VERSION,
-                "device_name": self.config.get("device_name", "Midea AC"),
-                "instance": self.config.get("_instance_name", ""),
-            })
+            await client.send(
+                {
+                    "type": "version",
+                    "version": GW_VERSION,
+                    "device_name": self.config.get("device_name", "Midea AC"),
+                    "instance": self.config.get("_instance_name", ""),
+                }
+            )
 
         elif msg_type == "logs":
             n = msg.get("n", 20)
@@ -427,42 +449,56 @@ class GatewayServer:
             include = msg.get("include", ["rx"])
             annotate = msg.get("annotate", [])
             if not isinstance(include, list) or not isinstance(annotate, list):
-                await client.send({
-                    "type": "error", "ref": ref,
-                    "msg": "subscribe.include and subscribe.annotate must be lists",
-                })
+                await client.send(
+                    {
+                        "type": "error",
+                        "ref": ref,
+                        "msg": "subscribe.include and subscribe.annotate must be lists",
+                    }
+                )
                 return
             bad_include = [k for k in include if k not in _VALID_INCLUDE_KINDS]
             bad_annotate = [f for f in annotate if f not in _VALID_ANNOTATE_FIELDS]
             if bad_include or bad_annotate:
-                await client.send({
-                    "type": "error", "ref": ref,
-                    "msg": f"unknown values: include={bad_include} annotate={bad_annotate}",
-                })
+                await client.send(
+                    {
+                        "type": "error",
+                        "ref": ref,
+                        "msg": f"unknown values: include={bad_include} annotate={bad_annotate}",
+                    }
+                )
                 return
             client.include_kinds = set(include)
             client.annotate_fields = set(annotate)
-            await client.send({
-                "type": "subscribed", "ref": ref,
-                "include": sorted(client.include_kinds),
-                "annotate": sorted(client.annotate_fields),
-            })
+            await client.send(
+                {
+                    "type": "subscribed",
+                    "ref": ref,
+                    "include": sorted(client.include_kinds),
+                    "annotate": sorted(client.annotate_fields),
+                }
+            )
 
         elif msg_type == "debug_dump":
             if self.debug_ring is None:
-                await client.send({
-                    "type": "error", "ref": ref,
-                    "msg": "debug ring disabled in gateway config",
-                })
+                await client.send(
+                    {
+                        "type": "error",
+                        "ref": ref,
+                        "msg": "debug ring disabled in gateway config",
+                    }
+                )
             else:
-                await client.send({
-                    "type": "debug_dump",
-                    "ref": ref,
-                    "jsonl": self.debug_ring.dump_jsonl(),
-                    "size_bytes": self.debug_ring.byte_count,
-                    "record_count": self.debug_ring.record_count,
-                    "ring_capacity_bytes": self.debug_ring.size_bytes,
-                })
+                await client.send(
+                    {
+                        "type": "debug_dump",
+                        "ref": ref,
+                        "jsonl": self.debug_ring.dump_jsonl(),
+                        "size_bytes": self.debug_ring.byte_count,
+                        "record_count": self.debug_ring.record_count,
+                        "ring_capacity_bytes": self.debug_ring.size_bytes,
+                    }
+                )
 
         elif msg_type == "update":
             if not self.config.get("allow_remote_update", True):
@@ -482,7 +518,8 @@ class GatewayServer:
         if self._preauth_count >= self._preauth_max:
             log.warning(
                 "Pre-auth connection cap (%d) reached; rejecting %s",
-                self._preauth_max, websocket.remote_address,
+                self._preauth_max,
+                websocket.remote_address,
             )
             with contextlib.suppress(Exception):
                 await websocket.close(code=1013, reason="try later")
@@ -514,14 +551,19 @@ class GatewayServer:
         except SlotPoolExhausted:
             log.warning(
                 "Slot pool exhausted (%d in use); rejecting %s",
-                self.slot_pool.in_use_count, websocket.remote_address,
+                self.slot_pool.in_use_count,
+                websocket.remote_address,
             )
             with contextlib.suppress(Exception):
-                await websocket.send(json.dumps({
-                    "type": "error",
-                    "code": "slot_pool_full",
-                    "msg": f"gateway accepts max {self.slot_pool.size} concurrent clients",
-                }))
+                await websocket.send(
+                    json.dumps(
+                        {
+                            "type": "error",
+                            "code": "slot_pool_full",
+                            "msg": f"gateway accepts max {self.slot_pool.size} concurrent clients",
+                        }
+                    )
+                )
             return
 
         client = ClientConnection(websocket, session, self.no_encrypt, sid=sid)
@@ -529,16 +571,22 @@ class GatewayServer:
         log.info("Active clients: %d (slot %d)", len(self._clients), sid)
 
         # Tell the client its assigned slot + server wall time.
-        await client.send({
-            "type": "hello",
-            "sid": sid,
-            "pool_size": self.slot_pool.size,
-            "server_time": time.time(),
-        })
+        await client.send(
+            {
+                "type": "hello",
+                "sid": sid,
+                "pool_size": self.slot_pool.size,
+                "server_time": time.time(),
+            }
+        )
 
         log_event(
-            log, VERBOSE, "ws_connect",
-            port="ws", peer=f"ws:{sid}", sid=sid,
+            log,
+            VERBOSE,
+            "ws_connect",
+            port="ws",
+            peer=f"ws:{sid}",
+            sid=sid,
             ctx={
                 "addr": str(websocket.remote_address),
                 "encrypted": not self.no_encrypt,
@@ -554,8 +602,12 @@ class GatewayServer:
             self._clients.discard(client)
             self.slot_pool.release(sid)
             log_event(
-                log, VERBOSE, "ws_disconnect",
-                port="ws", peer=f"ws:{sid}", sid=sid,
+                log,
+                VERBOSE,
+                "ws_disconnect",
+                port="ws",
+                peer=f"ws:{sid}",
+                sid=sid,
                 ctx={"remaining_clients": len(self._clients)},
             )
             if self._clients:
@@ -575,7 +627,10 @@ class GatewayServer:
             r = await asyncio.to_thread(
                 subprocess.run,
                 ["git", "pull", "--ff-only"],
-                cwd=INSTALL_DIR, capture_output=True, text=True, timeout=30,
+                cwd=INSTALL_DIR,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             steps.append(("git_pull", r.returncode == 0, r.stdout.strip() or r.stderr.strip()))
             if r.returncode != 0:
@@ -586,7 +641,10 @@ class GatewayServer:
             r = await asyncio.to_thread(
                 subprocess.run,
                 [pip, "install", "-q", "-e", "packages/blaueis-core", "-e", "packages/blaueis-gateway"],
-                cwd=INSTALL_DIR, capture_output=True, text=True, timeout=60,
+                cwd=INSTALL_DIR,
+                capture_output=True,
+                text=True,
+                timeout=60,
             )
             steps.append(("pip_install", r.returncode == 0, r.stderr.strip()[:200] if r.returncode != 0 else "ok"))
 
@@ -653,7 +711,9 @@ class GatewayServer:
             result = await asyncio.to_thread(
                 subprocess.run,
                 ["journalctl", "-t", sid, "-n", str(n), "--no-pager", "-o", "short-iso"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if result.stdout.strip():
                 return result.stdout.strip().splitlines()
@@ -685,15 +745,17 @@ class GatewayServer:
                 log.info("  | %s", line)
 
             if self._clients and lines:
-                await self._broadcast({
-                    "type": "journal",
-                    "lines": lines,
-                    "state": proto.state,
-                    "clients": len(self._clients),
-                    "tx_queue": proto._tx_queue.qsize(),
-                    "tx_queue_max": proto._tx_queue.maxsize,
-                    "last_frame_age": round(silence_age),
-                })
+                await self._broadcast(
+                    {
+                        "type": "journal",
+                        "lines": lines,
+                        "state": proto.state,
+                        "clients": len(self._clients),
+                        "tx_queue": proto._tx_queue.qsize(),
+                        "tx_queue_max": proto._tx_queue.maxsize,
+                        "last_frame_age": round(silence_age),
+                    }
+                )
 
     async def _uart_loop(self):
         """Open UART and run the protocol state machine."""
@@ -853,10 +915,12 @@ def main():
 
     stream = logging.StreamHandler()
     stream.setLevel(log_level)
-    stream.setFormatter(logging.Formatter(
-        fmt="%(asctime)s %(name)s %(levelname)s %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    ))
+    stream.setFormatter(
+        logging.Formatter(
+            fmt="%(asctime)s %(name)s %(levelname)s %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
     root.addHandler(stream)
 
     debug_ring: DebugRing | None = None

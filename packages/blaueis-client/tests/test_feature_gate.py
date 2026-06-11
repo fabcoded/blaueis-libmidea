@@ -4,6 +4,7 @@ Policy: if B5 capability processing marked a field as feature_available=never,
 the device does not support the feature. Reject the write with a stable reason
 string; never raise.
 """
+
 from __future__ import annotations
 
 import logging
@@ -61,6 +62,7 @@ class TestCommandIntegration:
         db._status["fields"].setdefault("breezeless", {})["feature_available"] = "excluded"
 
         sent = []
+
         async def fake_send(frame_hex: str) -> None:
             sent.append(frame_hex)
 
@@ -79,11 +81,13 @@ class TestCommandIntegration:
         db._status["fields"].setdefault("breezeless", {})["feature_available"] = "excluded"
 
         sent = []
+
         async def fake_send(frame_hex: str) -> None:
             sent.append(frame_hex)
 
         result = await db.command(
-            {"breezeless": True, "target_temperature": 22.0}, fake_send,
+            {"breezeless": True, "target_temperature": 22.0},
+            fake_send,
         )
         assert "breezeless" in result["rejected"]
         assert result["expanded"].get("target_temperature") == 22.0

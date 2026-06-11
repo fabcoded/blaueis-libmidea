@@ -112,8 +112,7 @@ class HvacClient:
                         msg = json.loads(self._session.decrypt(first))
                     except InvalidTag:
                         raise AuthenticationError(
-                            "PSK mismatch — key confirmation failed on the "
-                            "gateway's first encrypted message"
+                            "PSK mismatch — key confirmation failed on the gateway's first encrypted message"
                         ) from None
                     if msg.get("type") == "hello":
                         self._handle_hello(msg)
@@ -121,13 +120,10 @@ class HvacClient:
                         log.warning("First encrypted message was %s, not hello", msg.get("type"))
                 elif first.get("type") == "error":
                     raise HandshakeError(
-                        f"Gateway refused connection: {first.get('code', 'error')} — "
-                        f"{first.get('msg', '')}"
+                        f"Gateway refused connection: {first.get('code', 'error')} — {first.get('msg', '')}"
                     )
                 else:
-                    raise HandshakeError(
-                        f"Expected encrypted slot-hello after handshake, got {first.get('type')!r}"
-                    )
+                    raise HandshakeError(f"Expected encrypted slot-hello after handshake, got {first.get('type')!r}")
                 log.info("Encrypted session established (key confirmed)")
             else:
                 log.info("Connected without encryption")
@@ -160,8 +156,11 @@ class HvacClient:
             await self._ws.send(json.dumps(msg))
         # Ring event — omit from regular log flow (VERBOSE, propagate=False).
         log_event(
-            log, _VERBOSE, "ws_out",
-            port="ws", peer=f"ws:{self.gw_session.sid}" if self.gw_session.sid is not None else "ws:?",
+            log,
+            _VERBOSE,
+            "ws_out",
+            port="ws",
+            peer=f"ws:{self.gw_session.sid}" if self.gw_session.sid is not None else "ws:?",
             sid=self.gw_session.sid,
             req_id=msg.get("ref"),
             ctx={"type": msg.get("type")},
@@ -172,8 +171,11 @@ class HvacClient:
         raw = await self._ws.recv()
         msg = self._session.decrypt_json(raw) if self._session and not self.no_encrypt else json.loads(raw)
         log_event(
-            log, _VERBOSE, "ws_in",
-            port="ws", peer=f"ws:{self.gw_session.sid}" if self.gw_session.sid is not None else "ws:?",
+            log,
+            _VERBOSE,
+            "ws_in",
+            port="ws",
+            peer=f"ws:{self.gw_session.sid}" if self.gw_session.sid is not None else "ws:?",
             sid=self.gw_session.sid,
             req_id=msg.get("ref"),
             ctx={"type": msg.get("type")},
@@ -215,7 +217,8 @@ class HvacClient:
         """
         ref = self._next_ref()
         msg = {
-            "type": "subscribe", "ref": ref,
+            "type": "subscribe",
+            "ref": ref,
             "include": list(include) if include is not None else ["rx"],
             "annotate": list(annotate) if annotate is not None else [],
         }
@@ -277,9 +280,7 @@ class HvacClient:
                 if msg_type == "error" and msg.get("ref") in self._pending_replies:
                     fut = self._pending_replies[msg["ref"]]
                     if not fut.done():
-                        fut.set_exception(
-                            RuntimeError(f"gateway error: {msg.get('msg', '')}")
-                        )
+                        fut.set_exception(RuntimeError(f"gateway error: {msg.get('msg', '')}"))
 
                 for listener in self._listeners:
                     listener(msg)
@@ -292,8 +293,11 @@ class HvacClient:
         self.gw_session.pool_size = msg.get("pool_size")
         self.gw_session.server_time_at_connect = float(msg.get("server_time", 0.0))
         log_event(
-            log, _VERBOSE, "ws_connect",
-            port="ws", peer=f"ws:{self.gw_session.sid}",
+            log,
+            _VERBOSE,
+            "ws_connect",
+            port="ws",
+            peer=f"ws:{self.gw_session.sid}",
             sid=self.gw_session.sid,
             ctx={
                 "pool_size": self.gw_session.pool_size,
@@ -303,7 +307,8 @@ class HvacClient:
         )
         log.info(
             "Gateway assigned sid=%s (pool size %s)",
-            self.gw_session.sid, self.gw_session.pool_size,
+            self.gw_session.sid,
+            self.gw_session.pool_size,
         )
 
     def add_listener(self, callback):

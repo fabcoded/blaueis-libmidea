@@ -1,4 +1,5 @@
 """Tests for StatusDB optimistic write path — value persistence + callback dispatch."""
+
 from __future__ import annotations
 
 from blaueis.client.status_db import StatusDB
@@ -38,7 +39,7 @@ def test_no_callback_when_value_unchanged() -> None:
     events: list[tuple] = []
     db.on_state_change = lambda f, new, old: events.append(f)
 
-    db._apply_optimistic({"eco_mode": True})   # same value
+    db._apply_optimistic({"eco_mode": True})  # same value
     db._flush_events()
     assert events == []
 
@@ -67,15 +68,14 @@ def test_optimistic_slot_loses_to_newer_real_slot() -> None:
     convention); a subsequent real response with a newer ISO ts must
     win the read. Mixed float/string ts would raise in _newest.max()."""
     from datetime import UTC, datetime
+
     db = _fresh_db()
     db._apply_optimistic({"eco_mode": True})
 
     # Simulate a real AC response arriving a minute later — ISO string ts
     # is what process_data_frame actually writes.
     later_iso = datetime(2099, 1, 1, tzinfo=UTC).isoformat()
-    write_field(db._status, "eco_mode", False,
-                source="rsp_0xc0", generation="legacy",
-                ts=later_iso)
+    write_field(db._status, "eco_mode", False, source="rsp_0xc0", generation="legacy", ts=later_iso)
 
     r = read_field(db._status, "eco_mode")
     assert r["value"] is False

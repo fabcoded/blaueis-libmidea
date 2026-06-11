@@ -5,6 +5,7 @@ excludes the current mode get forced to their default value on the
 outgoing frame. Fields without a ``ux`` block, or explicitly present in
 ``changes``, are unaffected.
 """
+
 from __future__ import annotations
 
 import copy
@@ -14,6 +15,7 @@ from blaueis.core.codec import load_glossary
 from blaueis.core.command import build_command_body
 
 # ── Helpers ─────────────────────────────────────────────────────────────
+
 
 def _glossary_with_ux(base: dict, field_name: str, visible_in_modes: list) -> dict:
     """Return a deep-copied glossary with a ``ux.visible_in_modes`` block
@@ -32,6 +34,7 @@ def _status_with_field(glossary, field_name: str, value, mode: int, ts: float = 
     operating_mode. Each field's `sources` block holds one fresh slot.
     """
     from blaueis.core.query import write_field
+
     status: dict = {"fields": {}, "meta": {}}
     write_field(status, field_name, value, ts=ts)
     write_field(status, "operating_mode", mode, ts=ts)
@@ -39,6 +42,7 @@ def _status_with_field(glossary, field_name: str, value, mode: int, ts: float = 
 
 
 # ── Tests ───────────────────────────────────────────────────────────────
+
 
 def test_stale_masked_field_zeroed_on_mode_change() -> None:
     """Status=cool with eco=True. changes={mode:heat} and eco visible only
@@ -48,12 +52,16 @@ def test_stale_masked_field_zeroed_on_mode_change() -> None:
     status = _status_with_field(g, "eco_mode", True, mode=2)
 
     result = build_command_body(
-        status, changes={"operating_mode": 4}, glossary=g, skip_preflight=True,
+        status,
+        changes={"operating_mode": 4},
+        glossary=g,
+        skip_preflight=True,
     )
     assert result["body"] is not None
     # Re-parse to confirm eco bit is off. We use the same glossary decode
     # path — if eco_mode was encoded True we'd see True here.
     from blaueis.core.codec import decode_frame_fields
+
     decoded = decode_frame_fields(bytes(result["body"]), "cmd_0x40", g)
     assert decoded["eco_mode"]["value"] is False
 
@@ -68,9 +76,11 @@ def test_explicit_set_of_masked_field_passes_through() -> None:
     result = build_command_body(
         status,
         changes={"operating_mode": 4, "eco_mode": True},
-        glossary=g, skip_preflight=True,
+        glossary=g,
+        skip_preflight=True,
     )
     from blaueis.core.codec import decode_frame_fields
+
     decoded = decode_frame_fields(bytes(result["body"]), "cmd_0x40", g)
     assert decoded["eco_mode"]["value"] is True
 
@@ -82,9 +92,13 @@ def test_no_ux_block_unaffected() -> None:
     status = _status_with_field(base, "eco_mode", True, mode=2)
 
     result = build_command_body(
-        status, changes={"operating_mode": 2}, glossary=base, skip_preflight=True,
+        status,
+        changes={"operating_mode": 2},
+        glossary=base,
+        skip_preflight=True,
     )
     from blaueis.core.codec import decode_frame_fields
+
     decoded = decode_frame_fields(bytes(result["body"]), "cmd_0x40", base)
     # status had eco=True, no ux masking in base glossary, mode unchanged ->
     # outgoing eco must be True.
@@ -101,9 +115,13 @@ def test_mask_uses_new_mode_when_changes_includes_operating_mode() -> None:
     status = _status_with_field(g, "eco_mode", True, mode=2)  # cool
 
     result = build_command_body(
-        status, changes={"operating_mode": 4}, glossary=g, skip_preflight=True,
+        status,
+        changes={"operating_mode": 4},
+        glossary=g,
+        skip_preflight=True,
     )
     from blaueis.core.codec import decode_frame_fields
+
     decoded = decode_frame_fields(bytes(result["body"]), "cmd_0x40", g)
     assert decoded["eco_mode"]["value"] is False
 
@@ -115,8 +133,12 @@ def test_mode_in_visible_list_passes() -> None:
     status = _status_with_field(g, "eco_mode", True, mode=2)  # cool
 
     result = build_command_body(
-        status, changes={"operating_mode": 2}, glossary=g, skip_preflight=True,
+        status,
+        changes={"operating_mode": 2},
+        glossary=g,
+        skip_preflight=True,
     )
     from blaueis.core.codec import decode_frame_fields
+
     decoded = decode_frame_fields(bytes(result["body"]), "cmd_0x40", g)
     assert decoded["eco_mode"]["value"] is True

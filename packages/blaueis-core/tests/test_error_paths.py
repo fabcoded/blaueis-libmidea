@@ -14,7 +14,7 @@ from blaueis.core.frame import FrameError, build_frame, parse_frame, validate_fr
 
 def test_parse_frame_truncated():
     with pytest.raises(FrameError, match="too short"):
-        parse_frame(b"\xAA\x0B\xAC")
+        parse_frame(b"\xaa\x0b\xac")
 
 
 def test_parse_frame_wrong_start_byte():
@@ -26,7 +26,7 @@ def test_parse_frame_wrong_start_byte():
 def test_parse_frame_length_mismatch():
     # Start byte OK, but declared length exceeds data
     with pytest.raises(FrameError, match="truncated"):
-        parse_frame(b"\xAA\xFF\xAC" + b"\x00" * 10)
+        parse_frame(b"\xaa\xff\xac" + b"\x00" * 10)
 
 
 def test_parse_frame_empty():
@@ -36,7 +36,7 @@ def test_parse_frame_empty():
 
 def test_parse_frame_single_byte():
     with pytest.raises(FrameError):
-        parse_frame(b"\xAA")
+        parse_frame(b"\xaa")
 
 
 # ── validate_frame error paths ──────────────────────────────────────────
@@ -48,6 +48,7 @@ def test_validate_frame_bad_crc():
     frame[-2] ^= 0xFF  # flip CRC
     # Recalculate checksum so only CRC fails
     from blaueis.core.frame import frame_checksum
+
     frame[-1] = frame_checksum(frame)
     with pytest.raises(FrameError, match="CRC"):
         validate_frame(bytes(frame))
@@ -79,7 +80,7 @@ def test_build_frame_empty_body():
 
 def test_build_frame_round_trip():
     """build_frame → parse_frame should preserve msg_type and body."""
-    body = b"\xC0\x01\x02\x03"
+    body = b"\xc0\x01\x02\x03"
     frame = build_frame(body=body, msg_type=0x02, appliance=0xAC)
     parsed = parse_frame(frame)
     assert parsed["body"] == body

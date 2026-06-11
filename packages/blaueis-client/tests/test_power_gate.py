@@ -5,6 +5,7 @@ only `power` itself may be written. Any other field is rejected so ghost
 optimistic writes don't desynchronize status from hardware (the device
 ignores non-power writes while off).
 """
+
 from __future__ import annotations
 
 import logging
@@ -41,7 +42,9 @@ class TestPowerGate:
             {"power": True, "target_temperature": 22.0, "operating_mode": 2},
         )
         assert accepted == {
-            "power": True, "target_temperature": 22.0, "operating_mode": 2,
+            "power": True,
+            "target_temperature": 22.0,
+            "operating_mode": 2,
         }
         assert rejected == {}
 
@@ -92,6 +95,7 @@ class TestCommandIntegration:
         write_field(db._status, "power", False, ts=1.0)
 
         sent = []
+
         async def fake_send(frame_hex: str) -> None:
             sent.append(frame_hex)
 
@@ -106,11 +110,13 @@ class TestCommandIntegration:
         write_field(db._status, "power", False, ts=1.0)
 
         sent = []
+
         async def fake_send(frame_hex: str) -> None:
             sent.append(frame_hex)
 
         result = await db.command(
-            {"power": True, "target_temperature": 22.0}, fake_send,
+            {"power": True, "target_temperature": 22.0},
+            fake_send,
         )
         assert result["expanded"].get("power") is True
         assert result["expanded"].get("target_temperature") == 22.0

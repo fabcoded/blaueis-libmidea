@@ -6,6 +6,7 @@ audit trail; never raise. Tests drive `_apply_constraint_gate` directly
 
 Usage: python -m pytest packages/blaueis-client/tests/test_constraint_gate.py -v
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,7 +32,9 @@ class TestValidRange:
         _seed_constraints(db, "target_temperature", {"valid_range": [16.0, 30.0]})
         with caplog.at_level(logging.WARNING, logger="blaueis.device"):
             out = db._apply_constraint_gate(
-                {"target_temperature": 40.0}, af, effective_mode=2,
+                {"target_temperature": 40.0},
+                af,
+                effective_mode=2,
             )
         assert out["target_temperature"] == 30.0
         assert any("clamped" in r.message for r in caplog.records)
@@ -41,7 +44,9 @@ class TestValidRange:
         _seed_constraints(db, "target_temperature", {"valid_range": [16.0, 30.0]})
         with caplog.at_level(logging.WARNING, logger="blaueis.device"):
             out = db._apply_constraint_gate(
-                {"target_temperature": 5.0}, af, effective_mode=2,
+                {"target_temperature": 5.0},
+                af,
+                effective_mode=2,
             )
         assert out["target_temperature"] == 16.0
 
@@ -50,7 +55,9 @@ class TestValidRange:
         _seed_constraints(db, "target_temperature", {"valid_range": [16.0, 30.0]})
         with caplog.at_level(logging.WARNING, logger="blaueis.device"):
             out = db._apply_constraint_gate(
-                {"target_temperature": 22.0}, af, effective_mode=2,
+                {"target_temperature": 22.0},
+                af,
+                effective_mode=2,
             )
         assert out["target_temperature"] == 22.0
         assert not any("clamped" in r.message for r in caplog.records)
@@ -78,7 +85,9 @@ class TestValidSet:
         _seed_constraints(db, "anion_ionizer", {"valid_set": []})
         with caplog.at_level(logging.WARNING, logger="blaueis.device"):
             out = db._apply_constraint_gate(
-                {"anion_ionizer": True}, af, effective_mode=2,
+                {"anion_ionizer": True},
+                af,
+                effective_mode=2,
             )
         # anion_ionizer is data_type=bool so it's skipped — use a non-bool
         # field to test the empty-set drop path
@@ -97,40 +106,58 @@ class TestByMode:
     def test_selects_mode_envelope(self, caplog):
         """by_mode['cool'] should be used over flat envelope when mode=2."""
         db, af = _db()
-        _seed_constraints(db, "target_temperature", {
-            "by_mode": {
-                "cool": {"valid_range": [17.0, 29.0]},
-                "heat": {"valid_range": [16.0, 30.0]},
+        _seed_constraints(
+            db,
+            "target_temperature",
+            {
+                "by_mode": {
+                    "cool": {"valid_range": [17.0, 29.0]},
+                    "heat": {"valid_range": [16.0, 30.0]},
+                },
             },
-        })
+        )
         with caplog.at_level(logging.WARNING, logger="blaueis.device"):
             out = db._apply_constraint_gate(
-                {"target_temperature": 30.0}, af, effective_mode=2,  # cool
+                {"target_temperature": 30.0},
+                af,
+                effective_mode=2,  # cool
             )
         assert out["target_temperature"] == 29.0
 
     def test_selects_heat_mode_envelope(self):
         db, af = _db()
-        _seed_constraints(db, "target_temperature", {
-            "by_mode": {
-                "cool": {"valid_range": [17.0, 29.0]},
-                "heat": {"valid_range": [16.0, 30.0]},
+        _seed_constraints(
+            db,
+            "target_temperature",
+            {
+                "by_mode": {
+                    "cool": {"valid_range": [17.0, 29.0]},
+                    "heat": {"valid_range": [16.0, 30.0]},
+                },
             },
-        })
+        )
         out = db._apply_constraint_gate(
-            {"target_temperature": 30.0}, af, effective_mode=4,  # heat
+            {"target_temperature": 30.0},
+            af,
+            effective_mode=4,  # heat
         )
         assert out["target_temperature"] == 30.0  # 30 is valid in heat
 
     def test_missing_mode_falls_back_to_flat(self):
         """When by_mode lacks entry for current mode, use the top-level envelope."""
         db, af = _db()
-        _seed_constraints(db, "target_temperature", {
-            "valid_range": [16.0, 30.0],
-            "by_mode": {"cool": {"valid_range": [17.0, 29.0]}},
-        })
+        _seed_constraints(
+            db,
+            "target_temperature",
+            {
+                "valid_range": [16.0, 30.0],
+                "by_mode": {"cool": {"valid_range": [17.0, 29.0]}},
+            },
+        )
         out = db._apply_constraint_gate(
-            {"target_temperature": 30.0}, af, effective_mode=5,  # fan — no entry
+            {"target_temperature": 30.0},
+            af,
+            effective_mode=5,  # fan — no entry
         )
         assert out["target_temperature"] == 30.0
 
@@ -149,14 +176,18 @@ class TestSkips:
         # pre-B5 state for a field whose glossary has no capability.default.
         db._status["fields"]["target_temperature"]["active_constraints"] = {}
         out = db._apply_constraint_gate(
-            {"target_temperature": 99.0}, af, effective_mode=2,
+            {"target_temperature": 99.0},
+            af,
+            effective_mode=2,
         )
         assert out["target_temperature"] == 99.0
 
     def test_unknown_field_passthrough(self):
         db, af = _db()
         out = db._apply_constraint_gate(
-            {"not_a_field": 12345}, af, effective_mode=2,
+            {"not_a_field": 12345},
+            af,
+            effective_mode=2,
         )
         assert out["not_a_field"] == 12345
 
@@ -172,6 +203,7 @@ class TestCommandIntegration:
         _seed_constraints(db, "target_temperature", {"valid_range": [17.0, 29.0]})
 
         sent = []
+
         async def fake_send(frame_hex: str) -> None:
             sent.append(frame_hex)
 
@@ -215,6 +247,7 @@ class TestMutexChainCrossesModeGate:
         }
 
         sent = []
+
         async def fake_send(frame_hex: str) -> None:
             sent.append(frame_hex)
 

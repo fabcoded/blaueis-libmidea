@@ -65,8 +65,8 @@ IGNORE_MSGS = {0x61}  # time sync — dongle doesn't respond
 
 # Correlation — advisory annotation only, never gates frame processing.
 # See flight_recorder.md §1.1 and §4.5.
-CORRELATION_TTL = 2.0       # drop outstanding TX older than this
-HEURISTIC_WINDOW = 0.5      # nearest-TX heuristic falls off after this
+CORRELATION_TTL = 2.0  # drop outstanding TX older than this
+HEURISTIC_WINDOW = 0.5  # nearest-TX heuristic falls off after this
 
 
 class UartProtocol:
@@ -153,7 +153,9 @@ class UartProtocol:
                 meta["req_id"] = req_id
             if msg_id is not None:
                 self._record_outstanding_tx(
-                    msg_id, origin=origin, req_id=req_id,
+                    msg_id,
+                    origin=origin,
+                    req_id=req_id,
                     tx_seq=self._tx_seq,
                 )
         elif direction == "rx" and msg_id is not None:
@@ -260,7 +262,10 @@ class UartProtocol:
             return
         self._tx_seq += 1
         self._record_outstanding_tx(
-            msg_id, origin=origin, req_id=req_id, tx_seq=self._tx_seq,
+            msg_id,
+            origin=origin,
+            req_id=req_id,
+            tx_seq=self._tx_seq,
         )
 
     async def _read_one_frame(self, reader) -> bytes | None:
@@ -483,18 +488,21 @@ class UartProtocol:
             await writer.drain()
             if self.mirror_tx_all:
                 self._forward_to_client(
-                    tx_frame, direction="tx",
-                    origin=tx_origin, req_id=tx_req_id,
+                    tx_frame,
+                    direction="tx",
+                    origin=tx_origin,
+                    req_id=tx_req_id,
                 )
             else:
                 # No WS mirror, but record for RX correlation.
                 self._record_tx_for_correlation(
-                    tx_frame, origin=tx_origin, req_id=tx_req_id,
+                    tx_frame,
+                    origin=tx_origin,
+                    req_id=tx_req_id,
                 )
             spacing = self.config.get("frame_spacing_ms", 150) / 1000.0
             await asyncio.sleep(spacing)
-            log.debug("TX queued frame (%d bytes, %s ref=%s)",
-                      len(tx_frame), tx_origin, tx_req_id)
+            log.debug("TX queued frame (%d bytes, %s ref=%s)", len(tx_frame), tx_origin, tx_req_id)
         except asyncio.QueueEmpty:
             pass
 

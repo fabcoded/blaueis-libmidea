@@ -1,4 +1,5 @@
 """Tests for UART TX/RX correlation and provenance threading."""
+
 from __future__ import annotations
 
 import time
@@ -19,17 +20,19 @@ def _frame(msg_id: int) -> bytes:
 
 # ── msg_id extractor ─────────────────────────────────────────────────────
 
+
 def testextract_msg_id_happy() -> None:
     assert extract_msg_id(_frame(0x41)) == 0x41
     assert extract_msg_id(_frame(0xC0)) == 0xC0
 
 
 def testextract_msg_id_rejects_short_and_wrong_sync() -> None:
-    assert extract_msg_id(b"\xAA\x01") is None
+    assert extract_msg_id(b"\xaa\x01") is None
     assert extract_msg_id(b"\x55" + _frame(0x41)[1:]) is None
 
 
 # ── Callback meta + correlation ───────────────────────────────────────────
+
 
 def test_tx_emits_meta_with_origin_req_id_tx_seq() -> None:
     proto = UartProtocol(config={"frame_spacing_ms": 0})
@@ -56,7 +59,9 @@ def test_rx_after_matching_tx_is_confirmed() -> None:
 
     rx_meta = records[-1]
     assert rx_meta["reply_to"] == {
-        "req_id": 99, "origin": "ws:2", "confidence": "confirmed",
+        "req_id": 99,
+        "origin": "ws:2",
+        "confidence": "confirmed",
     }
 
 
@@ -123,6 +128,7 @@ def test_same_msg_id_retx_overwrites_outstanding() -> None:
 
 
 # ── queue_frame provenance ────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_queue_frame_stores_origin_and_req_id() -> None:

@@ -172,11 +172,7 @@ def validate_set(
         )
 
     values_block = fdef.get("values")
-    if (
-        values_block
-        and isinstance(values_block, dict)
-        and not isinstance(value, bool)
-    ):
+    if values_block and isinstance(values_block, dict) and not isinstance(value, bool):
         allowed = _enum_raws(values_block)
         if allowed and value not in allowed:
             return NotInEnum(

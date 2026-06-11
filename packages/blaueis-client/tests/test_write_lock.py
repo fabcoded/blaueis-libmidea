@@ -131,9 +131,7 @@ async def test_concurrent_toggle_display_serialised():
     await asyncio.gather(task1, task2)
 
     # Strict interleaving: enter-exit-enter-exit, never enter-enter-exit-exit.
-    assert send_order == ["enter", "exit", "enter", "exit"], (
-        f"writes interleaved: {send_order}"
-    )
+    assert send_order == ["enter", "exit", "enter", "exit"], f"writes interleaved: {send_order}"
     assert len(ws.sent) == 2
 
 
@@ -189,9 +187,7 @@ async def test_external_caller_can_bundle_sequence_under_write_lock():
         task = asyncio.create_task(other_caller())
         await other_call_started.wait()
         await asyncio.sleep(0.05)
-        assert not other_call_finished.is_set(), (
-            "other caller should be blocked while external holder owns the lock"
-        )
+        assert not other_call_finished.is_set(), "other caller should be blocked while external holder owns the lock"
         # External caller emits a frame themselves — nothing else can interleave.
         await ws.send('{"type":"frame","hex":"aa","ts":0,"dir":"tx"}')
     await asyncio.wait_for(task, timeout=1.0)
