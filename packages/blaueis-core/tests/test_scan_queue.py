@@ -91,7 +91,11 @@ def main():
     check("uart resolved: includes group5", "cmd_0x41_group5" in q2_fids, f"got {q2_labels}")
     check("uart resolved: includes group1 (bus-agnostic since S15)", "cmd_0x41_group1" in q2_fids, f"got {q2_labels}")
     check("uart resolved: includes group3 (bus-agnostic since S15)", "cmd_0x41_group3" in q2_fids, f"got {q2_labels}")
-    check("uart resolved: includes cmd_0x41_ext", "cmd_0x41_ext" in q2_fids, f"got {q2_labels}")
+    # cmd_0x41_ext is probe-only since the defrost consolidation: the
+    # remaining sub02 fields also decode from rsp_0xc0, so the planner's
+    # first-match-wins never schedules ext (probe coverage lives in
+    # scan_queries.py / test_scan_queries.py).
+    check("uart resolved: cmd_0x41_ext not planned (probe-only)", "cmd_0x41_ext" not in q2_fids, f"got {q2_labels}")
 
     # ── Group 4 power bug-fix regression on the actual wire bytes ───
     group4_frame = next((f for lbl, f in q2 if "group4_power" in lbl), None)

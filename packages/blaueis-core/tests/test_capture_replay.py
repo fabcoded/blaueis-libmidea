@@ -42,7 +42,8 @@ def _value(status, name):
 REPO_TESTCASES = Path(__file__).resolve().parent / "test-cases"
 FIXTURE = REPO_TESTCASES / "xtremesaveblue_s11_frames" / "c0_window_servicemenu.yaml"
 
-# 11 fields promoted from `capability` to `readable` by §2.
+# 9 fields promoted from `capability` to `readable` by §2 (silky_cool and
+# humidity_setpoint moved back to capability-gated — cap-hidden pre-B5).
 PROMOTED_FIELDS = [
     "temperature_unit",
     "louver_swing_vertical",
@@ -52,9 +53,7 @@ PROMOTED_FIELDS = [
     "fan_speed",
     "frost_protection",
     "auxiliary_heat_level",
-    "silky_cool",
     "screen_display",
-    "humidity_setpoint",
 ]
 
 # Per-field expected type after decoding from C0. Most are bool because
@@ -68,9 +67,7 @@ EXPECTED_TYPE = {
     "fan_speed": (int,),
     "frost_protection": (bool,),
     "auxiliary_heat_level": (int,),
-    "silky_cool": (bool,),
     "screen_display": (int,),
-    "humidity_setpoint": (int,),
 }
 
 # Per-field plausible range after decoding from C0.
@@ -78,7 +75,6 @@ PLAUSIBLE_RANGE = {
     "fan_speed": (0, 127),  # 7-bit field
     "auxiliary_heat_level": (0, 3),  # 2-bit field
     "screen_display": (0, 7),  # 3-bit field
-    "humidity_setpoint": (0, 100),  # 7-bit, percent
 }
 
 

@@ -2433,18 +2433,6 @@ fields:
             byte: record ID 0x1F, type 0x02, data byte[0]
             direction: capability
             section: §3.4.1
-        default:
-          description: 'Pre-B5: assume manual humidity available, 30-100% in 1% steps'
-          valid_range:
-          - 30
-          - 100
-          step: 1
-          correction: clamp
-          note: 'Permissive default applied at boot — the most generous cap_value
-
-            until B5 cap 0x1F arrives.
-
-            '
         values:
           none:
             raw: 0
@@ -3707,13 +3695,6 @@ fields:
             byte: record ID 0x18, type 0x00, data byte[0] != 0
             direction: capability
             section: §3.4.1
-        default:
-          description: 'Pre-B5: assume silky cool selectable (off / on)'
-          valid_set:
-          - false
-          - true
-          correction: snap_nearest
-          note: Permissive default applied at boot, replaced once B5 cap arrives.
         values:
           not_supported:
             raw: 0

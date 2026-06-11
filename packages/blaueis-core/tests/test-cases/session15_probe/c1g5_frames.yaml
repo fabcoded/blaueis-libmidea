@@ -22,5 +22,5 @@ frames:
       compressor_cumul_hours: 1915   # body[14..15] = 0x7B 0x07 → 0x077B = 1915 h
       # Existing fields for non-regression:
       humidity_actual: 0             # body[4] = 0x00
-      compensated_setpoint: 85       # body[5] = 0x55
+      compensated_setpoint: 27.5     # body[5] = 0x55 (raw 85, (raw-30)/2)
     notes: "indoor_fan_runtime and compressor_cumul_hours decoded via uint16_le encoding (full 16-bit value, not low byte only)."

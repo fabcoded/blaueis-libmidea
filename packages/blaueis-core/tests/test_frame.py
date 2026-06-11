@@ -95,9 +95,11 @@ def main():
     net_init = build_network_init(ip=(192, 168, 1, 100))
     ni_parsed = validate_frame(net_init)
     check("net init msg_type=0x0D", ni_parsed["msg_type"] == 0x0D)
-    # IP little-endian: 192.168.1.100 → body[4]=100, body[5]=1, body[6]=168, body[7]=192
-    check("net init IP LE byte[4]=100", ni_parsed["body"][4] == 100)
-    check("net init IP LE byte[7]=192", ni_parsed["body"][7] == 192)
+    # Wire-confirmed reversed octet order at body[3:7]:
+    # 192.168.1.100 → body[3]=100, body[4]=1, body[5]=168, body[6]=192
+    check("net init connected flag", ni_parsed["body"][0] == 0x01)
+    check("net init IP reversed byte[3]=100", ni_parsed["body"][3] == 100)
+    check("net init IP reversed byte[6]=192", ni_parsed["body"][6] == 192)
 
     # ── Network status response body ─────────────────────────────
     ns_body = build_network_status_response(ip=(192, 168, 179, 4), signal=4, connected=True)

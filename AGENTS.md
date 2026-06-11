@@ -16,7 +16,7 @@ from the repo root (shared config in `pyproject.toml`; ruff 0.11.x, pinned in `.
 cd packages/<pkg> && python3 -m pytest
 ```
 
-Approximate counts today: core 277 · gateway 45 · client 203 · tools 60. Tests must stay green. Legacy script-style gateway tests (`test_protocol.py`, `test_integration.py`, `test_uart_raw.py`, `test_configure.py`) are pytest-excluded; run them with `python3 tests/<name>.py`.
+Approximate counts today: core 280 · gateway 45 · client 203 · tools 60. Tests must stay green. Legacy script-style tests are pytest-excluded: blaueis-core's (`tests/conftest.py` `collect_ignore`) all run via `python3 scripts/run_excluded_tests.py` from the repo root (CI-gated); the gateway's (`test_protocol.py`, `test_integration.py`, `test_uart_raw.py`, `test_configure.py`) run with `python3 tests/<name>.py`.
 
 ## Behavior
 

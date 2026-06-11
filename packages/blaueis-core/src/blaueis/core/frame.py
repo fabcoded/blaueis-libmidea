@@ -446,13 +446,22 @@ def build_network_init(
     """MSG 0x0D — Network init (dongle announces its IP to the AC).
 
     Sent during ANNOUNCE after SN + model are known. Tells the AC the
-    dongle is online and ready. The IP is embedded in body[3:7].
+    dongle is online and ready. Body mirrors the OEM dongle byte-for-byte
+    (captures: traces Sessions 1 + 13): body[0]=0x01 connected,
+    body[1]=0x01, body[2]=0x04, body[3:7] = IP in REVERSED octet order,
+    body[7]=0xFF.
     """
     body = bytearray(20)
-    body[3] = ip[0]
-    body[4] = ip[1]
-    body[5] = ip[2]
-    body[6] = ip[3]
+    body[0] = 0x01
+    body[1] = 0x01
+    # 0x04 on the wire; possibly the real signal-strength slot (captured
+    # value 4) — single-frame evidence, unverified. See test_frame.py.
+    body[2] = 0x04
+    body[3] = ip[3]
+    body[4] = ip[2]
+    body[5] = ip[1]
+    body[6] = ip[0]
+    body[7] = 0xFF
     return build_frame(bytes(body), msg_type=0x0D, appliance=appliance, proto=proto, sub=sub)
 
 
@@ -466,17 +475,23 @@ def build_network_status_response(
     Returns the body only — caller wraps it with build_frame(body, msg_type=0x63, ...).
     The AC sends 0x63 queries periodically (~60s) to check connectivity.
 
-    Body layout:
-      [0]    = connection status (0x11 connected, 0x00 disconnected)
-      [2:6]  = IP address bytes
-      [8]    = signal strength (0–4)
+    Body layout (wire-confirmed — same shape as the 0x0D init frame;
+    captures: traces Sessions 1 + 13):
+      [0]    = connection status (0x01 connected, 0x00 disconnected)
+      [3:7]  = IP address in REVERSED octet order
+      [8]    = signal strength (0–4) — note the captured frame carries
+               0x00 here and 0x04 at body[2]; body[2] may be the real
+               signal slot (single-frame evidence, unverified)
     """
     body = bytearray(20)
-    body[0] = 0x11 if connected else 0x00
-    body[2] = ip[0]
-    body[3] = ip[1]
+    body[0] = 0x01 if connected else 0x00
+    body[1] = 0x01
+    body[2] = 0x04
+    body[3] = ip[3]
     body[4] = ip[2]
-    body[5] = ip[3]
+    body[5] = ip[1]
+    body[6] = ip[0]
+    body[7] = 0xFF
     body[8] = signal & 0xFF
     return bytes(body)
 

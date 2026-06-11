@@ -449,25 +449,25 @@ tests:
       value: 1915
 
   # Non-regression: existing G5 field still decodes correctly
-  - name: "G5 existing: compensated_setpoint=85"
+  - name: "G5 existing: compensated_setpoint=27.5"
     action: frame_no_b5
     source: "../session15_probe/c1g5_frames.yaml"
     index: 0
     check_field: compensated_setpoint
     assert:
-      value: 85
+      value: 27.5
 
   # ── Session 15 probe: B1 property responses ────────────────────
   # All B1 property fields are capability-gated → need B5 caps first.
   # Using xtremesaveblue_s1 B5 which has caps 0x42, 0x09, 0x0A, 0x48.
   # buzzer cap 0x2C is NOT in S1 B5 → stays 'excluded', tested separately.
 
-  - name: "B1 batch1: breezeless=1 (prop 0x42, cap-gated)"
+  - name: "B1 batch1: breeze_away=1 (prop 0x42, cap-gated)"
     action: b5_then_frame
     b5_source: "../xtremesaveblue_s1/b5_frames.yaml"
     source: "../session15_probe/b1_property_frames.yaml"
     index: 0
-    check_field: breezeless
+    check_field: breeze_away
     assert:
       value: 1
 

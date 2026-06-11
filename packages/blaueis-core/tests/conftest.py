@@ -20,7 +20,6 @@ collect_ignore = [
     "test_capture_replay.py",
     "test_category_boundary.py",
     "test_command_builder.py",
-    "test_crypto.py",
     "test_default_constraints.py",
     "test_dissector_gen.py",
     "test_field_query.py",

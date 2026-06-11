@@ -18,7 +18,7 @@ frames:
       # Properties with data:
       buzzer: true               # prop 0x1A,0x00 data=[0x01] → bool true (on)
       self_clean: false          # prop 0x39,0x00 data=[0x00] → bool false (off)
-      breezeless: 1              # prop 0x42,0x00 data=[0x01] → mode 1
+      breeze_away: 1             # prop 0x42,0x00 data=[0x01]
       # Properties with data_len=0 (not supported on this unit):
       # 0x15 indoor_humidity, 0x3F error_code, 0x41 mode_query,
       # 0x18 breezeless, 0x32 wind_straight

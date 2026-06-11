@@ -19,7 +19,6 @@ import yaml
 TOOLS = Path(__file__).resolve().parents[1]
 TESTS = Path(__file__).resolve().parent / "test-cases"
 SPEC = Path(__file__).resolve().parents[2] / "spec"
-DISSECTOR = Path(__file__).resolve().parents[4] / "tools" / "dissector"
 
 from blaueis.core.codec import build_field_map, decode_frame_fields, load_glossary  # noqa: E402
 
@@ -197,22 +196,30 @@ def main():
                 print(f"  [PASS] {name} ({len(reg_result)} fields)")
                 passed += 1
 
-    # Verify glossary code is injected in the dissector between markers
-    dissector_file = DISSECTOR / "HVAC-shark_mid-xye.lua"
-    if dissector_file.exists():
-        dissector_src = dissector_file.read_text(encoding="utf-8")
-        has_start = "GLOSSARY-GEN-START" in dissector_src
-        has_end = "GLOSSARY-GEN-END" in dissector_src
-        has_c0 = "GLOSSARY_C0" in dissector_src
-        if has_start and has_end and has_c0:
-            print(f"\n  [PASS] Glossary code injected inline in {dissector_file.name}")
-            passed += 1
-        else:
-            print(f"\n  [FAIL] Glossary markers or tables missing in {dissector_file.name}")
-            failed += 1
+    # Verify glossary code is injected in the dissector between markers.
+    # The dissector lives in the sibling blaueis-hvacshark repo; sub-projects
+    # stand alone, so there is no hardcoded sibling path here. Point
+    # BLAUEIS_DISSECTOR_DIR at a checkout's tools/dissector to enable the
+    # check; unset, it SKIPs (the registry-vs-codec checks above still ran).
+    dissector_dir = os.environ.get("BLAUEIS_DISSECTOR_DIR")
+    if not dissector_dir:
+        print("\n  [SKIP] dissector-injection check (BLAUEIS_DISSECTOR_DIR not set)")
     else:
-        print("\n  [FAIL] Dissector file not found")
-        failed += 1
+        dissector_file = Path(dissector_dir) / "HVAC-shark_mid-xye.lua"
+        if dissector_file.exists():
+            dissector_src = dissector_file.read_text(encoding="utf-8")
+            has_start = "GLOSSARY-GEN-START" in dissector_src
+            has_end = "GLOSSARY-GEN-END" in dissector_src
+            has_c0 = "GLOSSARY_C0" in dissector_src
+            if has_start and has_end and has_c0:
+                print(f"\n  [PASS] Glossary code injected inline in {dissector_file.name}")
+                passed += 1
+            else:
+                print(f"\n  [FAIL] Glossary markers or tables missing in {dissector_file.name}")
+                failed += 1
+        else:
+            print(f"\n  [FAIL] Dissector file not found at {dissector_file}")
+            failed += 1
 
     print(f"\nResults: {passed} passed, {failed} failed / {passed + failed} total")
     if failed:

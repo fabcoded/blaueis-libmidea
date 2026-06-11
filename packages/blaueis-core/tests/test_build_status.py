@@ -58,15 +58,15 @@ def main():
     )
 
     # feature_available distribution — snapshot of the current glossary (sums to
-    # 198): always 11, readable 65, capability 74, excluded 38, readable-opt 10.
+    # 198): always 11, readable 63, capability 76, excluded 38, readable-opt 10.
     # The extensive exclusion work (vane fields, group-unknown bytes,
     # decode-unverified/never-observed, etc.) moved many fields
     # readable -> excluded/capability over time; every excluded field carries a
     # schema-enforced excluded_reasons entry.
     fa_counts = Counter(f["feature_available"] for f in fields.values())
     check("always == 11", fa_counts["always"] == 11, f"got {fa_counts.get('always', 0)}")
-    check("readable == 65", fa_counts["readable"] == 65, f"got {fa_counts.get('readable', 0)}")
-    check("capability == 74", fa_counts["capability"] == 74, f"got {fa_counts.get('capability', 0)}")
+    check("readable == 63", fa_counts["readable"] == 63, f"got {fa_counts.get('readable', 0)}")
+    check("capability == 76", fa_counts["capability"] == 76, f"got {fa_counts.get('capability', 0)}")
     check("excluded == 38", fa_counts["excluded"] == 38, f"got {fa_counts.get('excluded', 0)}")
 
     # Required keys on every field. The new shape is flat: sources +

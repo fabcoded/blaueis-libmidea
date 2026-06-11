@@ -3,7 +3,7 @@
 
 Five validation tests (V1-V4 from the plan, plus one regression check):
 
-  V1 — Cold-boot decode (gates §2 promotion). Confirm the 11
+  V1 — Cold-boot decode (gates §2 promotion). Confirm the 9
        capability-to-readable promoted fields decode their value from a
        single C0 frame BEFORE any B5 has arrived. Without the §2 promotion
        these fields would remain at current_value=null because
@@ -45,8 +45,9 @@ REPO_TESTCASES = Path(__file__).resolve().parent / "test-cases"
 B5_FIXTURE = REPO_TESTCASES / "xtremesaveblue_s1" / "b5_frames.yaml"
 C0_FIXTURE = REPO_TESTCASES / "xtremesaveblue_s11_frames" / "c0_frames.yaml"
 
-# Eleven fields promoted from `capability` to `readable` (decode pre-B5
-# from rsp_0xc0; cap only refines write constraints).
+# Nine fields promoted from `capability` to `readable` (decode pre-B5
+# from rsp_0xc0; cap only refines write constraints). silky_cool and
+# humidity_setpoint moved back to capability-gated (cap-hidden pre-B5).
 PROMOTED_FIELDS = [
     "temperature_unit",
     "louver_swing_vertical",
@@ -56,9 +57,7 @@ PROMOTED_FIELDS = [
     "fan_speed",
     "frost_protection",
     "auxiliary_heat_level",
-    "silky_cool",
     "screen_display",
-    "humidity_setpoint",
 ]
 
 
@@ -93,11 +92,11 @@ def main():
     fields = status["fields"]
     fa = Counter(f["feature_available"] for f in fields.values())
     check("always == 11", fa["always"] == 11, f"got {fa['always']}")
-    check("readable == 65", fa["readable"] == 65, f"got {fa['readable']}")
-    check("capability == 74", fa["capability"] == 74, f"got {fa['capability']}")
+    check("readable == 63", fa["readable"] == 63, f"got {fa['readable']}")
+    check("capability == 76", fa["capability"] == 76, f"got {fa['capability']}")
     check("excluded == 38", fa["excluded"] == 38, f"got {fa['excluded']}")
 
-    # All 11 promoted fields are now `readable`
+    # All 9 promoted fields are now `readable`
     for fname in PROMOTED_FIELDS:
         check(
             f"{fname} promoted to readable",
@@ -129,8 +128,8 @@ def main():
                 f"expected {expected!r}, got {actual!r}",
             )
     check(
-        f"all 11 promoted fields decode pre-B5 (got {len(cold_boot_decoded)}/11)",
-        len(cold_boot_decoded) == 11,
+        f"all 9 promoted fields decode pre-B5 (got {len(cold_boot_decoded)}/9)",
+        len(cold_boot_decoded) == 9,
         f"missing: {set(PROMOTED_FIELDS) - set(cold_boot_decoded)}",
     )
 

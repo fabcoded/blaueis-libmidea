@@ -21,6 +21,23 @@ jobs:
       - name: ruff format --check
         run: ruff format --check
 
+  # Legacy script-style tests (tests/conftest.py collect_ignore) — they
+  # sys.exit() on import so pytest can't collect them, but they assert
+  # real protocol behaviour. The runner derives the list from conftest.
+  excluded-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install blaueis-core
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ./packages/blaueis-core
+      - name: Run excluded script-style tests
+        run: python scripts/run_excluded_tests.py
+
   pytest:
     runs-on: ubuntu-latest
     steps:

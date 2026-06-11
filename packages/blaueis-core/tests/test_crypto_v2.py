@@ -11,6 +11,7 @@ These pin the three v2 security properties:
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 
@@ -102,3 +103,32 @@ def test_psk_stretching_is_scrypt_not_sha256():
 def test_derive_session_rejects_unknown_role():
     with pytest.raises(ValueError, match="role"):
         derive_session(generate_psk(), b"a" * 512, b"b" * 512, role="peer")
+
+
+def test_encrypt_json_decrypt_json_round_trip():
+    """JSON convenience wrappers — ported from the retired v1 script test."""
+    client, server = _pair()
+    obj = {"type": "frame", "hex": "AA 23 AC", "ref": 42}
+    assert server.decrypt_json(client.encrypt_json(obj)) == obj
+
+
+def test_tampered_ciphertext_rejected():
+    """Bit-flip in the ciphertext must fail the GCM tag — ported from v1."""
+    client, server = _pair()
+    env = client.encrypt(b"tamper test")
+    ct = bytearray(base64.b64decode(env["ct"]))
+    ct[0] ^= 0xFF
+    env["ct"] = base64.b64encode(bytes(ct)).decode()
+    with pytest.raises(InvalidTag):
+        server.decrypt(env)
+
+
+def test_malformed_handshake_messages_rejected():
+    """Wrong-type hello / hello_ok raise HandshakeError — ported from v1."""
+    psk = generate_psk()
+    _hello, client_rand = create_hello()
+    _hello_ok, server_rand = create_hello_ok()
+    with pytest.raises(HandshakeError):
+        complete_handshake_client(psk, client_rand, {"type": "wrong"})
+    with pytest.raises(HandshakeError):
+        complete_handshake_server(psk, {"type": "wrong"}, server_rand)
