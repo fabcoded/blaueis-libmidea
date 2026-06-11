@@ -9,8 +9,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       # Same 0.11.x line as .pre-commit-config.yaml — bump both together.
@@ -27,22 +27,23 @@ jobs:
   excluded-scripts:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install blaueis-core
+        # pytest: validate_complex_fields.py imports it at module level.
         run: |
           python -m pip install --upgrade pip
-          pip install -e ./packages/blaueis-core
+          pip install -e ./packages/blaueis-core pytest
       - name: Run excluded script-style tests
         run: python scripts/run_excluded_tests.py
 
   pytest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install workspace packages
