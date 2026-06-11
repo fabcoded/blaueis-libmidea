@@ -6,10 +6,13 @@ Usage (standalone):  python -m pytest packages/blaueis-client/tests/test_ws_clie
 """
 
 import json
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from blaueis.client.ws_client import HvacClient
 from blaueis.core.crypto import (
+    AuthenticationError,
+    HandshakeError,
     complete_handshake_server,
     create_hello_ok,
     generate_psk,
@@ -234,3 +237,82 @@ async def test_encrypted_send_recv():
     ws.feed(server_encrypted)
     result = await c._recv()
     assert result == {"type": "pong"}
+
+
+# ── connect(): key confirmation + cleanup (protocol v2) ─────────────────
+
+
+class HandshakingWS(MockWebSocket):
+    """Mock that plays the gateway side of the v2 handshake.
+
+    Stage 0: reply to the client hello with hello_ok (deriving the
+    server session from ``server_psk``). Stage 1: produce the gateway's
+    first post-handshake message via ``first_msg(server_session)`` —
+    encrypted slot-hello, plaintext error, etc.
+    """
+
+    def __init__(self, server_psk: bytes, first_msg):
+        super().__init__()
+        self._server_psk = server_psk
+        self._first_msg = first_msg
+        self._stage = 0
+        self.server_session = None
+
+    async def recv(self) -> str:
+        if self._stage == 0:
+            self._stage = 1
+            hello = json.loads(self.sent[0])
+            hello_ok_msg, server_rand = create_hello_ok()
+            self.server_session = complete_handshake_server(self._server_psk, hello, server_rand)
+            return json.dumps(hello_ok_msg)
+        if self._stage == 1:
+            self._stage = 2
+            return self._first_msg(self.server_session)
+        return await super().recv()
+
+
+def _slot_hello(session) -> str:
+    return session.encrypt_json({"type": "hello", "sid": 0, "pool_size": 4, "server_time": 0.0})
+
+
+@pytest.mark.asyncio
+async def test_connect_key_confirmation_success():
+    psk = generate_psk()
+    ws = HandshakingWS(psk, _slot_hello)
+    c = HvacClient("localhost", 8765, psk=psk)
+    with patch("websockets.connect", AsyncMock(return_value=ws)):
+        await c.connect()
+    assert c._session is not None
+    assert c.gw_session.sid == 0
+    assert ws.closed is False
+
+
+@pytest.mark.asyncio
+async def test_connect_wrong_psk_raises_auth_error_and_closes():
+    ws = HandshakingWS(generate_psk(), _slot_hello)  # gateway holds a different key
+    c = HvacClient("localhost", 8765, psk=generate_psk())
+    with (
+        patch("websockets.connect", AsyncMock(return_value=ws)),
+        pytest.raises(AuthenticationError),
+    ):
+        await c.connect()
+    assert ws.closed is True  # no half-open socket holding a gateway slot
+    assert c._ws is None
+    assert c._session is None
+
+
+@pytest.mark.asyncio
+async def test_connect_slot_pool_full_is_transient_not_auth():
+    psk = generate_psk()
+    refusal = json.dumps({"type": "error", "code": "slot_pool_full", "msg": "gateway accepts max 4"})
+    ws = HandshakingWS(psk, lambda _session: refusal)
+    c = HvacClient("localhost", 8765, psk=psk)
+    with (
+        patch("websockets.connect", AsyncMock(return_value=ws)),
+        pytest.raises(HandshakeError) as ei,
+    ):
+        await c.connect()
+    assert not isinstance(ei.value, AuthenticationError)
+    assert "slot_pool_full" in str(ei.value)
+    assert ws.closed is True
+    assert c._ws is None

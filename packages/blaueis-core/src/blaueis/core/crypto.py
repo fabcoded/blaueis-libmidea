@@ -46,7 +46,26 @@ class ReplayError(Exception):
 
 
 class HandshakeError(Exception):
-    """Session handshake failed."""
+    """Session handshake failed.
+
+    Base class for any connect-time failure. Without further
+    classification this is a *transient* condition (slot pool full,
+    malformed reply, half-open close) — consumers retry. Credential
+    rejections raise the :class:`AuthenticationError` subclass instead.
+    """
+
+
+class AuthenticationError(HandshakeError):
+    """Credential rejection, confirmed cryptographically.
+
+    Raised only when key confirmation fails (the gateway's first
+    encrypted message does not decrypt under our PSK-derived session
+    key). Retrying cannot fix it — consumers should stop and ask for a
+    new key. A protocol-version refusal never reaches key confirmation:
+    the server closes during the handshake, which consumers see as an
+    ordinary connection error and keep retrying until both sides are
+    updated together.
+    """
 
 
 class Session:

@@ -48,6 +48,19 @@ version-mismatch handshake error per the
 [versioning policy](versioning.md). The encrypted-envelope format is
 unchanged from v1.
 
+Client-side failure classification: a failed key confirmation raises
+`AuthenticationError` (a `HandshakeError` subclass) — the only
+cryptographically *confirmed* credential rejection, on which consumers
+stop retrying and ask for a new key. Everything else stays a plain
+(transient) `HandshakeError` or connection error and is retried: the
+plaintext `slot_pool_full` refusal (capacity, not credentials), a
+malformed post-handshake message, and the server's silent close on
+version mismatch (the refusal is deliberately not announced in
+plaintext — an unauthenticated "stop retrying" signal would hand an
+on-path attacker a denial lever). A failed `connect()` always closes
+the socket before raising, so rejected attempts never occupy gateway
+slots.
+
 ### 2.2 `subscribe` — per-socket filter (§4.1)
 
 ```json
