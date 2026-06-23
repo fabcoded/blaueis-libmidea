@@ -4113,7 +4113,7 @@ fields:
           section: §3.2
         rsp_0xc0:
           frame: 0xC0 Response
-          byte: 'body[2] bits[3:0] + bit4 (primary); body[13] bits[4:0] extended override — fires only outside dry/smart_dry (predicate temp_extended_setpoint_active), since target_temperature is meaningless in dehumidify modes'
+          byte: 'body[2] bits[3:0] + bit4 (primary); body[13] bits[4:0] extended override — fires only outside dry/smart_dry (predicate temp_extended_setpoint_active), since target_temperature is meaningless in dehumidify modes. The half-degree (body[2] bit4) is applied in BOTH steps: the firmware sets it regardless of which integer byte holds the setpoint, so the override must not drop it'
           decode:
           - offset: 13
             bits:
@@ -4121,6 +4121,9 @@ fields:
             - 0
             add: 12
             condition_predicate: temp_extended_setpoint_active
+            half_bit:
+              offset: 2
+              bit: 4
           - offset: 2
             bits:
             - 3

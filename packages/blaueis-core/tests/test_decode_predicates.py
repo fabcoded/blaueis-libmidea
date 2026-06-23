@@ -6,6 +6,11 @@ forces it to 0), so a mode-blind override would surface a plausible-but-
 wrong setpoint derived from the dehumidify byte. The fix gates step1 with
 the ``temp_extended_setpoint_active`` predicate; this verifies the gate and
 that non-dry modes are untouched.
+
+It also verifies the half-degree (body[2] bit4 = +0.5) survives the body[13]
+override: the firmware sets that bit regardless of which byte holds the
+integer setpoint, so both decode steps carry ``half_bit`` and the override
+must not drop it.
 """
 
 from __future__ import annotations
@@ -22,18 +27,18 @@ GLOSSARY = load_glossary()
 NON_DRY = (1, 2, 4, 5)
 
 
-def _c0(mode_raw: int, b13: int, b2_low: int = 9) -> bytes:
-    """A C0 body: body[2] = mode<<5 | setpoint-nibble; body[13] override byte.
-    b2_low=9 -> primary setpoint 9+16 = 25.0."""
+def _c0(mode_raw: int, b13: int, b2_low: int = 9, half: bool = False) -> bytes:
+    """A C0 body: body[2] = mode<<5 | half<<4 | setpoint-nibble; body[13] override byte.
+    b2_low=9 -> primary setpoint 9+16 = 25.0; half sets body[2] bit4 (+0.5)."""
     b = bytearray(32)
     b[0] = 0xC0
-    b[2] = (mode_raw << 5) | (b2_low & 0x0F)
+    b[2] = (mode_raw << 5) | (0x10 if half else 0) | (b2_low & 0x0F)
     b[13] = b13
     return bytes(b)
 
 
-def _target(mode_raw: int, b13: int, b2_low: int = 9):
-    return decode_frame_fields(_c0(mode_raw, b13, b2_low), "rsp_0xc0", GLOSSARY)["target_temperature"]["value"]
+def _target(mode_raw: int, b13: int, b2_low: int = 9, half: bool = False):
+    return decode_frame_fields(_c0(mode_raw, b13, b2_low, half), "rsp_0xc0", GLOSSARY)["target_temperature"]["value"]
 
 
 # ── predicate unit behaviour ────────────────────────────────────────
@@ -89,3 +94,27 @@ def test_non_dry_override_still_fires_no_regression():
 def test_sentinel_zero_falls_back_in_every_mode():
     for mode in (1, 2, 3, 4, 5, 6):
         assert _target(mode, 0x00) == 25.0, f"mode {mode}"
+
+
+# ── half-degree (body[2] bit4) survives the body[13] override ────────
+# The firmware sets the half bit in body[2] regardless of which byte holds
+# the integer setpoint, so the body[13] override must not drop it.
+
+
+def test_non_dry_override_keeps_half_degree():
+    # cool: body[13]=0x0B -> 11+12=23, + body[2] bit4 -> 23.5 (was 23.0 pre-fix)
+    assert _target(2, 0x0B, half=True) == 23.5  # cool
+    assert _target(4, 0x0C, half=True) == 24.5  # heat (12+12=24, +0.5)
+    assert _target(1, 0x0B, half=True) == 23.5  # auto
+
+
+def test_non_dry_override_no_half_when_bit_clear():
+    # Regression guard: +0.5 only when body[2] bit4 is actually set.
+    assert _target(2, 0x0B, half=False) == 23.0  # cool, whole degree
+    assert _target(4, 0x0C, half=False) == 24.0  # heat
+
+
+def test_dry_primary_keeps_half_degree():
+    # Dry suppresses the override -> body[2] primary (b2_low=9 -> 25) + half -> 25.5.
+    assert _target(3, 0x32, half=True) == 25.5
+    assert _target(6, 0x32, half=True) == 25.5
