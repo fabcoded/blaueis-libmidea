@@ -87,7 +87,12 @@ class HvacClient:
 
         uri = f"ws://{self.host}:{self.port}"
         log.info("Connecting to %s", uri)
-        self._ws = await websockets.connect(uri)
+        # The gateway's debug_dump reply carries the whole 5 MiB flight-recorder
+        # ring as one JSON message (~6 MiB encoded), which overruns the websockets
+        # default max_size of 1 MiB and drops the connection with a 1009
+        # "message too big" close. Raise the receive cap to fit the dump while
+        # still bounding memory. See flight_recorder.md §4.4.
+        self._ws = await websockets.connect(uri, max_size=16 * 1024 * 1024)
 
         try:
             if not self.no_encrypt and self.psk:

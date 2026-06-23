@@ -161,6 +161,8 @@ Closed `origin` vocabulary: `ac`, `gw:handshake`, `gw:polling`, `gw:followme`, `
 | HA integration | `diagnostics.py` → `async_get_config_entry_diagnostics` | "Download Diagnostics" button in UI |
 | Combined bundle | HA diagnostics pulls gateway ring via WS, merges with HA ring by `ts` | One click |
 
+**Client receive cap:** the dump is delivered as a *single* WS message carrying the whole ring, so a client pulling it must raise its websockets `max_size` to at least the ring capacity (5 MiB) plus JSON overhead — the library default of 1 MiB otherwise rejects the reply and closes the connection with code 1009 ("message too big"), which also surfaces as a spurious "send failed" on whatever poll was in flight. `HvacClient` sets `max_size=16 MiB` for this reason.
+
 Redact via `homeassistant.components.diagnostics.async_redact_data` before returning (AES keys, tokens, serials).
 
 ### 4.5 Provenance & correlation — end-to-end tracing
