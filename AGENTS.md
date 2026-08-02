@@ -86,9 +86,11 @@ It is a navigation aid, not an authority:
 
 - **YAML contributes zero nodes.** graphify ships no YAML extractor despite its
   docs listing one, so `.yaml`/`.yml` files are invisible.
-- **JavaScript function *expressions* are skipped.** It indexes
-  `function_declaration` and ignores `function_expression`, so code written in
-  the object-literal module style is heavily under-represented.
+- **JavaScript functions bound as object-literal properties get no node.**
+  `function foo() {}`, `const f = function () {}`, `exports.f = …`, `this.f = …`
+  and `Foo.prototype.f = …` are all indexed; `{ foo: function () {} }` is not.
+  Code written in the object-literal module style is therefore heavily
+  under-represented — not all function expressions, specifically that binding.
 
 If a symbol is not in the graph, confirm against the source before concluding
 anything. Treat a hit as a pointer worth following, not as proof.

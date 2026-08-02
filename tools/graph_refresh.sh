@@ -30,12 +30,15 @@ INDEXER="$ROOT/tools/glossary_graph_index.py"
 
 MODE="refresh"
 FORCE=()
-case "${1:-}" in
-    --status) MODE="status" ;;
-    --force)  FORCE=(--force) ;;
-    "")       ;;
-    *) echo "usage: $(basename "$0") [--status|--force]" >&2; exit 2 ;;
-esac
+# Parsed as a loop, not positionally. `--force --status` previously ran a full
+# forced rebuild because only $1 was inspected; --status must never build.
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --status) MODE="status"; shift ;;
+        --force)  FORCE=(--force); shift ;;
+        *) echo "usage: $(basename "$0") [--status] [--force]" >&2; exit 2 ;;
+    esac
+done
 
 # ── freshness ────────────────────────────────────────────────────────────────
 # Computed, never cached: the graph records the commit it was built from, so
@@ -69,8 +72,10 @@ except Exception:
 }
 
 if [ "$MODE" = "status" ]; then
-    report_status || true
-    exit 0
+    # Exit code carries the answer, so callers (and refresh_graphs.sh) can act on
+    # it. Previously `|| true; exit 0` made a stale or absent graph indistinguishable
+    # from a current one to anything but a human reading stdout.
+    if report_status; then exit 0; else exit 1; fi
 fi
 
 # ── opt-in gate ──────────────────────────────────────────────────────────────
@@ -110,15 +115,29 @@ trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT
 # — and then the rebuild silently does not happen at all.
 if [ -f "$GRAPH" ]; then
     python3 - "$GRAPH" <<'PY'
-import json, sys
+import json, os, sys
 p = sys.argv[1]
-g = json.load(open(p))
-lk = "links" if "links" in g else "edges"
-n0, l0 = len(g["nodes"]), len(g[lk])
-g["nodes"] = [n for n in g["nodes"] if not str(n.get("_origin", "")).endswith("-supplement")]
-g[lk] = [l for l in g[lk] if not str(l.get("_origin", "")).endswith("-supplement")]
+try:
+    g = json.load(open(p))
+except Exception as exc:
+    # An unparseable graph is exactly the one worth letting graphify overwrite.
+    # Aborting here would skip the rebuild that fixes it, and under `set -e` that
+    # is precisely what happened: a truncated file wedged the script permanently.
+    print(f"  graph unreadable ({exc.__class__.__name__}) — leaving it for graphify to replace")
+    sys.exit(0)
+lk = "links" if "links" in g else ("edges" if "edges" in g else None)
+nodes = g.get("nodes")
+if not isinstance(nodes, list) or lk is None:
+    print("  graph has an unexpected shape — skipping the strip")
+    sys.exit(0)
+n0, l0 = len(nodes), len(g[lk])
+g["nodes"] = [n for n in nodes if not str(n.get("_origin", "")).endswith("-supplement")]
+g[lk] = [e for e in g[lk] if not str(e.get("_origin", "")).endswith("-supplement")]
 if len(g["nodes"]) != n0:
-    json.dump(g, open(p, "w"))
+    tmp = p + ".tmp"
+    with open(tmp, "w") as fh:
+        json.dump(g, fh)
+    os.replace(tmp, p)  # atomic; truncate-in-place is what produces the wedged file
     print(f"  stripped {n0 - len(g['nodes'])} supplement node(s), {l0 - len(g[lk])} link(s)")
 PY
 fi
@@ -131,5 +150,26 @@ if [ -f "$INDEXER" ] && [ -f "$GLOSSARY" ]; then
     python3 "$INDEXER" "$GLOSSARY" --repo-root "$ROOT" --merge-into "$GRAPH"
 fi
 
+# graphify leaves graph.json untouched when it detects no topology change, so
+# built_at_commit keeps the OLD commit. After a comment- or doc-only commit that
+# makes --status report POTENTIALLY OUT OF DATE forever, and --force does not
+# clear it either: the script tells you to rebuild, the rebuild runs, nothing
+# changes. Restamp it ourselves — the extraction did run against this tree.
+python3 - "$GRAPH" "$(git -C "$ROOT" rev-parse HEAD)" <<'PYSTAMP'
+import json, os, sys
+p, head = sys.argv[1], sys.argv[2]
+try:
+    g = json.load(open(p))
+except Exception:
+    sys.exit(0)
+if g.get("built_at_commit") != head:
+    g["built_at_commit"] = head
+    tmp = p + ".tmp"
+    with open(tmp, "w") as fh:
+        json.dump(g, fh)
+    os.replace(tmp, p)
+    print(f"  restamped built_at_commit -> {head[:7]}")
+PYSTAMP
+
 echo
-report_status || true
+if report_status; then exit 0; else exit 1; fi
