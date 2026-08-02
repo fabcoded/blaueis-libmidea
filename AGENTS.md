@@ -41,3 +41,45 @@ Architecture, operations, WebSocket protocol, flight-recorder design, and Status
 `blaueis-ha-midea` mirrors `packages/blaueis-{core,client}/src/blaueis/{core,client}/` into its own tree at `custom_components/blaueis_midea/lib/blaueis/{core,client}/`. The mirror is automated and drift-gated on the ha-midea side (see `blaueis-ha-midea/tools/sync_from_libmidea.py` and the pre-commit hook there). After making a libmidea change that affects the public API (anything in `blaueis-core` or `blaueis-client`), expect a follow-up ha-midea commit to land the sync.
 
 This mirror is a one-way build artefact, libmidea → ha-midea. Never edit the ha-midea vendored copy as a path to changing libmidea — the next sync overwrites it.
+
+## Code knowledge graph (optional)
+
+An optional [graphify](https://github.com/Graphify-Labs/graphify) index of this
+repo may exist under `graphify-out/` (gitignored, never committed). Nothing here
+depends on it — build, tests and CI are unaffected when it is absent.
+
+It is **never rebuilt automatically**; no git hook triggers it, because a rebuild
+is minutes of disk work. So it goes stale as you commit. **Check first:**
+
+```sh
+./tools/graph_refresh.sh --status   # instant; says POTENTIALLY OUT OF DATE when behind
+./tools/graph_refresh.sh            # rebuild (minutes)
+```
+
+`--status` compares the commit the graph was built from against `HEAD`, so the
+answer is exact rather than a cached marker that can itself go stale.
+
+`graph_refresh.sh` also runs `tools/glossary_graph_index.py`, which puts the 198
+`glossary.yaml` fields into the graph. Without that step they are absent
+entirely — see the YAML blind spot below — and "which glossary field backs this?"
+silently returns nothing.
+
+**Query it:**
+
+```sh
+graphify query "how does X work" --graph graphify-out/graph.json
+graphify explain "SymbolName"    --graph graphify-out/graph.json
+graphify god-nodes               --graph graphify-out/graph.json
+```
+
+**Blind spots — never read absence from the graph as absence in the source.**
+It is a navigation aid, not an authority:
+
+- **YAML contributes zero nodes.** graphify ships no YAML extractor despite its
+  docs listing one, so `.yaml`/`.yml` files are invisible.
+- **JavaScript function *expressions* are skipped.** It indexes
+  `function_declaration` and ignores `function_expression`, so code written in
+  the object-literal module style is heavily under-represented.
+
+If a symbol is not in the graph, confirm against the source before concluding
+anything. Treat a hit as a pointer worth following, not as proof.
