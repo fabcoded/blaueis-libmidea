@@ -14,3 +14,25 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+
+  # Optional local checks supplied by a surrounding workspace. A silent no-op in
+  # a plain clone. `verbose: true` is deliberate: pre-commit suppresses the output
+  # of a hook that exits 0, so warnings from a passing check would otherwise be
+  # invisible — a warning channel nobody can see is not a warning channel.
+  - repo: local
+    hooks:
+      - id: local-gate
+        name: local developer checks (optional)
+        entry: bash tools/local_gate.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true
+        stages: [pre-commit]
+
+      - id: local-gate-msg
+        name: local commit-message checks (optional)
+        entry: bash tools/local_gate_msg.sh
+        language: system
+        verbose: true
+        stages: [commit-msg]
