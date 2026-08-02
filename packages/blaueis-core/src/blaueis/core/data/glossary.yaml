@@ -1503,7 +1503,7 @@ fields:
       description: 'Comfort sleep mode. Multi-key composite: the user-visible state is determined by the combination of a 2-bit
         value at body[8] bits[1:0] and a switch bit at body[9] bit 6. A third sub-field at body[17] bits[4:0] carries the
         sleep duration and is destructively overwritten to 0x0A when transitioning to ON.'
-      note: 'AC-internal multi-key sleep composite (switch + value + duration timer) whose function an HA automation can replicate via target_temperature ramps and time triggers. Usage cannot be guaranteed in mixed setups — the AC''s destructive write of the sleep_time sub-field on switch transitions can conflict with HA-side state restoration, and concurrent HA temp-ramp automations will compete with the AC''s vendor curve. Surfaced for users who prefer the AC-side composite; HA-driven setups should disable this entity. See docs/disabled_fields.md §5.1 for the broader supersede rule.'
+      note: 'AC-internal multi-key sleep composite (switch + value + duration timer) whose function an HA automation can replicate via target_temperature ramps and time triggers. Usage cannot be guaranteed in mixed setups — the AC''s destructive write of the sleep_time sub-field on switch transitions can conflict with HA-side state restoration, and concurrent HA temp-ramp automations will compete with the AC''s vendor curve. Surfaced for users who prefer the AC-side composite; HA-driven setups should disable this entity. See docs/disabled_fields.md §5.1 for the broader supersede rule. The existing sensor field cosy_sleep_switch (body[9] bit 6) is the same wire position as composite member comfortable_sleep_switch; that sensor entry remains for backward compatibility but is semantically redundant with this composite.'
       signoff: tbd
       field_class: complex_function
       _migration:
@@ -1646,8 +1646,6 @@ fields:
         logically necessary for the ON-transition value to survive the read-back).
 
         '
-      note: The existing sensor field cosy_sleep_switch (body[9] bit 6) is the same wire position as composite member comfortable_sleep_switch.
-        That sensor entry remains for backward compatibility but is semantically redundant with this composite.
       confidence: confirmed
       sources:
       - own captures Session 7/11
