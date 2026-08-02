@@ -15,3 +15,8 @@ build/
 # stray run never gets committed.
 *_probe.json
 *_out.json
+
+# Local code-knowledge-graph output (graphify). Regenerable from source at no
+# cost, and large — never committed.
+graphify-out/
+.graphify_python
