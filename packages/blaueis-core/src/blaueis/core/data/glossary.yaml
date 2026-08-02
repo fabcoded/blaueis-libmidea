@@ -1020,8 +1020,6 @@ fields:
         rev3: Wind OFF me
         dudanov: WIND_OF_ME
         handbook: Wind OFF me
-        midea_local: WIND_OFF_ME
-        midea_beautiful_air: fan_avoid
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -1068,6 +1066,8 @@ fields:
             feature_available: excluded
         alt_names:
           dudanov: CAPABILITY_WIND_OF_ME
+          midea_local: WIND_OFF_ME
+          midea_msmart: WindOffMe
         note: 'INVERTED LOGIC per node-mideahvac: val=0 means supported.'
         confidence: consistent
         sources:
@@ -1168,6 +1168,7 @@ fields:
             feature_available: excluded
         alt_names:
           dudanov: CAPABILITY_BREEZE_CONTROL
+          midea_msmart: BreezeControl
         note: 'INVERTED LOGIC per node-mideahvac: val=0 means supported. On FA100 units, property 0x43 is a multi-value state
           machine (1=off, 2=Breeze Away, 3=Breeze Mild, 4=Breezeless).'
         confidence: consistent
@@ -1268,6 +1269,9 @@ fields:
             feature_available: always
         alt_names:
           dudanov: CAPABILITY_ONE_KEY_NO_WIND_ON_ME
+          midea_ac_lan: indirect_wind
+          midea_local: ONE_KEY_NO_WIND_ON_ME
+          midea_msmart: OneKeyNoWindOnMe
         confidence: consistent
         sources:
         - dudanov
@@ -1792,6 +1796,9 @@ fields:
             description: Special eco mode
         alt_names:
           dudanov: CAPABILITY_PRESET_ECO
+          midea_beautiful_air: eco
+          midea_local: PRESET_ECO
+          midea_msmart: PresetEco
         confidence: consistent
         sources:
         - dudanov
@@ -2105,6 +2112,9 @@ fields:
         alt_names:
           rev3: windType / windMap
           dudanov: CAPABILITY_FAN_SPEED_CONTROL
+          midea_beautiful_air: fan_speed
+          midea_local: FAN_SPEED_CONTROL
+          midea_msmart: FanSpeedControl
         note: Gates UI only, not wire encoding. Device firmware accepts any value 1-102 regardless of cap.
         confidence: confirmed
         sources:
@@ -2280,6 +2290,9 @@ fields:
             description: Frost protection available
         alt_names:
           dudanov: CAPABILITY_PRESET_FREEZE_PROTECTION
+          midea_beautiful_air: heat_8
+          midea_local: PRESET_FREEZE_PROTECTION
+          midea_msmart: PresetFreezeProtection
         confidence: consistent
         sources:
         - dudanov
@@ -2463,6 +2476,9 @@ fields:
             correction: clamp
         alt_names:
           dudanov: CAPABILITY_HUMIDITY
+          midea_beautiful_air: humidity
+          midea_local: HUMIDITY
+          midea_msmart: Humidity
         confidence: consistent
         sources:
         - dudanov
@@ -2830,6 +2846,9 @@ fields:
         alt_names:
           rev4: modeMap
           dudanov: CAPABILITY_MODES
+          midea_beautiful_air: mode
+          midea_local: MODES
+          midea_msmart: Modes
         confidence: consistent
       constraints:
         global:
@@ -3334,6 +3353,8 @@ fields:
             description: Aux heating available
         alt_names:
           dudanov: CAPABILITY_AUX_ELECTRIC_HEATING
+          midea_beautiful_air: ptc
+          midea_msmart: AuxElectricHeat
         confidence: consistent
         sources:
         - dudanov
@@ -3565,6 +3586,7 @@ fields:
           dudanov: CAPABILITY_LIGHT_CONTROL
           midea_local: DISPLAY_CONTROL
           midea_beautiful_air: screen_display
+          midea_msmart: LightControl
         confidence: consistent
         sources:
         - dudanov
@@ -3648,6 +3670,7 @@ fields:
             description: Self-clean available
         alt_names:
           dudanov: CAPABILITY_ACTIVE_CLEAN
+          midea_msmart: ActiveClean
         confidence: consistent
         sources:
         - dudanov
@@ -3709,6 +3732,10 @@ fields:
             description: Silky cool available
         alt_names:
           dudanov: CAPABILITY_SILKY_COOL
+          midea_ac_lan: breezeless
+          midea_beautiful_air: has_no_wind_feel
+          midea_local: SILKY_COOL
+          midea_msmart: SilkyCool
         confidence: consistent
         sources:
         - dudanov
@@ -3776,6 +3803,8 @@ fields:
             description: Smart eye available
         alt_names:
           dudanov: CAPABILITY_SMART_EYE
+          midea_local: SMART_EYE
+          midea_msmart: SmartEye
         confidence: consistent
         sources:
         - dudanov
@@ -3955,6 +3984,9 @@ fields:
             feature_available: always
         alt_names:
           dudanov: CAPABILITY_SWING_MODES
+          midea_beautiful_air: fan_swing
+          midea_local: SWING_MODES
+          midea_msmart: SwingModes
         confidence: consistent
         sources:
         - dudanov
@@ -4060,6 +4092,9 @@ fields:
             correction: ignore
         alt_names:
           dudanov: CAPABILITY_SWING_MODES
+          midea_beautiful_air: fan_swing
+          midea_local: SWING_MODES
+          midea_msmart: SwingModes
         confidence: consistent
         sources:
         - dudanov
@@ -4238,6 +4273,8 @@ fields:
             note: 1 = 0.5°C steps supported, 0 = 1°C only. Only present if data_len >= 7.
         alt_names:
           dudanov: CAPABILITY_TEMPERATURES
+          midea_local: TEMPERATURES
+          midea_msmart: Temperatures
         note: 'Decoded min/max override the global constraint range per mode. Correction strategy: clamp.'
         confidence: consistent
         sources:
@@ -4343,6 +4380,9 @@ fields:
             correction: ignore
         alt_names:
           dudanov: CAPABILITY_UNIT_CHANGEABLE
+          midea_beautiful_air: fahrenheit
+          midea_local: FAHRENHEIT
+          midea_msmart: UnitChangeable
         note: 'INVERTED LOGIC: byte3 == 0 means changeable (YES). Unlike most caps where 0=not supported.'
         confidence: consistent
         sources:
@@ -4543,6 +4583,9 @@ fields:
             note: Only valid when operating_mode == heat (raw 4).
         alt_names:
           dudanov: CAPABILITY_PRESET_TURBO
+          midea_beautiful_air: strong_fan
+          midea_local: PRESET_TURBO
+          midea_msmart: PresetTurbo
         confidence: consistent
         sources:
         - dudanov
@@ -4762,6 +4805,8 @@ fields:
             description: Direct airflow control available
         alt_names:
           dudanov: CAPABILITY_WIND_ON_ME
+          midea_local: WIND_ON_ME
+          midea_msmart: WindOnMe
         confidence: consistent
         sources:
         - dudanov
@@ -7231,6 +7276,9 @@ fields:
             description: Nest check + filter change
         alt_names:
           dudanov: CAPABILITY_NEST
+          midea_beautiful_air: filter_reminder
+          midea_local: FILTER_REMIND
+          midea_msmart: Nest
         confidence: consistent
         sources:
         - dudanov
@@ -7873,6 +7921,9 @@ fields:
             encoding: power_linear_4
         alt_names:
           dudanov: CAPABILITY_POWER
+          midea_beautiful_air: electricity
+          midea_local: POWER
+          midea_msmart: Power
         note: The probed XtremeSaveBlue (cap 0x16=0) returns valid BCD data on C1 Group 4 and A1 heartbeat despite the cap claiming "no power calc". Cap gates UI, not data.
         confidence: consistent
         sources:
