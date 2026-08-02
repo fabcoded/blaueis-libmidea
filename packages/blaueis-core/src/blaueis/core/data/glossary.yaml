@@ -1018,8 +1018,10 @@ fields:
         rev1: WindDeblow
         rev2: wind_avoid
         rev3: Wind OFF me
-        dudanov: WIND_OFF_ME
+        dudanov: WIND_OF_ME
         handbook: Wind OFF me
+        midea_local: WIND_OFF_ME
+        midea_beautiful_air: fan_avoid
       protocols:
         cmd_0xb0:
           frame: 0xB0 Property Set
@@ -3561,6 +3563,8 @@ fields:
             description: Display control available
         alt_names:
           dudanov: CAPABILITY_LIGHT_CONTROL
+          midea_local: DISPLAY_CONTROL
+          midea_beautiful_air: screen_display
         confidence: consistent
         sources:
         - dudanov
@@ -9328,7 +9332,9 @@ fields:
       data_type: bool
       device_context: indoor_unit
       feature_available: capability
-      alt_names: {}
+      alt_names:
+        midea_local: FRESH_AIR
+        midea_ac_lan: fresh_air_2
       protocols: {}
       capability:
         cap_id: '0x4B'
@@ -9544,7 +9550,9 @@ fields:
       data_type: bool
       device_context: indoor_unit
       feature_available: capability
-      alt_names: {}
+      alt_names:
+        midea_local: FILTER_CHECK
+        midea_beautiful_air: filter_check
       protocols: {}
       capability:
         cap_id: '0x21'
