@@ -13,13 +13,14 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      # Same 0.11.x line as .pre-commit-config.yaml — bump both together.
-      - name: Install ruff
-        run: pip install 'ruff==0.11.*'
-      - name: ruff check
-        run: ruff check
-      - name: ruff format --check
-        run: ruff format --check
+      # Runs exactly the gates contributors get locally, from the same config.
+      # The ruff pin now lives in .pre-commit-config.yaml alone — there is no
+      # second version to keep in sync. This also covers check-yaml and
+      # check-json, which the previous ruff-only job did not.
+      - name: Install pre-commit
+        run: pip install pre-commit
+      - name: Run hooks
+        run: pre-commit run --all-files --show-diff-on-failure
 
   # Legacy script-style tests (tests/conftest.py collect_ignore) — they
   # sys.exit() on import so pytest can't collect them, but they assert

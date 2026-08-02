@@ -26,8 +26,8 @@ pip install -e packages/blaueis-core packages/blaueis-gateway packages/blaueis-c
 ```
 
 Each package has its own tests; the ruff config is shared at the repo root
-(`pyproject.toml`, ruff 0.11.x — pinned in `.pre-commit-config.yaml` and the
-CI lint job).
+(`pyproject.toml`). The ruff version is pinned in `.pre-commit-config.yaml`,
+which CI runs directly — so there is a single pin, not two to keep in sync.
 
 Install the git hooks once after cloning, so the same gates run locally
 instead of first failing in CI:
