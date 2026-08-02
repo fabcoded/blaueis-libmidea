@@ -4,8 +4,10 @@
 #
 # The graph is an optional developer aid. Nothing in this repo needs it: not the
 # build, not the tests, not CI. It is never rebuilt automatically — no git hook
-# triggers it — because a rebuild is minutes of disk work and nobody wants that
-# firing on a checkout, a deploy, or a throwaway clone.
+# triggers it — and a rebuild additionally requires this working copy to opt in
+# by creating .graphify-enabled (gitignored). Two independent conditions, because
+# a rebuild is minutes of disk work that must never fire on a deploy target, a
+# CI runner or a throwaway clone.
 #
 #   ./tools/graph_refresh.sh --status   is the graph current?  (instant)
 #   ./tools/graph_refresh.sh            rebuild it
@@ -22,6 +24,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 OUT="$ROOT/graphify-out"
 GRAPH="$OUT/graph.json"
 LOCK="$OUT/.graph_refresh.lock"
+SENTINEL=".graphify-enabled"
 GLOSSARY="$ROOT/packages/blaueis-core/src/blaueis/core/data/glossary.yaml"
 INDEXER="$ROOT/tools/glossary_graph_index.py"
 
@@ -67,6 +70,23 @@ except Exception:
 
 if [ "$MODE" = "status" ]; then
     report_status || true
+    exit 0
+fi
+
+# ── opt-in gate ──────────────────────────────────────────────────────────────
+# A rebuild runs only where this working copy has explicitly asked for one.
+# --status is exempt: it is read-only and instant.
+#
+# This exists because AGENTS.md invites tooling — including AI agents — to
+# refresh the graph, and a checkout is not always somewhere minutes of disk
+# churn is welcome. A deploy target, a CI runner, a throwaway clone and a bisect
+# worktree all read the same instructions. Opting in per working copy makes the
+# intent explicit instead of assumed.
+if [ ! -f "$ROOT/$SENTINEL" ]; then
+    echo "graph refresh is not enabled for this checkout — doing nothing."
+    echo "  A rebuild is minutes of disk work, so it is opt-in per working copy."
+    echo "  To enable deliberately:  touch $SENTINEL"
+    echo "  Do NOT enable it on a deploy target, CI runner or throwaway clone."
     exit 0
 fi
 

@@ -20,3 +20,8 @@ build/
 # cost, and large — never committed.
 graphify-out/
 .graphify_python
+
+# Opt-in switch for rebuilding the local code graph. Per working copy, never
+# committed: its absence is what keeps a rebuild from firing on a deploy target,
+# a CI runner or a throwaway clone.
+.graphify-enabled
