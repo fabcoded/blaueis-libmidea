@@ -165,13 +165,33 @@ def test_clear(ring: DebugRing, logger: logging.Logger) -> None:
 # ── propagation off ───────────────────────────────────────────────────────
 
 
-def test_does_not_propagate_to_root(ring: DebugRing, logger: logging.Logger, caplog) -> None:
-    # With logger.propagate=False (set in fixture) nothing should reach caplog,
-    # which attaches at the root.
-    with caplog.at_level(logging.DEBUG):
+def test_does_not_propagate_to_root(ring: DebugRing, logger: logging.Logger) -> None:
+    # With logger.propagate=False (set in fixture) the record must reach the
+    # ring and nothing else.
+    #
+    # Asserted against a handler we attach ourselves rather than via caplog:
+    # caplog's capture is pytest-version dependent — pytest 8 observed the
+    # record only through propagation, pytest 9 captures irrespective of it, so
+    # the same unchanged code passed on 8.x and failed on 9.x. A handler on the
+    # root logger tests the property itself. Propagation invokes ancestor
+    # handlers regardless of the ancestor logger's own level, so a bare handler
+    # here would see the record if propagate were True.
+    seen: list[logging.LogRecord] = []
+
+    class _Collect(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            seen.append(record)
+
+    collector = _Collect()
+    root = logging.getLogger()
+    root.addHandler(collector)
+    try:
         logger.info("stays_local")
+    finally:
+        root.removeHandler(collector)
+
     assert ring.record_count == 1
-    assert "stays_local" not in caplog.text
+    assert not [r for r in seen if "stays_local" in r.getMessage()]
 
 
 # ── concurrency smoke test ────────────────────────────────────────────────
