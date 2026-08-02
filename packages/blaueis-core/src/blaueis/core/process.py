@@ -81,6 +81,7 @@ def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict, *, 
                 decoded = decode_enum_cap(cap_def, raw_val)
 
                 cap_fa = decoded.get("feature_available")
+                demotion_blocked = False
                 if cap_fa and not glossary_pinned_excluded:
                     cur_fa = status_field.get("feature_available")
                     if not allow_demote and _is_cap_demotion(cur_fa, cap_fa):
@@ -90,6 +91,7 @@ def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict, *, 
                         # feature confirmed at boot (the "cap killer"). Block it,
                         # count it, and log which cap/field so the source stays
                         # observable. See finalize_capabilities (caps_finalized).
+                        demotion_blocked = True
                         counts = status.setdefault("meta", {}).setdefault("frame_counts", {})
                         counts["cap_demotions_blocked"] = counts.get("cap_demotions_blocked", 0) + 1
                         log.warning(
@@ -104,12 +106,19 @@ def _apply_caps_to_fields(status: dict, records: list[dict], glossary: dict, *, 
                     else:
                         status_field["feature_available"] = cap_fa
 
-                ac = {}
-                for k in ("valid_range", "valid_set", "step", "correction", "slider", "values", "custom_value"):
-                    if k in decoded:
-                        ac[k] = decoded[k]
-                if ac:
-                    status_field["active_constraints"] = ac
+                # Freeze the value envelope alongside feature_available. A blocked
+                # demotion's cap is the "disabled" reading, whose envelope is empty
+                # (valid_set=[]); overwriting the boot-discovered envelope with it
+                # is exactly what stranded fan_speed — offered, but every write
+                # dropped against the now-empty valid_set. Escalations and
+                # non-demoting refreshes still update it.
+                if not demotion_blocked:
+                    ac = {}
+                    for k in ("valid_range", "valid_set", "step", "correction", "slider", "values", "custom_value"):
+                        if k in decoded:
+                            ac[k] = decoded[k]
+                    if ac:
+                        status_field["active_constraints"] = ac
 
             elif cap_def.get("decode"):
                 decoded = decode_data_cap(cap_def, rec["data"])

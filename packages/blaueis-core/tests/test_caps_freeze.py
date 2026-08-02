@@ -17,12 +17,18 @@ from blaueis.core.process import _apply_caps_to_fields, finalize_capabilities
 from blaueis.core.status import build_status
 
 UD = "louver_swing_angle_ud_enum"  # simple cap 0x09: raw 1 = supported, 0 = not
+FAN = "fan_speed"  # extended cap 0x10: raw 6 = full (valid_set), 0 = disabled (excluded, [])
 
 
 def _rec(cap_id: str, data: list[int]) -> dict:
     """A simple-cap (cap_type 0) record, matching parse_b5_tlv's shape. Only
     cap_id / cap_type / data are read by _apply_caps_to_fields."""
     return {"cap_id": cap_id, "cap_type": 0, "data": list(data)}
+
+
+def _rec_ext(cap_id: str, data: list[int]) -> dict:
+    """An extended-cap (cap_type 1) record — the fan cap 0x10 is extended."""
+    return {"cap_id": cap_id, "cap_type": 1, "data": list(data)}
 
 
 def _boot_promote_angle(st, g):
@@ -73,9 +79,44 @@ def test_post_boot_b5_can_still_escalate():
     assert st["meta"]["frame_counts"].get("cap_demotions_blocked", 0) == 0
 
 
+def test_post_boot_demotion_does_not_empty_discovered_envelope():
+    # The cap-killer blocks the feature_available demotion; it must ALSO freeze
+    # the value envelope. A 'disabled' fan cap carries valid_set=[]; overwriting
+    # the boot-discovered valid_set with it is exactly what stranded fan_speed —
+    # offered in the dropdown, but every write dropped against the empty set.
+    g = load_glossary()
+    st = build_status(device="t", glossary=g)
+    _apply_caps_to_fields(st, [_rec_ext("0x10", [6])], g)  # boot: 'full' → valid_set
+    boot_vs = (st["fields"][FAN].get("active_constraints") or {}).get("valid_set")
+    assert boot_vs, "boot should discover a non-empty fan valid_set"
+    finalize_capabilities(st, g)  # caps frozen
+    # post-boot 'disabled' (raw 0): would demote to excluded with valid_set=[].
+    _apply_caps_to_fields(st, [_rec_ext("0x10", [0])], g, allow_demote=False)
+    assert st["fields"][FAN]["feature_available"] == "always"  # demotion blocked
+    # envelope frozen too — NOT emptied:
+    assert (st["fields"][FAN].get("active_constraints") or {}).get("valid_set") == boot_vs
+    assert st["meta"]["frame_counts"]["cap_demotions_blocked"] == 1
+
+
+def test_post_boot_non_demoting_refresh_still_updates_envelope():
+    # The freeze is targeted: a post-boot frame that does NOT demote may still
+    # refresh the envelope. Boot 'stepless' (valid_range), post-boot 'full'
+    # (valid_set) — both 'always', so the envelope updates and nothing is blocked.
+    g = load_glossary()
+    st = build_status(device="t", glossary=g)
+    _apply_caps_to_fields(st, [_rec_ext("0x10", [1])], g)  # boot: 'stepless'
+    assert (st["fields"][FAN].get("active_constraints") or {}).get("valid_range") == [0, 102]
+    finalize_capabilities(st, g)
+    _apply_caps_to_fields(st, [_rec_ext("0x10", [6])], g, allow_demote=False)  # 'full'
+    assert (st["fields"][FAN].get("active_constraints") or {}).get("valid_set") == [20, 40, 60, 80, 102]
+    assert st["meta"]["frame_counts"].get("cap_demotions_blocked", 0) == 0
+
+
 if __name__ == "__main__":
     test_boot_demotion_still_works()
     test_finalize_sets_caps_finalized()
     test_post_boot_b5_cannot_demote_confirmed_field()
     test_post_boot_b5_can_still_escalate()
+    test_post_boot_demotion_does_not_empty_discovered_envelope()
+    test_post_boot_non_demoting_refresh_still_updates_envelope()
     print("ok")
