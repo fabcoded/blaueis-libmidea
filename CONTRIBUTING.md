@@ -29,6 +29,14 @@ Each package has its own tests; the ruff config is shared at the repo root
 (`pyproject.toml`, ruff 0.11.x — pinned in `.pre-commit-config.yaml` and the
 CI lint job).
 
+Install the git hooks once after cloning, so the same gates run locally
+instead of first failing in CI:
+
+```sh
+pip install pre-commit   # if you don't already have it
+pre-commit install
+```
+
 ## Running tests and linting
 
 ```sh
