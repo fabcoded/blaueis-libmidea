@@ -1655,7 +1655,7 @@ fields:
       confidence: confirmed
       sources:
       - own captures Session 7/11
-      - forge-mode cross-validation
+      - own research
     dry_clean:
       description: 'Dry clean / X-Fan: runs fan after cooling to dry the evaporator and prevent mold.'
       signoff: tbd
@@ -4394,9 +4394,9 @@ fields:
       - dudanov
       - Session 1 B5
     strong_wind:
-      description: Strong-wind fan boost. Distinct from turbo_mode — this drives fan-side airflow only and does not raise
-        compressor frequency. The manufacturer cloud plugin keeps these as two independent fields; cross-validation via forge
-        mode confirmed the bits are fully orthogonal (verified via forge-mode cross-validation).
+      description: Strong-wind fan boost. Distinct from turbo_mode — this drives fan-side airflow only (body[8] bit 5) and
+        does not raise compressor frequency, which turbo_mode controls via a separate bit (body[10] bit 1). The two are
+        independent on the wire — either, both, or neither can be set — so they are modelled as separate fields.
       signoff: tbd
       field_class: stateful_bool
       _migration:
@@ -4461,9 +4461,17 @@ fields:
       confidence: confirmed
       sources:
       - Session 11 turbo-active capture
+      note: |
+        Wire-behaviour (atelier probe capture): setting strong_wind drives
+        cmd_0x40 body[8] bit 5 and the device echoes it back on rsp_0xc0
+        body[8] bit 5 — the readback holds the set value. With strong_wind and
+        turbo_mode set in the same frame the unit keeps strong_wind and drops
+        turbo_mode, matching the fan-side vs compressor-side split and the
+        mutual_exclusion rule. HA-service-path engagement still to be confirmed
+        live (sign-off gate B).
     turbo_mode:
       description: High-performance turbo (compressor boost). Reads only body[10] bit 1; the body[8] bit 5 signal that was
-        previously OR-folded here is now a separate field `strong_wind` (verified via forge-mode cross-validation).
+        previously OR-folded here is now the separate field `strong_wind` (the two bits are independent on the wire).
       signoff: tbd
       field_class: stateful_bool
       feature_available: readable
@@ -4591,9 +4599,9 @@ fields:
         - dudanov
         - Session 1 B5 query (0x1A=1)
       xye_note: 'C0/C3 response byte[20] bit 1. C3 command byte[9] bit 1. Cross-bus confirmed: 332 matched pairs.'
-      disambiguation: 'Until 2026-04, this field OR-folded body[8] bit 5 and body[10] bit 1. Forge-mode cross-validation against
-        the manufacturer cloud plugin proved the bits are fully independent (truth table verified via forge mode): body[8]
-        bit 5 is now field `strong_wind` (fan boost), body[10] bit 1 is `turbo_mode` (compressor boost).'
+      disambiguation: 'Until 2026-04, this field OR-folded body[8] bit 5 and body[10] bit 1. Cross-validating separately-set
+        probe frames against the device readback proved the bits are fully independent: body[8] bit 5 is now field
+        `strong_wind` (fan boost), body[10] bit 1 is `turbo_mode` (compressor boost).'
       confidence: confirmed
       sources:
       - cross-bus validation
