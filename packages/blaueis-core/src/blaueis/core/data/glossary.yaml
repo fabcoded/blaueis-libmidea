@@ -4474,7 +4474,9 @@ fields:
         previously OR-folded here is now the separate field `strong_wind` (the two bits are independent on the wire).
       signoff: tbd
       field_class: stateful_bool
-      feature_available: readable
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
       data_type: bool
       device_context: indoor_unit
       ux:
@@ -4606,6 +4608,22 @@ fields:
       sources:
       - cross-bus validation
       - protocol_xye.md
+      note: |
+        Three separate observations, deliberately kept apart. (1) Decode anchor
+        — on our wired-controller rig, toggling turbo drives the XYE mode-flags
+        byte[20] bit 1, cross-bus validated against this bit across 332 matched
+        frame pairs. (2) On our gateway-attached unit this bit has never been
+        observed set: when the boost was enabled physically at the unit, the
+        device set body[8] bit 5 (strong_wind) and left body[10] bit 1 clear.
+        (3) Write behaviour — a live write over a direct device connection
+        (2026-06-03) does not engage: the value reads back as 0 across a poll.
+        That run did not go through the HA service path, which is the stricter
+        gate, and the field is no longer surfaced there to repeat it through.
+        Disposition: excluded on this SKU so a dead control is not offered, and
+        the "Turbo" preset is driven through strong_wind instead. The decode
+        stays correct for units whose firmware uses this bit — never_observed is
+        a caveat-class reason, so such a unit can re-enable the field via a
+        glossary override. Reopen condition: docs/TODO_glossary.md §13.10.
     water_pump:
       description: 'Water pump relay on/off. Independent from the aqua_wash cycle — separate property (0x50). May be a condensate
         drain pump, a fresh water supply pump for the aqua-clean system, or dual-purpose.'

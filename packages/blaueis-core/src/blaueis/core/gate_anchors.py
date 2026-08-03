@@ -75,7 +75,7 @@ def field_addresses(glossary: dict, field: str, proto_code: str) -> list[str]:
 # means a rename/decode drift to fix at the source, which is the whole point.
 GATE_ANCHORS: dict[str, str] = {
     "strong_wind": "C0:8:5..5",  # the boost ("Turbo") control acts here
-    "turbo_mode": "C0:10:1..1",  # distinct bit; preset mis-targets this (wiring bug)
+    "turbo_mode": "C0:10:1..1",  # distinct bit; no-op on this SKU, so the preset drives strong_wind
     "eco_mode": "C0:9:4..4",  # status read; cmd writes W40:9:7..7 (per-protocol differs)
     "sleep_mode": "C0:10:0..0",
     "natural_wind": "C0:9:1..1",

@@ -225,3 +225,25 @@ our XtremeSaveBlue** (cap not advertised — bench scan + live HA snapshot).
 - **Reopen condition:** a unit that physically has the night-light LED, where
   the HA write engages (readback flips on, then clears on reset). On such a unit
   it re-tiers to `always` (it has no cap to gate it).
+
+### §13.10 — `turbo_mode` (`never_observed`, wrong wire path on this SKU)
+
+- **Current disposition:** excluded. The decode is correct and cross-bus
+  validated on our wired-controller rig, where toggling turbo drives the XYE
+  mode-flags byte and matches this bit across 332 time-matched frame pairs. On
+  our gateway-attached unit, though, the bit is never set: in every one of our
+  own C0 captures it reads 0, and when the boost is enabled physically at the
+  unit the device sets `body[8] bit 5` (`strong_wind`) and leaves this bit
+  clear. A live write over a direct device connection (2026-06-03) reads back
+  as 0 across a poll. This SKU's boost therefore runs through `strong_wind`,
+  which is what the integration's "Turbo" preset writes; excluded so a dead
+  control is not offered here.
+- **Note the difference from §13.9:** this field is **not** capless — cap
+  `0x1A` exists and reads 1 (cool+heat) on our unit, i.e. the capability
+  advertises a feature the write does not deliver. Cap-gating therefore cannot
+  hide it, which is why exclusion is the mechanism.
+- **Reopen condition:** a unit whose firmware acts on `body[10] bit 1` — the
+  write engages and the readback holds across a poll, or the bit is observed
+  set in a capture. `never_observed` is a caveat-class reason, so such a unit
+  can already re-enable the field through a glossary override without a
+  glossary change; the reopen is to re-tier it back to `readable` by default.

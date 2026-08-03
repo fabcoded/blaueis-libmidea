@@ -96,6 +96,18 @@ fields:
 # also reflected in the canonical glossary (feature_available: excluded) with a
 # TODO_glossary.md §13 reopen condition.
 #
+#   turbo_mode — excluded (never_observed). The bit reads 0 in every capture we
+#     have from this unit, and when the boost is enabled physically the device
+#     sets body[8] bit 5 (strong_wind) instead, leaving this one clear. A live
+#     write over a direct device connection (2026-06-03) reads back as 0 across
+#     a poll. Unlike night_light this field is NOT capless — cap 0x1A reads 1
+#     (cool+heat), so the capability advertises a feature the write does not
+#     deliver and cap-gating cannot hide it. The boost runs through strong_wind,
+#     which is what the "Turbo" preset writes. Decode is cross-bus confirmed on
+#     the wired-controller rig, so this is a per-SKU wiring fact, not a decode
+#     error. Reopen on a unit whose firmware acts on body[10] bit 1.
+#     (glossary: excluded; TODO_glossary.md §13.10.)
+#
 #   night_light — excluded (never_observed). Live test 2026-05-31: the HA write
 #     does NOT engage (readback stays off in cool/idle and in sleep; a preset
 #     write in the same run DID stick, so the write path works) — this SKU has
