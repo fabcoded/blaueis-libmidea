@@ -4472,7 +4472,6 @@ fields:
     turbo_mode:
       description: High-performance turbo (compressor boost). Reads only body[10] bit 1; the body[8] bit 5 signal that was
         previously OR-folded here is now the separate field `strong_wind` (the two bits are independent on the wire).
-      signoff: tbd
       field_class: stateful_bool
       feature_available: excluded
       excluded_reasons:
