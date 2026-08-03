@@ -26,8 +26,8 @@ Public API:
   ``{scope, byte, bit, fields, reason, ...}``. Match key is
   ``(scope, byte, bit, sorted(fields))``.
 
-The CLI lives at workspace root in ``check_field_collisions.py`` and
-imports from this module.
+The CLI lives in ``check_collisions.py`` (installed as the
+``blaueis-collisions`` console script) and imports from this module.
 """
 
 from __future__ import annotations

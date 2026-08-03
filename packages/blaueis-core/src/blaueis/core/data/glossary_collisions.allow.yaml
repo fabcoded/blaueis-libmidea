@@ -1,0 +1,36 @@
+# Glossary bit-collision allowlist for the `blaueis-collisions` CLI.
+#
+# Each entry lists a known same-bit collision the checker should not
+# flag as a CI failure. Every entry MUST carry:
+#
+#   - scope:    the scope_key (e.g. "rsp_0xc0", "cmd_0xb0/prop=0x4A,0x00")
+#   - byte:     int byte offset within the scope
+#   - bit:      int bit number within the byte (0=LSB, 7=MSB)
+#   - fields:   sorted list of colliding field names
+#   - reason:   prose explanation of WHY this overlap is acceptable or
+#               at least known. Not a way to silence findings — every
+#               entry is a TODO until either the glossary is fixed or
+#               the reason is upgraded to a structural design note.
+#   - status:   one of {needs_review, accepted_alias, derived_combiner}
+#   - review_by: free-text marker for who/when next looks at this
+#
+# The collision is matched as `(scope, byte, bit, sorted(fields))` —
+# any difference in field membership counts as a different collision
+# (intentional: changing the set is a meaningful event).
+
+allowed_collisions:
+
+  - scope: "rsp_0xc0"
+    byte: 9
+    bit: 4
+    fields: ["auxiliary_heat_level", "eco_mode"]
+    reason: |
+      Structural OEM mode-multiplex. body[9] bit 4 carries different
+      semantics depending on operating mode:
+        - in heat/auto: high bit of auxiliary_heat_level (PTC bits[4:3])
+        - in cool/auto/dry: eco_mode flag
+      Both ux.visible_in_modes blocks (eco_mode + aux) capture the gating
+      on the HA side. Wire-level overlap is intentional — the unit's own
+      mode gating ensures only one interpretation is active at a time.
+    status: accepted_alias
+    review_by: "permanent — structural OEM design"

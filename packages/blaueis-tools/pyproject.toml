@@ -16,6 +16,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
 
+[project.scripts]
+blaueis-collisions = "blaueis.tools.check_collisions:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
