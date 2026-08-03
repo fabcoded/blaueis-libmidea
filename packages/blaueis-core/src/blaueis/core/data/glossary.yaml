@@ -9276,6 +9276,18 @@ fields:
         the unit answered with a zero-length record — how it reports a property
         it does not implement — so no humidity reading exists to surface. The
         decode stays as documented for units that carry the sensor.
+
+        Second read route, not modelled above: on units with a fresh-air module
+        the value can also arrive inside that module's extended response at a
+        different offset, rather than through this property. A unit can
+        therefore report humidity while leaving 0x15 unimplemented, so absence
+        of the property alone does not prove the sensor is missing. Not
+        reachable here — this unit advertises no fresh-air capability.
+
+        Query caveat: requesting this property can disturb the
+        prevent-straight-wind status query, so the two should not share a query
+        batch. Carried as a characterization caveat, not reproduced here, since
+        the property is unimplemented on this unit.
     has_icheck:
       description: iCheck capability flag.
       sources:
@@ -9331,6 +9343,10 @@ fields:
         property it does not implement; its capability scan does not advertise
         0x91 either. Two independent statements of absence, so the field is
         excluded here rather than left as an entity that can never populate.
+
+        Beyond this unit the flag is obsolete: it gated an app-side diagnostic
+        service rather than any wire behaviour, and is no longer used. Expect it
+        to be absent on current hardware generally, not only here.
     dr_time:
       description: DR (demand response) event window duration. Synthesised from hours and minutes bytes packed into property 0x8F,0x00 data bytes.
       signoff: tbd

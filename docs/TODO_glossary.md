@@ -272,3 +272,17 @@ Covers `has_icheck` (0x91), `indoor_humidity` (0x15), `mode_query_value`
   field through a glossary override immediately; the reopen is to re-tier it
   back to `capability` by default and raise the confidence with the observed
   values.
+- **`indoor_humidity` reopens on a wider condition.** It has a second read
+  route the entry does not model: on units with a fresh-air module the value
+  can arrive inside that module's extended response at a different offset
+  instead of through the property. Such a unit may report humidity while
+  leaving 0x15 unimplemented, so an empty property answer alone does not prove
+  the sensor is missing — it only proves this route is unavailable. Reopen also
+  covers modelling that second route. Separately, the entry carries a query
+  caveat: requesting 0x15 can disturb the prevent-straight-wind status query,
+  so a poller that tracks that field should not batch the two together. Neither
+  is reachable on our unit, which advertises no fresh-air capability.
+- **`has_icheck` is obsolete beyond this unit.** The flag gated an app-side
+  diagnostic service rather than wire behaviour and is no longer used, so
+  absence is expected on current hardware generally. A reopen would need a
+  device that both advertises the id and drives something observable with it.
