@@ -96,6 +96,16 @@ fields:
 # also reflected in the canonical glossary (feature_available: excluded) with a
 # TODO_glossary.md §13 reopen condition.
 #
+#   has_icheck, indoor_humidity, mode_query_value, wind_straight — excluded
+#     (never_observed). The unit states these itself: a property probe queried
+#     0x91 / 0x15 / 0x41 / 0x32 and each came back as a zero-length record,
+#     which is how it reports a property it does not implement. For 0x91 and
+#     0x32 the capability scan independently omits the id, so two mechanisms
+#     agree. Each field's only read route is that one property, so nothing else
+#     could populate it here. (Contrast error_code: its 0x3F property is equally
+#     unimplemented, but the field reads fine from C0 body[16] — not excluded.)
+#     (glossary: excluded; TODO_glossary.md §13.11.)
+#
 #   turbo_mode — excluded (never_observed). The bit reads 0 in every capture we
 #     have from this unit, and when the boost is enabled physically the device
 #     sets body[8] bit 5 (strong_wind) instead, leaving this one clear. A live

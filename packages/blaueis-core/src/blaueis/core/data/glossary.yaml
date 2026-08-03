@@ -4770,13 +4770,16 @@ fields:
         wind_avoid (property 0x33). Property 0x32, 2-value bool (off=0/on=1). On YB100 models value
         0x02 re-routes to wind_avoid — a foreign-SKU branch, not a value of our register. Hidden on
         our unit.'
-      signoff: tbd
+      sources:
+      - own research
       field_class: stateful_enum
       _migration:
         _reclassified_from: complex_function
         _inferred_reason: uint8 with discrete values (0=off, 1=direct, 2=YB100-routed-to-wind_avoid); the YB100 routing is
           an orchestration concern for the composite layer, not a property of this field's wire semantics.
-      feature_available: capability
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -4846,8 +4849,15 @@ fields:
         avoid:
           raw: 2
           description: Avoid direct blow (YB100 breeze-away routing) (2)
-      note: Not documented in user handbooks. Property-only (no 0x40/0xC0 body bits). On YB100, property 0x33 wind_avoid is
-        internally routed to 0x32 with value 0x02.
+      note: |
+        Not documented in user handbooks. Property-only (no 0x40/0xC0 body
+        bits). On YB100, property 0x33 wind_avoid is internally routed to 0x32
+        with value 0x02.
+
+        Not present on this unit. A property probe (Session 15) queried 0x32 and
+        the unit answered with a zero-length record — how it reports a property
+        it does not implement — and its capability scan does not advertise 0x32
+        either. Two independent statements of absence.
       confidence: hypothesis
     louver_swing_angle_lr_enum:
       description: 'Horizontal (left-right) vane angle position. 5 user-selectable
@@ -9206,9 +9216,13 @@ fields:
       - own probe 2026-04-10 Session 15 (constant 0x0F)
     mode_query_value:
       description: Current operating mode echo via property query (separate from C0 mode field).
-      signoff: tbd
+      label: Mode Query Echo
+      sources:
+      - own research
       field_class: sensor
-      feature_available: capability
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -9226,11 +9240,20 @@ fields:
             - 0
           section: §3.5
       confidence: hypothesis
+      note: |
+        Not present on this unit. A property probe (Session 15) queried 0x41 and
+        the unit answered with a zero-length record, i.e. it does not implement
+        this property. The operating mode is read from the C0 status frame here
+        instead; this property is a separate echo route some units offer.
     indoor_humidity:
       description: Current indoor relative humidity (%).
-      signoff: tbd
+      unit: '%'
+      sources:
+      - own research
       field_class: sensor
-      feature_available: capability
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -9248,11 +9271,19 @@ fields:
             - 0
           section: §3.5
       confidence: hypothesis
+      note: |
+        Not present on this unit. A property probe (Session 15) queried 0x15 and
+        the unit answered with a zero-length record — how it reports a property
+        it does not implement — so no humidity reading exists to surface. The
+        decode stays as documented for units that carry the sensor.
     has_icheck:
       description: iCheck capability flag.
-      signoff: tbd
+      sources:
+      - own research
       field_class: sensor
-      feature_available: capability
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -9294,6 +9325,12 @@ fields:
         sources:
         - serial_protocol.md §3.4
       confidence: hypothesis
+      note: |
+        Not present on this unit. A property probe (Session 15) queried 0x91 and
+        the unit answered with a zero-length record, which is how it reports a
+        property it does not implement; its capability scan does not advertise
+        0x91 either. Two independent statements of absence, so the field is
+        excluded here rather than left as an entity that can never populate.
     dr_time:
       description: DR (demand response) event window duration. Synthesised from hours and minutes bytes packed into property 0x8F,0x00 data bytes.
       signoff: tbd

@@ -247,3 +247,28 @@ our XtremeSaveBlue** (cap not advertised — bench scan + live HA snapshot).
   set in a capture. `never_observed` is a caveat-class reason, so such a unit
   can already re-enable the field through a glossary override without a
   glossary change; the reopen is to re-tier it back to `readable` by default.
+
+### §13.11 — Properties the unit reports as unimplemented (`never_observed`)
+
+Covers `has_icheck` (0x91), `indoor_humidity` (0x15), `mode_query_value`
+(0x41) and `wind_straight` (0x32).
+
+- **Current disposition:** excluded. These are not inferred-absent — the unit
+  states it. A property probe queried each one and the unit answered with a
+  zero-length record, which is how it reports a property it does not
+  implement. For `has_icheck` and `wind_straight` the capability scan
+  independently fails to advertise the matching id, so two separate mechanisms
+  agree. Each field's only read route is that one property, so there is no
+  second path that could populate it here — unlike `error_code`, whose 0x3F
+  property is equally unimplemented while the field itself reads fine from the
+  C0 status frame, and which is therefore **not** in this group.
+- **Why excluded rather than left capability-tier:** without an implementing
+  unit these entries are stuck at `confidence: hypothesis` permanently — we
+  cannot raise the evidence for a field the hardware refuses to answer. The
+  exclusion records the reason instead of leaving an entity that can never
+  populate.
+- **Reopen condition:** a unit that answers the property with a non-empty
+  record. `never_observed` is caveat-class, so such a unit can re-enable the
+  field through a glossary override immediately; the reopen is to re-tier it
+  back to `capability` by default and raise the confidence with the observed
+  values.
