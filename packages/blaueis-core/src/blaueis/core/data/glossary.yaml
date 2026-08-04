@@ -7089,7 +7089,6 @@ fields:
       description: Highest supply voltage the unit has recorded. Despite the field
         name this is the AC supply rail, not the DC link — see note.
       label: Supply Voltage — Recorded Maximum
-      signoff: tbd
       field_class: sensor
       feature_available: readable-opt
       data_type: uint8
@@ -7145,7 +7144,6 @@ fields:
       description: Lowest supply voltage the unit has recorded. Despite the field
         name this is the AC supply rail, not the DC link — see max_bus_voltage.
       label: Supply Voltage — Recorded Minimum
-      signoff: tbd
       field_class: sensor
       feature_available: readable-opt
       data_type: uint8
@@ -7369,7 +7367,12 @@ fields:
         wire carries. Not volts — the conversion factor depends on the board's
         sense divider and is not established, so no scaling is applied here.
       label: DC Link (raw ADC count)
-      signoff: tbd
+      signoff: 'Closed by design as a raw ADC count — not a deferral. The
+        count-to-volts factor is a property of each board''s sense divider,
+        measured on our unit as 1.875 V/count (see the XtremeSaveBlue full
+        profile) and deliberately not shipped upstream. The checker''s
+        missing-unit and missing-device_class flags are this decision, not
+        an omission.'
       field_class: sensor
       feature_available: readable-opt
       data_type: uint8
