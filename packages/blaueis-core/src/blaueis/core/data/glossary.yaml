@@ -7666,12 +7666,19 @@ fields:
       - all implementations
       - protocol_shared.md §5
     outdoor_total_current:
-      description: Outdoor unit total current. Raw value multiplied by 4.
-      signoff: tbd
+      description: Outdoor unit total AC input current. Raw byte = whole amperes,
+        truncated — 1 A resolution, no scaling.
       field_class: sensor
       feature_available: readable
+      unit: A
       ha:
         entity_category: diagnostic
+        device_class: current
+        state_class: measurement
+        unit_of_measurement: A
+        suggested_display_precision: 0
+      sources:
+      - own research
       data_type: uint8
       device_context: outdoor_unit
       alt_names:
@@ -7687,8 +7694,31 @@ fields:
             - 0
           direction: response
           section: §4.2.1
-      note: 'Encoding: raw × 4. Unit unclear (may be 0.25A steps).'
-      confidence: hypothesis
+      note: |
+        Raw → physical, settled by a live load ramp (2026-08-04, cooling,
+        idle to full load): the byte tracked 1 → 2 → 3 → 4 while measured
+        input power rose 0.23 → 0.91 kW at 227-232 V supply. Median
+        P/U per byte value: 1 → 1.01 A, 3 → 3.42 A, 4 → 3.92 A. Linear
+        fit: slope 0.93 A per count with intercept +0.49 — the intercept
+        is half the slope, which is exactly the signature of a truncated
+        whole-ampere count read through a power factor of ≈ 0.93 (the
+        value a passively rectified input stage with a filter choke
+        produces; see outdoor_dc_bus_voltage for the rectification
+        evidence). Alternatives excluded by the same data: 0.25 A per
+        count would require a power factor above 4, and 4 A per count one
+        of 0.23 — neither exists.
+
+        An earlier note on this field carried "raw × 4, unit unclear,
+        possibly 0.25 A steps". Both fragments were real but they cancel:
+        a reading scaled up by four and displayed in quarter-ampere steps
+        is a whole-ampere reading. The byte needs no encoding.
+
+        Capture sweep: values 1-7 across 691 frames in 12 sessions, the
+        7 A ceiling during winter heating — consistent with this unit's
+        rated input. Second route: a consolidated status frame elsewhere
+        in the protocol carries the same reading at a different offset,
+        same cancelled scaling; only the C1 route is modelled here.
+      confidence: confirmed
     peak_elec:
       description: Peak electricity / demand-response flag. Wire position unproven — see note.
       field_class: sensor
