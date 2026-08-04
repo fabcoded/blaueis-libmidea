@@ -253,9 +253,10 @@ encodings:
     unit: V
     scale: 1.0
     offset: -60
-    note: Inverter DC bus rail. The wire carries (volts - 60) packed into a uint8
-      so the 0..255 range maps to 60..315 V — the band an inverter's rectified bus
-      actually lives in. Used by max_bus_voltage and min_bus_voltage in C1 Group 5.
+    note: AC supply rail. The wire carries (volts - 60) packed into a uint8 so the
+      0..255 range maps to 60..315 V, which covers every single-phase mains band a
+      unit ships into. Used by max_bus_voltage and min_bus_voltage in C1 Group 5 —
+      both are supply-voltage extremes despite their names, see their notes.
   uint16_le:
     formula: body[o] | (body[o+1] << 8)
     unit: ''
@@ -7079,7 +7080,9 @@ fields:
         sensor. Own captures: always 0.'
       confidence: hypothesis
     max_bus_voltage:
-      description: Maximum recorded DC bus voltage on the inverter rail.
+      description: Highest supply voltage the unit has recorded. Despite the field
+        name this is the AC supply rail, not the DC link — see note.
+      label: Supply Voltage — Recorded Maximum
       signoff: tbd
       field_class: sensor
       feature_available: readable-opt
@@ -7091,6 +7094,8 @@ fields:
         state_class: measurement
         unit_of_measurement: V
         entity_category: diagnostic
+      sources:
+      - own research
       alt_names:
         rev1: max_bus_voltage
       protocols:
@@ -7105,11 +7110,29 @@ fields:
             encoding: voltage_offset60
           direction: response
           section: §4.2.5
-      note: 'S8: 183 raw → 243 V. Plausible for European 230 VAC mains peak (≈325 V
-        unloaded, sags under load).'
-      confidence: hypothesis
+      note: |
+        Raw → physical: 183 raw → 243 V, paired with min_bus_voltage
+        (136 raw → 196 V) as a recorded max/min band.
+
+        The band belongs to the AC supply, not the DC link. Our own supply
+        readings (outdoor_supply_voltage, C1 Group 1) fall inside it — 221 V
+        under load, 228 V and 229 V at standby — while the DC-link byte in
+        C1 Group 3 (161-177 raw) does not. The captures are from different
+        sessions, so this is a plausibility bracket rather than a
+        simultaneous pairing, but it is one-sided enough to settle which
+        quantity the band describes. The historical "DC bus / inverter rail"
+        wording was an inherited misnomer; the field key is kept for
+        entity-id stability and the label carries the corrected name.
+
+        Stability: 183/136 raw were identical in Session 8 and, months later,
+        in Session 15. Lifetime extremes are expected to sit still once
+        established — but it does mean we have never observed the pair
+        update, so a changed reading is new information, not noise.
+      confidence: consistent
     min_bus_voltage:
-      description: Minimum recorded DC bus voltage on the inverter rail.
+      description: Lowest supply voltage the unit has recorded. Despite the field
+        name this is the AC supply rail, not the DC link — see max_bus_voltage.
+      label: Supply Voltage — Recorded Minimum
       signoff: tbd
       field_class: sensor
       feature_available: readable-opt
@@ -7121,6 +7144,8 @@ fields:
         state_class: measurement
         unit_of_measurement: V
         entity_category: diagnostic
+      sources:
+      - own research
       alt_names:
         rev1: min_bus_voltage
       protocols:
@@ -7135,8 +7160,14 @@ fields:
             encoding: voltage_offset60
           direction: response
           section: §4.2.5
-      note: 'S8: 136 raw → 196 V. Plausible for voltage sag during compressor startup.'
-      confidence: hypothesis
+      note: |
+        Raw → physical: 136 raw → 196 V, the lower end of the recorded
+        supply band. A dip to 196 V is a deep but reachable sag on a weak
+        supply during compressor inrush.
+
+        Quantity, misnomer and stability: see max_bus_voltage — the two
+        share a frame, an encoding and the same correction.
+      confidence: consistent
     indoor_fan_runtime:
       description: Indoor fan total runtime (LE 16-bit minutes — body[6] low byte, body[7] high byte).
       field_class: sensor
@@ -7322,19 +7353,20 @@ fields:
       sources:
       - dudanov
     outdoor_dc_bus_voltage:
-      description: Outdoor unit DC bus voltage. Raw value in volts.
+      description: Outdoor DC-link measurement, exposed as the raw ADC count the
+        wire carries. Not volts — the conversion factor depends on the board's
+        sense divider and is not established, so no scaling is applied here.
+      label: DC Link (raw ADC count)
       signoff: tbd
       field_class: sensor
-      feature_available: readable
+      feature_available: readable-opt
       data_type: uint8
       device_context: outdoor_unit
-      unit: V
       ha:
         entity_category: diagnostic
-        device_class: voltage
         state_class: measurement
-        unit_of_measurement: V
-        suggested_display_precision: 0
+      sources:
+      - own research
       alt_names:
         rev1: outdoor_dc_bus_voltage
       protocols:
@@ -7348,8 +7380,41 @@ fields:
             - 0
           direction: response
           section: §4.2.3
-      note: 'Own captures: range 161-179 V. Plausible for rectified mains DC bus.'
-      confidence: hypothesis
+      note: |
+        The byte is an ADC count of the DC link, not a voltage. An earlier
+        reading of this field as "raw value in volts" is withdrawn — the
+        numbers do not support it.
+
+        Wire behaviour (Session 7, three operating points in one session):
+        161 raw with the fan stopped and the EEV wide open, 172 raw at
+        standby with the compressor off, 177 raw with compressor and fan
+        running. The reading is highest under load. A passively rectified
+        link has to fall under load — the supply itself sags (221 V loaded
+        against 228 V at standby in the same session's Group 1 frames) and
+        the reservoir capacitor discharges into the inverter. Rising under
+        load is instead the signature of a regulated boost stage that lifts
+        its setpoint as the compressor draws more, which a three-phase PMSM
+        needs for headroom against back-EMF at speed.
+
+        Why no factor is applied: a regulated link is decoupled from the
+        supply, so the obvious anchor — "at standby the link equals the
+        rectified supply peak" — does not hold and must not be used to
+        derive one. On boards of this class the regulated link sits in the
+        high three hundreds of volts, which puts the factor somewhere near
+        2, but the divider is undocumented and we have no ground-truth
+        measurement. Publishing a guessed scale would be worse than
+        publishing the count.
+
+        How to settle it, read-only: log this byte together with the supply
+        voltage and the compressor frequency over a long window. If it
+        tracks the supply, the stage is passive after all and the factor
+        follows from the fit. If it is decoupled and plateaus at sustained
+        high compressor load, that plateau is the regulation setpoint and
+        yields the factor directly.
+
+        Device-specific scaling is available as a glossary override — see the
+        XtremeSaveBlue full profile in device_quirks/.
+      confidence: consistent
     outdoor_fan_stator_flux:
       description: Outdoor fan motor stator flux (raw sensor value).
       signoff: tbd

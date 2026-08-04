@@ -1,7 +1,7 @@
 # Real 0xC1 Group 5 frames — XtremeSaveBlue, Session 8
 #
 # Extended params: humidity, compensated setpoint, fan/EEV targets,
-# compressor runtime, bus voltages. UART bus (rare — only 5 frames in S8).
+# compressor runtime, supply-voltage extremes. UART bus (rare — only 5 frames in S8).
 # All fields: Hypothesis confidence.
 
 device: "XtremeSaveBlue"
@@ -22,7 +22,7 @@ frames:
       compressor_runtime_current: 6
       max_bus_voltage: 183
       min_bus_voltage: 136
-    notes: "Compressor running. Fan target=776 RPM, EEV=368 steps. Runtime=384s. Bus 196-243V."
+    notes: "Compressor running. Fan target=776 RPM, EEV=368 steps. Runtime=384s. Recorded supply band 196-243V."
 
   - name: "heat mode active — later in session"
     timestamp: 216.9

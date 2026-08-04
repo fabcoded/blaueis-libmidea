@@ -1,6 +1,6 @@
 # Real 0xC1 Group 3 frames — XtremeSaveBlue, Session 7
 #
-# Outdoor unit diagnostics: fan speed, EEV position, DC bus voltage.
+# Outdoor unit diagnostics: fan speed, EEV position, DC-link ADC count.
 # Extracted via tshark, R/T bus.
 
 device: "XtremeSaveBlue"
@@ -20,7 +20,7 @@ frames:
       outdoor_return_air_temp: 114
       ipm_module_temp: 179
       outdoor_target_compressor_freq: 61
-    notes: "Fan=97 (776 RPM). EEV=26 (208 steps). DC bus=177V. Target freq=61Hz."
+    notes: "Fan=97 (776 RPM). EEV=26 (208 steps). DC link=177 raw (highest — under load). Target freq=61Hz."
 
   - name: "cool mode transition — fan off, EEV open"
     timestamp: 346.1
@@ -32,7 +32,7 @@ frames:
       outdoor_return_air_temp: 114
       ipm_module_temp: 179
       outdoor_target_compressor_freq: 63
-    notes: "Fan stopped. EEV wide open=53 (424 steps). DC bus dropped to 161V. Target 63Hz."
+    notes: "Fan stopped. EEV wide open=53 (424 steps). DC link dropped to 161 raw. Target 63Hz."
 
   - name: "end of session — compressor off"
     timestamp: 719.6
@@ -44,4 +44,4 @@ frames:
       outdoor_return_air_temp: 114
       ipm_module_temp: 179
       outdoor_target_compressor_freq: 0
-    notes: "All off. EEV=27 (216 steps, resting position). DC bus=172V (standby). Target=0Hz."
+    notes: "All off. EEV=27 (216 steps, resting position). DC link=172 raw (standby). Target=0Hz."
