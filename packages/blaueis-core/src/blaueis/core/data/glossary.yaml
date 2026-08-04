@@ -881,15 +881,30 @@ fields:
       - own research
     alarm_sleep:
       description: Alarm sleep / wake-up timer function.
-      note: 'AC-internal wake-up alarm/timer whose function HA''s automation engine, schedule helpers, and alarm-clock entities supersede. Usage cannot be guaranteed in mixed setups — when both an AC alarm and an HA automation target the same wake-up outcome, the two fire independently and state may diverge. Surfaced for users who prefer the AC-side handler; HA-driven setups should disable this entity and drive `climate.turn_on` from a time-triggered automation instead. See docs/disabled_fields.md §5.1 for the broader supersede rule.'
-      signoff: tbd
+      note: |
+        AC-internal wake-up alarm/timer whose function HA's automation
+        engine, schedule helpers, and alarm-clock entities supersede. Usage
+        cannot be guaranteed in mixed setups — when both an AC alarm and an
+        HA automation target the same wake-up outcome, the two fire
+        independently and state may diverge.
+
+        Excluded 2026-08-04 as a product-scope decision: this integration
+        exists for HA automation, and AC-internal comfort timers are exactly
+        what it replaces — drive `climate.turn_on` from a time-triggered
+        automation instead (docs/disabled_fields.md §5.1, the supersede
+        rule). The write path was never exercised on our unit, hence the
+        second reason. Re-enable via glossary override if a use case ever
+        emerges; the never_tested_write caveat shows in the banner.
       field_class: stateful_bool
       _migration:
         _previous_feature_available: always
         _inferred_reason: '§10 default-deny audit: hypothesis confidence, decode-only evidence (false in S7/S11 ground truth),
           no active state-change capture, no independent source confirmation. Demoted until round-trip verified.'
         _source: §10 audit 2026-04-10
-      feature_available: readable
+      feature_available: excluded
+      excluded_reasons:
+      - unnecessary_automation
+      - never_tested_write
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -1427,14 +1442,16 @@ fields:
       - serial_protocol.md §3.2/§4.1
     child_sleep:
       description: Child sleep / wise eye occupancy sensor write control.
-      signoff: tbd
       field_class: stateful_bool
       _migration:
         _previous_feature_available: always
         _inferred_reason: '§10 default-deny audit: hypothesis confidence, no ground-truth decode evidence in any capture fixture,
           no session testing. Demoted until round-trip verified.'
         _source: §10 audit 2026-04-10
-      feature_available: readable
+      feature_available: excluded
+      excluded_reasons:
+      - unnecessary_automation
+      - never_tested_write
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -1467,6 +1484,15 @@ fields:
       confidence: hypothesis
       sources:
       - serial_protocol.md §3.2/§4.1
+      note: |
+        Excluded 2026-08-04 as a product-scope decision: an AC-internal
+        child-sleep comfort program is superseded by HA automations, which
+        is what this integration is built for. The control bit is
+        independent of the occupancy-sensor status bit, so excluding this
+        control gates nothing else that is surfaced. The write path was
+        never exercised on our unit, hence the second reason. Re-enable via
+        glossary override if a use case ever emerges; the
+        never_tested_write caveat shows in the banner.
     cleanup:
       description: Clean up / purifier mode active.
       signoff: tbd

@@ -286,3 +286,20 @@ Covers `has_icheck` (0x91), `indoor_humidity` (0x15), `mode_query_value`
   diagnostic service rather than wire behaviour and is no longer used, so
   absence is expected on current hardware generally. A reopen would need a
   device that both advertises the id and drives something observable with it.
+
+### §13.12 — Product-scope exclusions (`unnecessary_automation`)
+
+- **Fields:** `alarm_sleep`, `child_sleep` (both `cmd_0x40`/`rsp_0xc0`
+  body[8] bits, no capability gate).
+- **Decision (2026-08-04):** the integration is built for HA automation;
+  AC-internal comfort programs — the wake-up alarm and the child-sleep
+  profile — are what HA automations replace, so the controls are not
+  surfaced. This is a scope decision, not an evidence verdict: neither
+  write path was ever exercised on our unit, which the second reason
+  (`never_tested_write`) records honestly.
+- **Reopen condition:** none needed — `unnecessary_automation` is
+  accepted-class, so any user can surface either field through a glossary
+  override at any time; the `never_tested_write` caveat appears in the
+  override banner until someone records a write→readback round trip. If a
+  round trip is ever recorded and a real use case emerges, re-tier to
+  `readable` upstream and drop both reasons.

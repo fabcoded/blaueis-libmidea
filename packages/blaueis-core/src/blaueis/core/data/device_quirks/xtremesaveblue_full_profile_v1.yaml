@@ -173,6 +173,15 @@ fields:
 #     error. Reopen on a unit whose firmware acts on body[10] bit 1.
 #     (glossary: excluded; TODO_glossary.md §13.10.)
 #
+#   alarm_sleep, child_sleep — excluded (unnecessary_automation +
+#     never_tested_write). Product-scope decision 2026-08-04: the integration
+#     is built for HA automation; AC-internal comfort timers (wake-up alarm,
+#     child-sleep program) are what it replaces, so the controls are not
+#     surfaced. Writes never exercised on this unit. Freely re-enabled via
+#     override (unnecessary_automation is banner-free; never_tested_write
+#     adds the unverified-behaviour caveat). (glossary: excluded;
+#     TODO_glossary.md §13.12.)
+#
 #   night_light — excluded (never_observed). Live test 2026-05-31: the HA write
 #     does NOT engage (readback stays off in cool/idle and in sleep; a preset
 #     write in the same run DID stick, so the write path works) — this SKU has
