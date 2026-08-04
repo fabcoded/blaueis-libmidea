@@ -7124,10 +7124,16 @@ fields:
         wording was an inherited misnomer; the field key is kept for
         entity-id stability and the label carries the corrected name.
 
-        Stability: 183/136 raw were identical in Session 8 and, months later,
-        in Session 15. Lifetime extremes are expected to sit still once
-        established — but it does mean we have never observed the pair
-        update, so a changed reading is new information, not noise.
+        The pair does update, just slowly. 183/136 raw were identical in
+        Session 8 and, months later, in Session 15 — but the maximum has
+        since moved on to 244 V (184 raw), recorded on a unit that had been
+        reading 243 V throughout the capture window. It behaves as a genuine
+        running extreme rather than a fixed threshold.
+
+        Nine days of live supply history put the reading at 227-237 V across
+        2382 samples, comfortably inside the 196-244 V band the pair spans,
+        with the recorded maximum sitting above the recent range and the
+        minimum well below it — the shape a lifetime max/min has.
       confidence: consistent
     min_bus_voltage:
       description: Lowest supply voltage the unit has recorded. Despite the field
@@ -7385,32 +7391,30 @@ fields:
         reading of this field as "raw value in volts" is withdrawn — the
         numbers do not support it.
 
-        Wire behaviour (Session 7, three operating points in one session):
-        161 raw with the fan stopped and the EEV wide open, 172 raw at
-        standby with the compressor off, 177 raw with compressor and fan
-        running. The reading is highest under load. A passively rectified
-        link has to fall under load — the supply itself sags (221 V loaded
-        against 228 V at standby in the same session's Group 1 frames) and
-        the reservoir capacitor discharges into the inverter. Rising under
-        load is instead the signature of a regulated boost stage that lifts
-        its setpoint as the compressor draws more, which a three-phase PMSM
-        needs for headroom against back-EMF at speed.
+        Measured relationship to the supply: over 1822 time-paired readings
+        of this byte against outdoor_supply_voltage (nine days of live
+        history, supply 227-237 V, this byte 171-179), the two correlate at
+        r = +0.94 and the quotient (sqrt(2) * supply) / raw sits at a median
+        of 1.875 with a standard deviation of 0.005 across the whole set.
+        The link therefore tracks the rectified supply peak: the stage is
+        passively rectified rather than actively boosted, and each raw count
+        is worth about 1.875 V on this board — placing the link at roughly
+        321-336 V, the band a rectified 230 V supply produces.
 
-        Why no factor is applied: a regulated link is decoupled from the
-        supply, so the obvious anchor — "at standby the link equals the
-        rectified supply peak" — does not hold and must not be used to
-        derive one. On boards of this class the regulated link sits in the
-        high three hundreds of volts, which puts the factor somewhere near
-        2, but the divider is undocumented and we have no ground-truth
-        measurement. Publishing a guessed scale would be worse than
-        publishing the count.
+        Why the count is still published unscaled: 1.875 V per count is a
+        property of this board's sense divider, not of the protocol. Another
+        unit in the family can carry a different divider, or an actively
+        boosted link that does not track the supply at all, and the same
+        byte would then mean something else entirely. The quotient above is
+        also the recipe for deriving the local factor on any unit that
+        exposes both fields, which is more useful than a number baked in
+        upstream.
 
-        How to settle it, read-only: log this byte together with the supply
-        voltage and the compressor frequency over a long window. If it
-        tracks the supply, the stage is passive after all and the factor
-        follows from the fit. If it is decoupled and plateaus at sustained
-        high compressor load, that plateau is the regulation setpoint and
-        yields the factor directly.
+        Caveat on an earlier reading of this field: a small set of frames
+        appeared to show the value rising under compressor load, which would
+        have implied a regulated boost stage. That pairing was made across
+        two different frame groups by operating-state label rather than by
+        timestamp, and the time-aligned history above does not support it.
 
         Device-specific scaling is available as a glossary override — see the
         XtremeSaveBlue full profile in device_quirks/.
