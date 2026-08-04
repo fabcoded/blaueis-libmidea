@@ -387,11 +387,16 @@ def test_field_invariants():
     # absence the unit itself has stated: their B1 property probe answered
     # with a zero-length record, so they are deliberately excluded with
     # never_observed (TODO_glossary.md §13.11) rather than left cap-gated.
+    # pre_cool_hot is excluded on product scope instead (§13.12) — AC-side
+    # pre-conditioning schedules are what HA automations replace.
     DEVICE_STATED_ABSENT = {"has_icheck", "indoor_humidity", "mode_query_value"}
+    PRODUCT_SCOPE_EXCLUDED = {"pre_cool_hot"}
     not_capability = [
         n
         for n in new_fields
-        if n not in DEVICE_STATED_ABSENT and cat_index[n][1].get("feature_available") != "capability"
+        if n not in DEVICE_STATED_ABSENT
+        and n not in PRODUCT_SCOPE_EXCLUDED
+        and cat_index[n][1].get("feature_available") != "capability"
     ]
     check(
         "all bulk-added fields default to feature_available: capability",
@@ -400,9 +405,9 @@ def test_field_invariants():
     )
     badly_excluded = [
         n
-        for n in DEVICE_STATED_ABSENT
+        for n in DEVICE_STATED_ABSENT | PRODUCT_SCOPE_EXCLUDED
         if cat_index[n][1].get("feature_available") != "excluded"
-        or "never_observed" not in (cat_index[n][1].get("excluded_reasons") or [])
+        or not {"never_observed", "unnecessary_automation"} & set(cat_index[n][1].get("excluded_reasons") or [])
     ]
     check(
         "device-stated-absent fields are excluded with never_observed",

@@ -173,6 +173,19 @@ fields:
 #     error. Reopen on a unit whose firmware acts on body[10] bit 1.
 #     (glossary: excluded; TODO_glossary.md §13.10.)
 #
+#   cosy_sleep (+ cosy_sleep_switch status mirror), pre_cool_hot,
+#   power_on_timer, power_off_timer, power_on_time_value,
+#   power_off_time_value — excluded (unnecessary_automation +
+#     never_tested_write; the read-only mirror carries only the first).
+#     Product-scope class, completed 2026-08-04: AC-internal scheduling and
+#     comfort programs (sleep composite + curve, pre-conditioning schedule,
+#     on/off countdown timers) are what HA automations replace, so none of
+#     them are surfaced. sleep_mode (the Sleep preset) deliberately STAYS —
+#     it is a single vendor-tuned toggle, not a scheduler. All freely
+#     re-enabled via override; write-capable ones carry the
+#     never_tested_write caveat in the banner. (glossary: excluded;
+#     TODO_glossary.md §13.12.)
+#
 #   alarm_sleep, child_sleep — excluded (unnecessary_automation +
 #     never_tested_write). Product-scope decision 2026-08-04: the integration
 #     is built for HA automation; AC-internal comfort timers (wake-up alarm,

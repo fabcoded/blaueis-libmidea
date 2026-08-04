@@ -58,16 +58,16 @@ def main():
     )
 
     # feature_available distribution — snapshot of the current glossary (sums to
-    # 198): always 11, readable 59, capability 72, excluded 45, readable-opt 11.
+    # 198): always 10, readable 58, capability 71, excluded 48, readable-opt 11.
     # The extensive exclusion work (vane fields, group-unknown bytes,
     # decode-unverified/never-observed, etc.) moved many fields
     # readable -> excluded/capability over time; every excluded field carries a
     # schema-enforced excluded_reasons entry.
     fa_counts = Counter(f["feature_available"] for f in fields.values())
-    check("always == 11", fa_counts["always"] == 11, f"got {fa_counts.get('always', 0)}")
-    check("readable == 59", fa_counts["readable"] == 59, f"got {fa_counts.get('readable', 0)}")
-    check("capability == 72", fa_counts["capability"] == 72, f"got {fa_counts.get('capability', 0)}")
-    check("excluded == 45", fa_counts["excluded"] == 45, f"got {fa_counts.get('excluded', 0)}")
+    check("always == 10", fa_counts["always"] == 10, f"got {fa_counts.get('always', 0)}")
+    check("readable == 58", fa_counts["readable"] == 58, f"got {fa_counts.get('readable', 0)}")
+    check("capability == 71", fa_counts["capability"] == 71, f"got {fa_counts.get('capability', 0)}")
+    check("excluded == 48", fa_counts["excluded"] == 48, f"got {fa_counts.get('excluded', 0)}")
 
     # Required keys on every field. The new shape is flat: sources +
     # default_priority back the per-frame storage; the rest are
@@ -134,6 +134,9 @@ def main():
     expected_never = {
         "alarm_sleep",
         "child_sleep",
+        "cosy_sleep",
+        "cosy_sleep_switch",
+        "pre_cool_hot",
         "current_session_time",
         "current_work_time",
         "fan_speed_timer_bit",

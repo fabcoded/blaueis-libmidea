@@ -289,13 +289,26 @@ Covers `has_icheck` (0x91), `indoor_humidity` (0x15), `mode_query_value`
 
 ### §13.12 — Product-scope exclusions (`unnecessary_automation`)
 
-- **Fields:** `alarm_sleep`, `child_sleep` (both `cmd_0x40`/`rsp_0xc0`
-  body[8] bits, no capability gate).
-- **Decision (2026-08-04):** the integration is built for HA automation;
-  AC-internal comfort programs — the wake-up alarm and the child-sleep
-  profile — are what HA automations replace, so the controls are not
-  surfaced. This is a scope decision, not an evidence verdict: neither
-  write path was ever exercised on our unit, which the second reason
+- **Fields (the full class as of 2026-08-04):**
+  - `power_on_timer`, `power_off_timer`, `power_on_time_value`,
+    `power_off_time_value` — AC-side on/off countdown timers (excluded
+    earlier with the same reason pair; this section retrofits their class
+    record and reopen path).
+  - `alarm_sleep`, `child_sleep` — wake-up alarm and child-sleep profile.
+  - `cosy_sleep` (+ its read-only status mirror `cosy_sleep_switch`) — the
+    multi-key sleep composite. Deep-background notes at the field: the
+    on-state needs value AND switch member together; fully independent of
+    `sleep_mode` (body[10] bit 0); the per-hour curve travels via a
+    separate never-modelled transport.
+  - `pre_cool_hot` — AC-side pre-conditioning schedule (property IDs
+    0x01/0x02; never probed on our unit — scope, not absence).
+- **Deliberately NOT in the class:** `sleep_mode` — the Sleep preset is a
+  single vendor-tuned toggle, not a scheduler; it stays surfaced.
+- **Decision:** project stance, applies to all units: the integration is
+  built for HA automation; AC-internal scheduling and comfort programs are
+  what it replaces, so these controls are not surfaced anywhere. This is a
+  scope decision, not an evidence verdict: no write path in the class was
+  ever exercised on our unit, which the second reason
   (`never_tested_write`) records honestly.
 - **Reopen condition:** none needed — `unnecessary_automation` is
   accepted-class, so any user can surface either field through a glossary

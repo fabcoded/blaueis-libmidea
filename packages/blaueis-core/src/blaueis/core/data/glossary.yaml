@@ -1536,8 +1536,33 @@ fields:
       description: 'Comfort sleep mode. Multi-key composite: the user-visible state is determined by the combination of a 2-bit
         value at body[8] bits[1:0] and a switch bit at body[9] bit 6. A third sub-field at body[17] bits[4:0] carries the
         sleep duration and is destructively overwritten to 0x0A when transitioning to ON.'
-      note: 'AC-internal multi-key sleep composite (switch + value + duration timer) whose function an HA automation can replicate via target_temperature ramps and time triggers. Usage cannot be guaranteed in mixed setups — the AC''s destructive write of the sleep_time sub-field on switch transitions can conflict with HA-side state restoration, and concurrent HA temp-ramp automations will compete with the AC''s vendor curve. Surfaced for users who prefer the AC-side composite; HA-driven setups should disable this entity. See docs/disabled_fields.md §5.1 for the broader supersede rule. The existing sensor field cosy_sleep_switch (body[9] bit 6) is the same wire position as composite member comfortable_sleep_switch; that sensor entry remains for backward compatibility but is semantically redundant with this composite.'
-      signoff: tbd
+      note: |
+        AC-internal multi-key sleep composite (switch + value + duration
+        timer) whose function an HA automation can replicate via
+        target_temperature ramps and time triggers. Usage cannot be
+        guaranteed in mixed setups — the AC's destructive write of the
+        sleep_time sub-field on switch transitions can conflict with HA-side
+        state restoration, and concurrent HA temp-ramp automations will
+        compete with the AC's vendor curve.
+
+        Excluded 2026-08-04 as a product-scope decision (project stance: the
+        integration is built for HA automation, and AC-internal comfort
+        programs are what it replaces). Deep-background notes, recorded
+        before the exclusion:
+        - The on-state is a two-key agreement — the 2-bit value must read 3
+          with the switch bit set; either member alone is not "on". Any
+          future re-enable must keep writing both members together.
+        - Fully independent of sleep_mode (body[10] bit 0): the Sleep
+          preset is unaffected by this exclusion and stays surfaced.
+        - The actual sleep curve (the per-hour temperature table) travels
+          as a separate list-shaped transport this glossary has never
+          modelled; the composite only carries switch + value + duration.
+          A re-enable that wants the full feature needs that transport
+          modelled first.
+        - The write path was never exercised on our unit (second reason).
+        Re-enable via glossary override; the never_tested_write caveat
+        shows in the banner. The redundant status mirror cosy_sleep_switch
+        (same wire position as the switch member) is excluded alongside.
       field_class: complex_function
       _migration:
         _reclassified_from: stateful_enum
@@ -1545,7 +1570,10 @@ fields:
           three sub-fields across three wire bytes (8, 9, 17), with a state-machine transition that destructively writes the
           sleep timer. The existing sensor cosy_sleep_switch (body[9] bit 6) is now a composite member of this field rather
           than an independent sensor.'
-      feature_available: always
+      feature_available: excluded
+      excluded_reasons:
+      - unnecessary_automation
+      - never_tested_write
       data_type: uint8
       device_context: indoor_unit
       alt_names:
@@ -5715,9 +5743,11 @@ fields:
       confidence: hypothesis
     pre_cool_hot:
       description: Pre-cool/pre-heat scheduling mode.
-      signoff: tbd
       field_class: stateful_bool
-      feature_available: capability
+      feature_available: excluded
+      excluded_reasons:
+      - unnecessary_automation
+      - never_tested_write
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -5746,6 +5776,21 @@ fields:
             - 0
           section: §3.5
       confidence: hypothesis
+      note: |
+        Pre-cool/pre-heat is an AC-internal schedule: the unit conditions
+        the room ahead of a stored program. Excluded 2026-08-04 as a
+        product-scope decision — scheduling is exactly what HA automations
+        do, with better triggers (calendar, presence, price) than an
+        AC-side program.
+
+        Deep-background notes, recorded before the exclusion: a plain
+        on/off bool carried in property data byte 0 (IDs 0x01/0x02); no
+        other surfaced field depends on it. Our unit has never answered
+        either property — the B1 probes to date did not cover them — so
+        there is no device evidence in either direction; the exclusion is
+        scope, not absence. Write path never exercised (second reason).
+        Re-enable via glossary override; the never_tested_write caveat
+        shows in the banner.
     body_check:
       description: Body-check / occupancy detection toggle.
       signoff: tbd
@@ -6378,9 +6423,10 @@ fields:
       - Session 11 service menu
     cosy_sleep_switch:
       description: Cosy sleep switch / self cosy sleep toggle. Separate from cosy_sleep mode (0-3).
-      signoff: tbd
       field_class: sensor
-      feature_available: readable
+      feature_available: excluded
+      excluded_reasons:
+      - unnecessary_automation
       ha:
         entity_category: diagnostic
       data_type: bool
@@ -6401,6 +6447,13 @@ fields:
       confidence: hypothesis
       sources:
       - serial_protocol.md §4.1
+      note: |
+        Read-only status mirror of the cosy_sleep composite's switch member
+        (same wire position, body[9] bit 6). Excluded 2026-08-04 together
+        with the composite — the project does not surface the AC-internal
+        sleep program, and a status light for an unsurfaced program is
+        leftover surface. Re-enable via glossary override alongside
+        cosy_sleep.
     power_current_run_kwh:
       description: Energy consumed in the current run cycle in kWh. Resets on power cycle.
       field_class: sensor
