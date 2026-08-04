@@ -6919,31 +6919,21 @@ fields:
       sources:
       - dissector observation (C1G1 body[17])
     indoor_operating_mode:
-      description: Indoor unit actual operating mode as reported in C1 Group 1. Uses the same encoding as the C0 operating_mode
-        field.
-      signoff: tbd
+      description: Indoor unit running-state byte as reported in C1 Group 1.
+        Exposed as the raw value — per-value semantics are undetermined, see note.
+      signoff: 'Value semantics deferred — the inherited C0-enum mapping is
+        falsified by our own captures (see note) and no verified per-value
+        mapping exists. Raw byte exposed meanwhile so the display never asserts
+        a meaning the data does not support. Needs cross-mode live observation
+        (or a dedicated mode-sweep session) before an enum can return.'
       field_class: sensor
       feature_available: readable
       ha:
         entity_category: diagnostic
-      data_type: enum
+      data_type: uint8
       device_context: indoor_unit
-      values:
-        auto:
-          raw: 1
-          description: Automatic mode (1)
-        cool:
-          raw: 2
-          description: Cooling (2)
-        dry:
-          raw: 3
-          description: Dehumidification (3)
-        heat:
-          raw: 4
-          description: Heating (4)
-        fan:
-          raw: 5
-          description: Fan only (5)
+      sources:
+      - own research
       alt_names:
         rev1: indoor_mode
       protocols:
@@ -6957,12 +6947,28 @@ fields:
             - 0
           direction: response
           section: §4.2.1
-      note: 'Session 12: value 3 (Dry) observed when unit was in Cool mode — the indoor board may report the actual compressor
-        cycle mode rather than the user-selected mode. Needs cross-session validation.'
-      confidence: hypothesis
-      sources:
-      - dissector observation (C1G1 body[9])
-      - Session 12 (value 3 in Cool mode)
+      note: |
+        The enum previously mapped here (the C0 operating_mode value set) is
+        withdrawn — our own captures falsify it. Across twelve sessions the
+        byte reads 3 through most heating operation and never once 4, the
+        C0 enum's "heat"; it reads 2 or 0 during cooling; and it holds 0 — a
+        value the C0 enum does not define — for long stretches, including an
+        entire full-load cooling run observed live. Under the old mapping HA
+        rendered "Dehumidification" while the unit was heating.
+
+        What the byte does carry: an indoor-unit running state with observed
+        alphabet {0, 1, 2, 3, 5}. The session-level correlation is real but
+        incomplete — winter heating sessions sit on 3 with 1/2 appearing
+        around start-up and short 5-episodes during compressor-ramping
+        phases (a defrost or recovery state is plausible, unverified);
+        cooling sessions show 2 and 0; and a live full-load cooling run read
+        0 throughout, which breaks every simple mode mapping tried so far.
+        The field therefore stays a raw byte until the states are identified.
+
+        To settle: track the raw value against the climate entity's mode
+        across mode changes and defrost cycles in live history. The alphabet
+        is small; a season of paired observations should name the states.
+      confidence: consistent
     indoor_temperature:
       description: Current room temperature measured by the indoor unit thermistor. When Follow Me is active, reports the
         remote sensor value instead.
