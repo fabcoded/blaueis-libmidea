@@ -42,14 +42,14 @@ def _value(status, name):
 REPO_TESTCASES = Path(__file__).resolve().parent / "test-cases"
 FIXTURE = REPO_TESTCASES / "xtremesaveblue_s11_frames" / "c0_window_servicemenu.yaml"
 
-# 9 fields promoted from `capability` to `readable` by §2 (silky_cool and
-# humidity_setpoint moved back to capability-gated — cap-hidden pre-B5).
+# 8 fields promoted from `capability` to `readable` by §2 (silky_cool and
+# humidity_setpoint moved back to capability-gated — cap-hidden pre-B5;
+# turbo_mode excluded 2026-08-03, TODO_glossary.md §13.10).
 PROMOTED_FIELDS = [
     "temperature_unit",
     "louver_swing_vertical",
     "louver_swing_horizontal",
     "eco_mode",
-    "turbo_mode",
     "fan_speed",
     "frost_protection",
     "auxiliary_heat_level",
@@ -63,7 +63,6 @@ EXPECTED_TYPE = {
     "louver_swing_vertical": (int, bool),
     "louver_swing_horizontal": (int, bool),
     "eco_mode": (bool,),
-    "turbo_mode": (bool,),
     "fan_speed": (int,),
     "frost_protection": (bool,),
     "auxiliary_heat_level": (int,),

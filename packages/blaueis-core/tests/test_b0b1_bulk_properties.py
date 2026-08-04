@@ -383,12 +383,31 @@ def test_field_invariants():
     )
 
     # Every field starts at feature_available: capability (cap-gated;
-    # the quirks system promotes them per-device).
-    not_capability = [n for n in new_fields if cat_index[n][1].get("feature_available") != "capability"]
+    # the quirks system promotes them per-device) — except fields whose
+    # absence the unit itself has stated: their B1 property probe answered
+    # with a zero-length record, so they are deliberately excluded with
+    # never_observed (TODO_glossary.md §13.11) rather than left cap-gated.
+    DEVICE_STATED_ABSENT = {"has_icheck", "indoor_humidity", "mode_query_value"}
+    not_capability = [
+        n
+        for n in new_fields
+        if n not in DEVICE_STATED_ABSENT and cat_index[n][1].get("feature_available") != "capability"
+    ]
     check(
         "all bulk-added fields default to feature_available: capability",
         len(not_capability) == 0,
         f"non-capability: {not_capability}",
+    )
+    badly_excluded = [
+        n
+        for n in DEVICE_STATED_ABSENT
+        if cat_index[n][1].get("feature_available") != "excluded"
+        or "never_observed" not in (cat_index[n][1].get("excluded_reasons") or [])
+    ]
+    check(
+        "device-stated-absent fields are excluded with never_observed",
+        len(badly_excluded) == 0,
+        f"wrong tier/reason: {badly_excluded}",
     )
 
     # Sensor-categorized fields must NOT have a cmd_0xb0 protocol entry
