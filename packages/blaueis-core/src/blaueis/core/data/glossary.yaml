@@ -4398,7 +4398,6 @@ fields:
       description: Strong-wind fan boost. Distinct from turbo_mode — this drives fan-side airflow only (body[8] bit 5) and
         does not raise compressor frequency, which turbo_mode controls via a separate bit (body[10] bit 1). The two are
         independent on the wire — either, both, or neither can be set — so they are modelled as separate fields.
-      signoff: tbd
       field_class: stateful_bool
       _migration:
         _reclassified_from: complex_function
@@ -4408,8 +4407,12 @@ fields:
       data_type: bool
       device_context: indoor_unit
       ux:
-        visible_in_modes: [cool, heat, fan_only]
-        sources: community protocol research
+        visible_in_modes: [cool, heat]
+        sources: own research
+        note: Set from the 2026-08-04 live all-modes sweep — in fan_only the
+          preset was offered but the firmware dropped the write (readback
+          stayed clear), so fan_only is out. Live behaviour wins over the
+          inherited mode list.
       gate:
         interlocks:
           - field: auxiliary_heat_level
@@ -4467,9 +4470,17 @@ fields:
         ramping): with the boost enabled on the unit, the C0 status frame reads
         body[8] bit 5 set while body[10] bit 1 stays clear — confirming both the
         decode and the fan-side vs compressor-side split from a device-sourced
-        frame. Our own write path is not yet exercised: no cmd_0x40 write →
-        readback round-trip has been recorded, and the HA-service-path
-        engagement test (sign-off gate B) is still open.
+        frame.
+
+        Write-behaviour record (2026-08-04, live, HA service path — the
+        climate "Turbo" preset, which writes this field): engage → readback
+        confirmed and release → readback confirmed, twice in cool with
+        ≥10 s pacing; heat engages and releases identically. In fan_only the
+        preset is offered but the write does not stick — the device answers
+        with the bit clear, so the firmware drops the boost outside
+        compressor modes on this unit. Original state restored after the
+        sweep. The readback is the C0 body[8] bit 5 decode, so the round
+        trip is device-confirmed end to end.
     turbo_mode:
       description: High-performance turbo (compressor boost). Reads only body[10] bit 1; the body[8] bit 5 signal that was
         previously OR-folded here is now the separate field `strong_wind` (the two bits are independent on the wire).
