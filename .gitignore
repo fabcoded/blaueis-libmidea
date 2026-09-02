@@ -25,3 +25,7 @@ graphify-out/
 # committed: its absence is what keeps a rebuild from firing on a deploy target,
 # a CI runner or a throwaway clone.
 .graphify-enabled
+
+# Per-developer Claude Code overrides; the committed .claude/settings.json is the
+# shared part (the optional local-checks hook).
+.claude/settings.local.json
