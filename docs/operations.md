@@ -19,7 +19,8 @@ same release.
 Midea indoor units expose a connector for the Wi-Fi dongle, commonly
 labelled **CN3** on the indoor unit's board. Electrically it is a **5 V TTL
 UART, 9600 8N1**, on four pins — not USB, even where the socket is
-USB-A-shaped.
+USB-A-shaped (sometimes keyed). On some units the socket is instead a
+4-pin JST-XH header.
 
 | CN3 pin | Signal |
 |---|---|
@@ -30,7 +31,9 @@ USB-A-shaped.
 
 Which of pins 2/3 carries the AC's TX line varies by unit: wire one way,
 and swap the two data lines if the gateway never receives (§7,
-"Gateway starts but never reaches RUNNING"). Identify pins before wiring:
+"Gateway starts but never reaches RUNNING"). With a passive open-drain
+shifter a swapped pair does no harm; correct it as soon as the log shows no
+response. Identify pins before wiring:
 with the unit powered and nothing connected to CN3, measure DC volts
 between pins 1 and 4 — expect ~5 V. The board next to CN3 carries mains;
 touch only the CN3 pins.
@@ -50,6 +53,9 @@ touch only the CN3 pins.
 | 2 | 5 V — level shifter HV reference |
 
 ### 1.3 Wiring through the level shifter
+
+The shifter is mandatory: the Pi's UART pins are 3.3 V and are damaged by
+5 V, and the AC ignores a 3.3 V drive.
 
 | From | Via | To |
 |---|---|---|
@@ -211,7 +217,7 @@ Two YAML files merged at startup; instance overrides global. Values apply to `Ua
 | `debug_ring_size_mb` | int | `5` | Ring cap in MB (byte-sized eviction, not record count). |
 | `slot_pool_size` | int | `8` | Max concurrent WS clients. Exhaustion → `slot_pool_full` error; no evict-oldest. |
 
-### 4.3 Mirror keys (legacy — superseded by `subscribe`/§5.1.1)
+### 4.3 Mirror keys (legacy — superseded by `subscribe` / `flight_recorder.md` §4.1)
 
 | Key | Default | Note |
 |---|---|---|
