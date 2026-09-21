@@ -107,4 +107,4 @@ If you believe your work is referenced here without proper attribution, or you h
 
 ## License
 
-[MIT License](LICENSE). No warranty.
+[CC0 1.0 Universal](LICENSE) — public-domain dedication. No warranty.
