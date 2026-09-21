@@ -50,11 +50,11 @@ def gateway(monkeypatch) -> FakeGateway:
     return gw
 
 
-def _device(events: list[str]) -> Device:
+def _device(events: list[str], *, running: bool = True) -> Device:
     d = Device(host="127.0.0.1", port=8765, no_encrypt=True, poll_interval=999)
     d.on_connected = lambda: events.append("connected")
     d.on_disconnected = lambda: events.append("disconnected")
-    d._running = True
+    d._running = running
     return d
 
 
@@ -100,6 +100,72 @@ async def test_inline_post_connect_skips_on_connected_after_drop(gateway):
 
     assert events == ["disconnected"]
     await _stop(d, retry)
+
+
+async def test_handshake_started_after_drop_never_reports_connected(gateway):
+    """The link drops after it was established but BEFORE the inline
+    handshake begins (start() spends seconds in the gateway-info and B5
+    queries in between). The handshake must judge the generation of the
+    link it belongs to, not the one current when it starts running."""
+    events: list[str] = []
+    d = _device(events)
+    gen = await d._connect()  # link established here
+
+    gateway.up = False  # link drops; the listen loop's _reconnect runs
+    retry = asyncio.create_task(d._reconnect())
+    await asyncio.sleep(0.05)  # in backoff / failing; on_disconnected fired
+    assert events == ["disconnected"]
+
+    await d._post_connect_init(gen)  # start()'s inline handshake finally runs
+
+    assert events == ["disconnected"]
+    await _stop(d, retry)
+
+
+async def _drop_during_start(d: Device, gateway: FakeGateway, monkeypatch, *, gateway_up: bool):
+    """start() with the link dropping while it is still in its gateway-info
+    query, i.e. after ``_connect()`` and before the inline handshake."""
+
+    async def drop_link() -> None:
+        gateway.up = gateway_up
+        await d._client.close()  # the listen loop ends and calls _reconnect
+        await asyncio.sleep(0.05)
+        if gateway_up:
+            await d._post_connect_task  # the reconnect's own handshake
+
+    async def no_caps() -> None:
+        return None
+
+    monkeypatch.setattr(d, "_query_gateway_info", drop_link)
+    monkeypatch.setattr(d, "_query_capabilities", no_caps)
+    await d.start()
+
+
+async def test_start_never_reports_connected_when_link_drops_before_handshake(gateway, monkeypatch):
+    """Live failure: link drops while start() is in the B5 queries, the
+    gateway stays down, and the handshake start() then awaits inline
+    reported "connected" on the dead link."""
+    events: list[str] = []
+    d = _device(events, running=False)
+
+    await _drop_during_start(d, gateway, monkeypatch, gateway_up=False)
+
+    assert "connected" not in events
+    assert events == ["disconnected"]
+    await d.stop()
+
+
+async def test_start_reports_connected_once_when_reconnect_wins_the_race(gateway, monkeypatch):
+    """The reconnect succeeds before start() reaches its handshake: the
+    reconnect's handshake reports connected, start()'s (stale) one must
+    stay silent — one on_connected for the link that is actually up."""
+    events: list[str] = []
+    d = _device(events, running=False)
+
+    await _drop_during_start(d, gateway, monkeypatch, gateway_up=True)
+
+    assert events == ["disconnected", "connected"]
+    await d.stop()
 
 
 async def test_reconnect_after_drop_reports_connected_once(gateway):

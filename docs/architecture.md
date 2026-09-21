@@ -159,9 +159,16 @@ processed regardless of correlation.
 **Connection callbacks:** `on_disconnected` fires once per lost link
 (and on `stop()`); `on_connected` fires once per established link, after
 the post-connect status round-trip (first C0 ingested, or
-`INITIAL_STATUS_TIMEOUT` elapsed). A post-connect round-trip whose link
-drops before it finishes is cancelled and never fires `on_connected`, so
-the last callback always matches the current link state.
+`INITIAL_STATUS_TIMEOUT` elapsed). The last callback matches the current
+link state because every link carries a generation number (`_link_gen`):
+`_connect()` returns the generation of the link it just established, the
+caller hands it to `_post_connect_init(gen)`, and any loss or `stop()`
+increments it. The handshake compares against the value taken at
+connect time — not at the moment it starts running — so a link that drops
+while `start()` is still in its gateway-info and B5 queries, or while the
+handshake is waiting for its C0, never reports `on_connected` after that
+drop's `on_disconnected`. The reconnect path additionally cancels the
+pending handshake task.
 
 **Polling.** The poll loop calls `_compute_required_queries()` each
 cycle and dispatches one frame per query key. The set is derived
