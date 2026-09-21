@@ -1,6 +1,6 @@
 # Contributing to blaueis-libmidea
 
-Contributions are welcome. This project is CC0 — by submitting a change you agree that your contribution is dedicated to the public domain under the same terms.
+Contributions are welcome. This project is MIT-licensed — by submitting a change you agree that your contribution is licensed under the same terms.
 
 ## Before you start
 
@@ -58,4 +58,4 @@ test counts today: core 277, gateway 45, client 203, tools 60.
 
 ## License and attribution
 
-By contributing, you dedicate your contribution to the public domain under [CC0 1.0 Universal](LICENSE). If you have attribution or licensing concerns about any content in this repository, please open an issue — we will respond promptly.
+By contributing, you agree that your contribution is licensed under the [MIT License](LICENSE). If you have attribution or licensing concerns about any content in this repository, please open an issue — we will respond promptly.

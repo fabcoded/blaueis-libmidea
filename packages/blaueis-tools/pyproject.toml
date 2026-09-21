@@ -7,6 +7,7 @@ name = "blaueis-tools"
 version = "0.1.0"
 description = "Blaueis HVAC tools — AC monitor, probe, diagnostics"
 requires-python = ">=3.11"
+license = "MIT"
 dependencies = [
     "blaueis-core",
     "blaueis-client",
