@@ -65,14 +65,23 @@ its three registrations if that happens.
    pick later pre-releases (`0.1.1rc1`), so the final-release bump returns the
    pin to `~=0.1.0` in client and gateway; adjust it when the minor version
    changes.
-2. Merge to `main`, then tag and push:
+2. Move the entries under `## [Unreleased]` in `CHANGELOG.md` into a new
+   `## [X.Y.Z]` section (add the release date; leave `## [Unreleased]` empty
+   above it). Pre-release tags (`rc`, `a`, `b`) need no changelog section.
+3. Merge to `main`, then tag and push:
    `git tag -a v0.1.0rc1 -m "v0.1.0rc1" && git push origin v0.1.0rc1`.
-3. Watch the workflow. When TestPyPI is green, optionally check an install:
+   The tag carries the `v`, the package versions do not; the guard in the
+   workflow compares the two. A gateway checked out at the tag reports the tag
+   name (`v0.1.0rc1`) as its version ([`versioning.md`](versioning.md) §1).
+4. Watch the workflow. When TestPyPI is green, optionally check an install:
    `pip install --index-url https://test.pypi.org/simple/ --no-deps blaueis-core==0.1.0rc1`
    (`--no-deps`: TestPyPI lacks most third-party dependencies).
-4. Approve the `pypi` deployment. The three uploads run in parallel.
-5. Review the draft release (notes are prefilled by GitHub's generated notes;
-   `install.sh` is attached) and publish it.
+5. Approve the `pypi` deployment. The three uploads run in parallel.
+6. Review the draft release and publish it. `install.sh` is attached. The
+   notes are GitHub's generated notes for every tag — the workflow does not
+   read `CHANGELOG.md` — so for a final release replace them with the
+   `## [X.Y.Z]` section of `CHANGELOG.md` before publishing; for a
+   pre-release the generated notes stay.
 
 If one PyPI leg fails after the others have uploaded, use *Re-run failed jobs*
 — never re-tag. **Never reuse a version**: a broken release is yanked on PyPI,

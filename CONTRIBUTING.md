@@ -53,7 +53,9 @@ Approximate test counts today: core 285, gateway 85, client 213, tools 60.
 CI also builds the three published packages and runs `twine check --strict`
 on them, so packaging breakage shows up on the PR, not at release time.
 Locally, per package: `python -m build packages/<pkg> && twine check --strict dist/*`.
-Release steps: [docs/releasing.md](docs/releasing.md).
+Release steps: [docs/releasing.md](docs/releasing.md). User-visible changes go into
+[CHANGELOG.md](CHANGELOG.md) under `## [Unreleased]`; the release notes of a version
+are its section there.
 
 ## What good PRs look like
 
