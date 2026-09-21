@@ -114,6 +114,14 @@ ok "Code updated to $NEW_BUILD"
 # ── Phase 3: Start enabled instances ────────────────
 echo ""
 echo "Starting enabled instances..."
+# Installs made before the installer enabled blaueis-gateway.target come
+# back from a reboot with no gateway. Enabling the target is idempotent, so
+# every update repairs that silently.
+if ! systemctl is-enabled --quiet blaueis-gateway.target 2>/dev/null; then
+    $SUDO systemctl enable blaueis-gateway.target \
+        || warn "Could not enable blaueis-gateway.target — the gateway will not start at boot"
+    ok "Enabled blaueis-gateway.target (start at boot)"
+fi
 STARTED=()
 for cfg in "$CONFIG_DIR/instances/"*.yaml; do
     if [ ! -f "$cfg" ]; then continue; fi

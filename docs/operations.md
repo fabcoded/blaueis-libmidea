@@ -50,7 +50,7 @@ Start / stop / status:
 
 ```sh
 sudo systemctl start blaueis-gateway@<instance>
-sudo systemctl enable blaueis-gateway@<instance>      # start at boot
+sudo systemctl enable blaueis-gateway@<instance>      # add to the target
 sudo systemctl status blaueis-gateway@<instance>
 sudo systemctl restart blaueis-gateway@<instance>
 ```
@@ -60,6 +60,22 @@ Or move all instances together:
 ```sh
 sudo systemctl start blaueis-gateway.target
 ```
+
+**Start at boot needs the target enabled.** The instance unit is
+`WantedBy=blaueis-gateway.target`, and only the target is
+`WantedBy=multi-user.target`. Enabling an instance links it into the
+target's wants; nothing starts at boot unless the target itself is
+enabled:
+
+```sh
+sudo systemctl enable blaueis-gateway.target          # once per host
+systemctl is-enabled blaueis-gateway.target           # must print "enabled"
+```
+
+The installer and `blaueis-gw update` do this; `blaueis-gw status`
+warns when it is missing. A gateway that runs fine until the first
+reboot and then never comes back is this — a manual `systemctl start`
+works without the target and hides the gap until power is lost.
 
 **Crash protection:** the unit sets `StartLimitBurst=5` over 300 s. If the gateway crashes 5 times in 5 minutes, systemd marks it `failed` and stops auto-restarting — prevents spamming the AC with discovery handshakes during a crash loop. Resolve manually: `journalctl -t blaueis-gw-<instance> -n 200` → fix → `systemctl restart`.
 
@@ -220,6 +236,10 @@ Symptoms → where to look, in order.
 
 ### Gateway won't start
 
+0. After a reboot or power loss, with no unit active at all:
+   `systemctl is-enabled blaueis-gateway.target` — `disabled` means the
+   instance was only ever started by hand. `sudo systemctl enable
+   blaueis-gateway.target && sudo systemctl start blaueis-gateway.target`.
 1. `sudo systemctl status blaueis-gateway@<instance>` — systemd reason.
 2. `sudo journalctl -t blaueis-gw-<instance> -n 100` — startup error.
 3. Check config file permissions: `ls -la /etc/blaueis-gw/instances/atelier.yaml` → must be `blaueis-gw:blaueis-gw 640`.

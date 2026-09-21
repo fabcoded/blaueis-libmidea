@@ -309,6 +309,12 @@ fi
 
 # ── Enable and start ────────────────────────────────
 echo ""
+# The instance units are WantedBy=blaueis-gateway.target, and only the target
+# hangs off multi-user.target. Enabling an instance alone links it into the
+# target's wants but nothing pulls the target in at boot — the gateway then
+# runs until the first reboot and never comes back. Enable the target first.
+$SUDO systemctl enable blaueis-gateway.target \
+    || warn "Could not enable blaueis-gateway.target — the gateway will not start at boot"
 # Find which instances have configs — skip disabled ones
 for cfg in "$CONFIG_DIR/instances/"*.yaml; do
     if [ -f "$cfg" ]; then
@@ -324,9 +330,13 @@ print(d.get('enabled', True))
             warn "Instance $name is disabled (enabled: false in config)"
             continue
         fi
-        $SUDO systemctl enable "blaueis-gateway@${name}" 2>/dev/null
-        $SUDO systemctl start "blaueis-gateway@${name}" 2>/dev/null
-        ok "Started blaueis-gateway@${name}"
+        $SUDO systemctl enable "blaueis-gateway@${name}" \
+            || warn "Could not enable blaueis-gateway@${name}"
+        if $SUDO systemctl start "blaueis-gateway@${name}"; then
+            ok "Started blaueis-gateway@${name} (enabled at boot)"
+        else
+            warn "blaueis-gateway@${name} failed to start — see: journalctl -t blaueis-gw-${name} -n 100"
+        fi
     fi
 done
 

@@ -92,6 +92,11 @@ cmd_status() {
     if [ "$found" = false ]; then
         echo "No gateway instances found."
     fi
+    if ! systemctl is-enabled --quiet blaueis-gateway.target 2>/dev/null; then
+        echo -e "${YELLOW}Warning:${NC} blaueis-gateway.target is not enabled —" \
+                "the gateway will NOT start after a reboot."
+        echo "  Fix: sudo systemctl enable blaueis-gateway.target"
+    fi
 }
 
 cmd_instances() {
