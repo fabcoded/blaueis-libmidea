@@ -166,6 +166,12 @@ if [ "$MODE" = "rollback" ]; then
         echo "      Pick one explicitly: sudo blaueis-gw update --ref <tag>"
         exit 1
     fi
+    # The state file is writable by the service user and this runs as root.
+    if ! [[ $TARGET_SHA =~ ^[0-9a-f]{40}$ ]]; then
+        fail "previous_sha in $STATE_FILE is not a commit hash — refusing to use it"
+        echo "      Pick one explicitly: sudo blaueis-gw update --ref <tag>"
+        exit 1
+    fi
     if ! git cat-file -e "$TARGET_SHA^{commit}" 2>/dev/null; then
         # Shallow clone: the old commit may be gone locally — fetch it back by name.
         if _valid_ref "$TARGET_REF"; then _fetch_ref "$TARGET_REF" >/dev/null || true; fi
@@ -241,19 +247,40 @@ fi
 echo ""
 echo "Updating code..."
 UPDATE_FAILED=false
+FAILURE_NOTE=""
+_pip_install() {
+    $RUN_AS "$INSTALL_DIR/venv/bin/pip" install -q -e packages/blaueis-core -e packages/blaueis-gateway
+}
 if _git -c advice.detachedHead=false checkout -q --force --detach "$TARGET_SHA"; then
-    _write_state "$TARGET_REF" "$TARGET_SHA" "$CURRENT_REF" "$CURRENT_SHA"
     # Anything git ran as root (the fallback path) goes back to the owner.
     $SUDO chown -R "$OWNER:$OWNER_GROUP" "$INSTALL_DIR/.git" 2>/dev/null || true
-    if $RUN_AS "$INSTALL_DIR/venv/bin/pip" install -q -e packages/blaueis-core -e packages/blaueis-gateway; then
+    if _pip_install; then
+        _write_state "$TARGET_REF" "$TARGET_SHA" "$CURRENT_REF" "$CURRENT_SHA"
         ok "Code updated to $(_version HEAD) ($TARGET_REF)"
     else
-        fail "pip install failed — checkout is at $TARGET_REF but packages may be stale"
+        fail "pip install failed for $TARGET_REF — returning to $CURRENT_REF"
         UPDATE_FAILED=true
+        # Never leave a checkout the service cannot start from: back to the old
+        # commit and its packages, state file untouched.
+        if [ -n "$CURRENT_SHA" ] \
+            && _git -c advice.detachedHead=false checkout -q --force --detach "$CURRENT_SHA"; then
+            $SUDO chown -R "$OWNER:$OWNER_GROUP" "$INSTALL_DIR/.git" 2>/dev/null || true
+            if _pip_install; then
+                ok "Restored $CURRENT_REF"
+                FAILURE_NOTE="still on $CURRENT_REF (the previous version was restored)"
+            else
+                fail "pip install of the restored $CURRENT_REF failed too — packages may be stale"
+                FAILURE_NOTE="checkout restored to $CURRENT_REF but its packages may be stale"
+            fi
+        else
+            fail "Could not check out $CURRENT_REF again — checkout is at $TARGET_REF but packages may be stale"
+            FAILURE_NOTE="checkout is at $TARGET_REF but packages may be stale"
+        fi
     fi
 else
     fail "git checkout of $TARGET_REF failed — code unchanged at $CURRENT_REF"
     UPDATE_FAILED=true
+    FAILURE_NOTE="code unchanged at $CURRENT_REF"
 fi
 NEW_BUILD=$(_version HEAD)
 
@@ -315,8 +342,8 @@ fi
 
 echo ""
 if [ "$UPDATE_FAILED" = true ]; then
-    echo -e "${RED}Update failed — running $NEW_BUILD.${NC}"
-    echo "  Retry, or return to the previous version: sudo blaueis-gw update --rollback"
+    echo -e "${RED}Update failed — $FAILURE_NOTE ($NEW_BUILD).${NC}"
+    echo "  Retry once the cause is fixed, or pick a version: sudo blaueis-gw update --ref <tag>"
     exit 1
 elif [ "$all_healthy" = false ]; then
     echo -e "${RED}Some instances failed to start.${NC}"

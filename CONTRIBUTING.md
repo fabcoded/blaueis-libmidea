@@ -48,7 +48,7 @@ python3 -m pytest
 
 Lint and tests must stay green on every PR (both are CI gates). Tests run on
 Python 3.11 (the floor, and the Pi's Bookworm system Python) and 3.12.
-Approximate test counts today: core 277, gateway 45, client 203, tools 60.
+Approximate test counts today: core 285, gateway 65, client 203, tools 60.
 
 CI also builds the three published packages and runs `twine check --strict`
 on them, so packaging breakage shows up on the PR, not at release time.

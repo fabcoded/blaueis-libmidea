@@ -130,7 +130,8 @@ The installer (`scripts/install.sh`):
 - Installs `blaueis-gateway@.service` and `blaueis-gateway.target` into systemd.
 - Adds the service user to the `dialout` group (for `/dev/serial0`).
 - Runs the setup wizard (or imports `--config <file>`), then enables
-  `blaueis-gateway.target` and every enabled instance and starts them.
+  `blaueis-gateway.target` and every enabled instance and starts them (an
+  instance that is already running on a re-run is restarted).
 
 Options: `--config <file>` (import an existing instance file), `--user <name>`
 (service user), `--ref <tag|branch>` (install a specific version).
@@ -298,10 +299,12 @@ sudo blaueis-gw update --rollback           # return to previous_ref from the st
   again. It refuses when no previous ref is recorded (installs made before the
   state file existed, until their first update) — use `--ref <tag>` instead.
 - The target is fetched before any instance is stopped, so a network or
-  unknown-ref failure leaves the gateway running untouched. If the checkout or
-  `pip install` fails after the stop, the instances are started again anyway
-  and the command exits non-zero.
-- Every run re-enables `blaueis-gateway.target` if it is not enabled.
+  unknown-ref failure leaves the gateway running untouched. If the checkout
+  fails after the stop, or `pip install` fails (the checkout then goes back to
+  the previous commit and its packages are reinstalled; the state file is not
+  written), the instances are started again anyway and the command exits
+  non-zero. The remote update (§5.1.1) does the same and replies `ok: false`.
+- Every applied update re-enables `blaueis-gateway.target` if it is not enabled.
 
 ### 5.1 Developer paths
 
@@ -353,7 +356,8 @@ files are discarded by the next update.
 
 Re-run the installer (§2) — it moves the existing checkout to the resolved
 ref, reinstalls the packages and the systemd units, and keeps
-`/etc/blaueis-gw/`:
+`/etc/blaueis-gw/`. Instances that are already running are restarted
+(`systemctl try-restart`) so they load the new code; stopped ones are started:
 
 ```sh
 sudo bash /opt/blaueis-gw/scripts/install.sh              # latest release

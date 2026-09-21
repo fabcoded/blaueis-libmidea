@@ -652,6 +652,42 @@ class GatewayServer:
                 steps.append(("git_checkout", True, f"already at {target}"))
             else:
                 steps.append(("git_checkout", True, f"{old_ref} -> {target}"))
+
+            def _pip_install():
+                # pip install -e — reinstall the packages from the checked-out code.
+                pip = os.path.join(INSTALL_DIR, "venv", "bin", "pip")
+                try:
+                    return subprocess.run(
+                        [pip, "install", "-q", "-e", "packages/blaueis-core", "-e", "packages/blaueis-gateway"],
+                        cwd=INSTALL_DIR,
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                    )
+                except subprocess.TimeoutExpired:
+                    return subprocess.CompletedProcess([pip], 1, "", "pip install timed out")
+
+            r = await asyncio.to_thread(_pip_install)
+            steps.append(("pip_install", r.returncode == 0, r.stderr.strip()[:200] if r.returncode != 0 else "ok"))
+
+            if r.returncode != 0:
+                if new_sha != old_sha:
+                    # Never leave a checkout the service cannot start from: back to the
+                    # old commit, reinstall its packages, leave the state file alone.
+                    try:
+                        if not old_sha:
+                            raise RuntimeError("previous commit unknown")
+                        await asyncio.to_thread(release.checkout, INSTALL_DIR, old_sha)
+                        r2 = await asyncio.to_thread(_pip_install)
+                        detail = f"back at {old_ref}" if r2.returncode == 0 else r2.stderr.strip()[:200]
+                        steps.append(("restore", r2.returncode == 0, detail))
+                    except (RuntimeError, subprocess.TimeoutExpired) as e:
+                        steps.append(("restore", False, str(e)))
+                reason = f"pip install failed: {r.stderr.strip()[:200]}"
+                log.error("Update failed: %s", reason)
+                return {"ok": False, "old_version": old_version, "error": reason, "steps": steps}
+
+            if new_sha != old_sha:
                 try:
                     await asyncio.to_thread(release.write_state, INSTALL_DIR, target, new_sha, old_ref, old_sha)
                 except OSError as e:
@@ -659,22 +695,10 @@ class GatewayServer:
                     log.warning("Could not write update state file: %s", e)
                     steps.append(("state_file", False, str(e)))
 
-            # Reinstall packages
-            pip = os.path.join(INSTALL_DIR, "venv", "bin", "pip")
-            r = await asyncio.to_thread(
-                subprocess.run,
-                [pip, "install", "-q", "-e", "packages/blaueis-core", "-e", "packages/blaueis-gateway"],
-                cwd=INSTALL_DIR,
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
-            steps.append(("pip_install", r.returncode == 0, r.stderr.strip()[:200] if r.returncode != 0 else "ok"))
-
             new_version = _get_version()
             log.info("Update complete: %s → %s", old_version, new_version)
 
-            if r.returncode == 0 and old_version != new_version:
+            if old_version != new_version:
                 # Exit after a short delay so the update_result message
                 # reaches the client. systemd Restart=on-failure will
                 # restart us with the new code.
@@ -687,7 +711,7 @@ class GatewayServer:
                 asyncio.ensure_future(_delayed_exit())
 
             return {
-                "ok": r.returncode == 0,
+                "ok": True,
                 "old_version": old_version,
                 "new_version": new_version,
                 "steps": steps,

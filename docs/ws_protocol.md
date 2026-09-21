@@ -143,7 +143,7 @@ If the ring is disabled in gateway config: `{"type":"error","ref":42,"msg":"debu
 {"type":"update","ref":4}
 ```
 
-Triggers `_run_update()` in `/opt/blaueis-gw`: resolves the latest published GitHub release (falls back to `main` when no release exists; refuses when the Releases API is unreachable), fetches and checks out that tag, records the previous ref in `.update-state` (for `blaueis-gw update --rollback`), then `pip install -e ...` for `blaueis-core` + `blaueis-gateway`. When the version changed it exits non-zero so systemd restarts the service. `ref` is the usual request id, not a git ref — the target is not selectable over WebSocket. `steps` entries are `[name, ok, detail]` for `resolve`, `git_checkout`, optionally `state_file`, and `pip_install`. Details: `operations.md` §5.
+Triggers `_run_update()` in `/opt/blaueis-gw`: resolves the latest published GitHub release (falls back to `main` when no release exists; refuses when the Releases API is unreachable), fetches and checks out that tag, records the previous ref in `.update-state` (for `blaueis-gw update --rollback`), then `pip install -e ...` for `blaueis-core` + `blaueis-gateway`. When the version changed it exits non-zero so systemd restarts the service. `ref` is the usual request id, not a git ref — the target is not selectable over WebSocket. `steps` entries are `[name, ok, detail]` for `resolve`, `git_checkout`, `pip_install`, and optionally `state_file` and `restore`. If `pip install` fails, the checkout is moved back to the previous commit and its packages reinstalled (`restore` step), `.update-state` is not written, the service is not restarted, and the reply is `ok: false` with an `error` naming the reason. Details: `operations.md` §5.
 
 Reply flow:
 ```json

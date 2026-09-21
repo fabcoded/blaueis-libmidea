@@ -65,6 +65,11 @@ def test_bad_tag_name_rejected(monkeypatch):
         release.latest_release_tag()
 
 
+@pytest.mark.parametrize("ref", ["v1\n", "main\n", "-x", "a..b", "a b", ""])
+def test_valid_ref_rejects_newline_and_option_like(ref):
+    assert release.valid_ref(ref) is False
+
+
 def test_explicit_ref_skips_lookup(monkeypatch):
     monkeypatch.setattr(release.urllib.request, "urlopen", _urlopen_raising(AssertionError("no lookup")))
     assert release.resolve_target("v0.1.0rc1") == ("v0.1.0rc1", None)
@@ -177,3 +182,42 @@ async def test_remote_update_checks_out_target_and_records_previous(server_mod, 
         "previous_ref": "v0.1.0",
         "previous_sha": "a" * 40,
     }
+
+
+def _stub_update(monkeypatch, checked_out, pip_codes):
+    monkeypatch.setattr(release, "resolve_target", lambda: ("v0.2.0", None))
+    monkeypatch.setattr(release, "head_sha", lambda d: "a" * 40)
+    monkeypatch.setattr(release, "current_ref_name", lambda d: "v0.1.0")
+    monkeypatch.setattr(release, "fetch_ref", lambda d, ref: "b" * 40)
+    monkeypatch.setattr(release, "checkout", lambda d, sha: checked_out.append(sha))
+    codes = iter(pip_codes)
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *a, **k: subprocess.CompletedProcess(a, next(codes), "", "boom: no matching dist"),
+    )
+
+
+async def test_remote_update_pip_failure_restores_previous_checkout(server_mod, monkeypatch, tmp_path):
+    checked_out = []
+    _stub_update(monkeypatch, checked_out, [1, 0])  # new packages fail, old ones reinstall fine
+    result = await server_mod.GatewayServer._run_update(None)
+    assert result["ok"] is False
+    assert "pip install failed" in result["error"]
+    assert checked_out == ["b" * 40, "a" * 40]  # target, then back to the old commit
+    assert [s[:2] for s in result["steps"]] == [
+        ("resolve", True),
+        ("git_checkout", True),
+        ("pip_install", False),
+        ("restore", True),
+    ]
+    assert release.read_state(str(tmp_path)) == {}  # state file untouched
+
+
+async def test_remote_update_pip_failure_reports_failed_restore(server_mod, monkeypatch, tmp_path):
+    checked_out = []
+    _stub_update(monkeypatch, checked_out, [1, 1])  # the old packages fail to reinstall too
+    result = await server_mod.GatewayServer._run_update(None)
+    assert result["ok"] is False
+    assert result["steps"][-1][:2] == ("restore", False)
+    assert release.read_state(str(tmp_path)) == {}

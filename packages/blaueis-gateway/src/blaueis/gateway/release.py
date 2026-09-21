@@ -39,7 +39,7 @@ class ReleaseLookupError(RuntimeError):
 
 
 def valid_ref(ref: str) -> bool:
-    return bool(_REF_RE.match(ref)) and ".." not in ref
+    return bool(_REF_RE.fullmatch(ref)) and ".." not in ref
 
 
 def latest_release_tag(timeout: float = 10.0) -> str | None:

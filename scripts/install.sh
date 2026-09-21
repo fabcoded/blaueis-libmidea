@@ -430,8 +430,15 @@ print(d.get('enabled', True))
         fi
         $SUDO systemctl enable "blaueis-gateway@${name}" \
             || warn "Could not enable blaueis-gateway@${name}"
-        if $SUDO systemctl start "blaueis-gateway@${name}"; then
-            ok "Started blaueis-gateway@${name} (enabled at boot)"
+        # A re-run on an existing install: `start` is a no-op on a running
+        # instance, so the old process would keep serving the old code.
+        if systemctl is-active --quiet "blaueis-gateway@${name}"; then
+            start_verb="try-restart"; started_msg="Restarted"
+        else
+            start_verb="start"; started_msg="Started"
+        fi
+        if $SUDO systemctl "$start_verb" "blaueis-gateway@${name}"; then
+            ok "$started_msg blaueis-gateway@${name} (enabled at boot)"
         else
             warn "blaueis-gateway@${name} failed to start — see: journalctl -t blaueis-gw-${name} -n 100"
         fi
