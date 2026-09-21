@@ -71,8 +71,16 @@ multiple WebSocket clients concurrently.
 
 **Startup path:** `main()` parses config → `logging.basicConfig` is replaced
 with explicit root setup (stream handler at user level, `DebugRing` at VERBOSE)
-→ `GatewayServer(config, debug_ring=...)` → `server.run()` attaches the
-always-on UART tap and serves WebSockets.
+→ `GatewayServer(config, debug_ring=...)` → `asyncio.run(serve_until_signal(server))`
+→ `server.run()` attaches the always-on UART tap and serves WebSockets.
+
+**Shutdown path:** SIGTERM (`systemctl stop`) or SIGINT cancels the
+`serve_until_signal` task. `run()` then stops the UART protocol, cancels
+and awaits its UART, stats and recap loops, closes every client with
+1001 ("gateway shutting down"), closes the listening socket and waits for
+all connection handlers, and cancels leftover per-client send tasks. It
+logs "Gateway stopped (N client(s) closed)" and the process exits 0 with
+no pending tasks.
 
 **Always-on tap:** `server.py:_on_uart_frame` is attached to the protocol
 unconditionally at startup — the ring captures every RX/TX regardless of

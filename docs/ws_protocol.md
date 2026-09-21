@@ -274,6 +274,7 @@ Handshake failures (bad `hello`, version mismatch) close the connection during t
 |---|---|---|
 | 1008 | `auth failure` | A post-handshake message does not authenticate under the connection's session key (wrong PSK). |
 | 1008 | `malformed message` | A post-handshake message cannot be decoded: not JSON, not a JSON object, an envelope missing `c`/`ct`/`tag` (for example plaintext sent into an encrypted session), bad base64, or a replayed counter. With `--no-encrypt`, a message that is not a JSON object. |
+| 1001 | `gateway shutting down` | The gateway is stopping (SIGTERM/SIGINT, e.g. `systemctl stop` or an update restart). |
 | 1013 | `try later` | Too many connections are still in the handshake (`preauth_max_connections`). |
 
 On a 1008 close the gateway logs one WARNING with the peer address and the error, and stops reading from that connection. Clients treat it like any other drop and reconnect.

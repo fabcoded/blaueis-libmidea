@@ -324,6 +324,8 @@ class GatewayServer:
         self._preauth_max = config.get("preauth_max_connections", 8)
         # PSK stretching (scrypt) is deliberately expensive — derive once.
         self._psk_bytes: bytes | None = None
+        # The listening websockets server while run() is active.
+        self._ws_server = None
 
     async def _broadcast(self, msg: dict):
         """Send a message to all connected clients."""
@@ -566,7 +568,11 @@ class GatewayServer:
                 log.info("Encrypted session established with %s", websocket.remote_address)
             else:
                 log.info("Client %s connected (no encryption)", websocket.remote_address)
-        except (HandshakeError, TimeoutError) as e:
+        except websockets.exceptions.ConnectionClosed:
+            log.info("Client %s disconnected during handshake", websocket.remote_address)
+            return
+        except (HandshakeError, TimeoutError, KeyError, TypeError, ValueError) as e:
+            # ValueError covers a hello that is not JSON or not base64.
             log.warning("Handshake failed for %s: %s", websocket.remote_address, e)
             return
         finally:
@@ -900,13 +906,84 @@ class GatewayServer:
         # whether a WS client is connected (flight_recorder.md §4.2).
         self.protocol.set_on_frame(self._on_uart_frame)
 
-        async with websockets.serve(self._ws_handler, host, port):
+        async with websockets.serve(self._ws_handler, host, port) as ws_server:
+            self._ws_server = ws_server
             log.info("WebSocket server listening")
-            await asyncio.gather(
-                self._uart_loop(),
-                self._stats_loop(),
-                self._debug_recap(),
-            )
+            tasks = [
+                asyncio.create_task(self._uart_loop(), name="uart"),
+                asyncio.create_task(self._stats_loop(), name="stats"),
+                asyncio.create_task(self._debug_recap(), name="recap"),
+            ]
+            try:
+                await asyncio.gather(*tasks)
+            finally:
+                await self._shutdown(ws_server, tasks)
+                self._ws_server = None
+
+    async def _shutdown(self, ws_server, tasks: list[asyncio.Task]) -> None:
+        """Stop everything run() started, in order, and wait for it.
+
+        Runs when run() is cancelled (SIGTERM/SIGINT) or one of its loops
+        fails. Every task is awaited here, so nothing is left pending for
+        the event loop to destroy on close.
+        """
+        self.protocol.stop()
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Say goodbye to connected clients (1001 going away), then stop
+        # accepting and wait for every connection handler to return.
+        clients = list(self._clients)
+        await asyncio.gather(
+            *(c.ws.close(code=1001, reason="gateway shutting down") for c in clients),
+            return_exceptions=True,
+        )
+        ws_server.close()
+        await ws_server.wait_closed()
+
+        bg = list(self._bg_tasks)
+        for task in bg:
+            task.cancel()
+        await asyncio.gather(*bg, return_exceptions=True)
+        log.info("Gateway stopped (%d client(s) closed)", len(clients))
+
+
+async def serve_until_signal(server: GatewayServer) -> None:
+    """Run the gateway until SIGTERM/SIGINT, then shut it down in order.
+
+    The signal handler cancels this task; ``GatewayServer.run`` then closes
+    client connections, the listening socket and its own loops before
+    returning, so the event loop closes with no pending tasks.
+    """
+    loop = asyncio.get_running_loop()
+    task = asyncio.current_task()
+    signals = (signal.SIGINT, signal.SIGTERM)
+    stopping = False
+
+    def shutdown(sig: signal.Signals) -> None:
+        nonlocal stopping
+        if stopping:  # a second signal must not interrupt the shutdown
+            return
+        stopping = True
+        log.info("Received %s, shutting down", sig.name)
+        task.cancel()
+
+    installed = []
+    for sig in signals:
+        with contextlib.suppress(NotImplementedError):
+            loop.add_signal_handler(sig, shutdown, sig)
+            installed.append(sig)
+    try:
+        await server.run()
+    except asyncio.CancelledError:
+        if not stopping:
+            raise
+        # Our own signal-triggered cancel: run() has finished its shutdown.
+        task.uncancel()
+    finally:
+        for sig in installed:
+            loop.remove_signal_handler(sig)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────
@@ -1010,23 +1087,10 @@ def main():
 
     server = GatewayServer(config, no_encrypt=args.no_encrypt, debug_ring=debug_ring)
 
-    loop = asyncio.new_event_loop()
-
-    def shutdown(sig):
-        log.info("Received %s, shutting down", sig.name)
-        server.protocol.stop()
-        loop.stop()
-
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        with contextlib.suppress(NotImplementedError):
-            loop.add_signal_handler(sig, shutdown, sig)
-
     try:
-        loop.run_until_complete(server.run())
+        asyncio.run(serve_until_signal(server))
     except KeyboardInterrupt:
         log.info("Keyboard interrupt, shutting down")
-    finally:
-        loop.close()
 
 
 if __name__ == "__main__":
