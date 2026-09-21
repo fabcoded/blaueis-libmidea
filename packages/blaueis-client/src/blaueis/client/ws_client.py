@@ -82,6 +82,12 @@ class HvacClient:
         Any failure after the WebSocket opened closes the socket before
         the exception propagates — a failed connect() never leaves a
         half-open connection occupying a gateway slot.
+
+        The socket and its session are published to ``_ws``/``_session``
+        together, only after the handshake (and, encrypted, the key
+        confirmation) is complete. Until then ``_send`` refuses: a message
+        sent mid-handshake would reach the gateway in plaintext inside
+        its encrypted session.
         """
         import websockets
 
@@ -92,15 +98,16 @@ class HvacClient:
         # default max_size of 1 MiB and drops the connection with a 1009
         # "message too big" close. Raise the receive cap to fit the dump while
         # still bounding memory. See flight_recorder.md §4.4.
-        self._ws = await websockets.connect(uri, max_size=16 * 1024 * 1024)
+        ws = await websockets.connect(uri, max_size=16 * 1024 * 1024)
+        session = None
 
         try:
             if not self.no_encrypt and self.psk:
                 hello_msg, client_rand = create_hello()
-                await self._ws.send(json.dumps(hello_msg))
-                reply_raw = await asyncio.wait_for(self._ws.recv(), timeout=10.0)
+                await ws.send(json.dumps(hello_msg))
+                reply_raw = await asyncio.wait_for(ws.recv(), timeout=10.0)
                 reply = json.loads(reply_raw)
-                self._session = complete_handshake_client(self.psk, client_rand, reply)
+                session = complete_handshake_client(self.psk, client_rand, reply)
 
                 # Key confirmation (protocol v2): the gateway's first message
                 # after the handshake is the encrypted slot-hello. Decrypt it
@@ -110,11 +117,11 @@ class HvacClient:
                 # error (e.g. slot_pool_full) post-handshake — that is a
                 # capacity/protocol problem, not a credential one, so it
                 # stays a plain (transient) HandshakeError.
-                first_raw = await asyncio.wait_for(self._ws.recv(), timeout=10.0)
+                first_raw = await asyncio.wait_for(ws.recv(), timeout=10.0)
                 first = json.loads(first_raw)
                 if "c" in first and "ct" in first:
                     try:
-                        msg = json.loads(self._session.decrypt(first))
+                        msg = json.loads(session.decrypt(first))
                     except InvalidTag:
                         raise AuthenticationError(
                             "PSK mismatch — key confirmation failed on the gateway's first encrypted message"
@@ -133,11 +140,11 @@ class HvacClient:
             else:
                 log.info("Connected without encryption")
         except BaseException:
-            ws, self._ws, self._session = self._ws, None, None
             with contextlib.suppress(Exception):
                 await ws.close()
             raise
 
+        self._ws, self._session = ws, session
         self.gw_session.connected_at = time.monotonic()
         self.gw_session.connected_wall = time.time()
 
@@ -148,17 +155,28 @@ class HvacClient:
             if not fut.done():
                 fut.cancel()
         self._pending_replies.clear()
-        if self._ws:
-            await self._ws.close()
-            self._ws = None
-            self._session = None
+        ws, self._ws, self._session = self._ws, None, None
+        if ws:
+            await ws.close()
 
     async def _send(self, msg: dict):
-        """Send a message to the gateway."""
-        if self._session and not self.no_encrypt:
-            await self._ws.send(self._session.encrypt_json(msg))
+        """Send a message to the gateway.
+
+        Raises ``ConnectionError`` when there is no established session:
+        the socket and session are read together, so a message is only
+        ever encrypted under the session of the socket it goes out on,
+        and never sent in plaintext when encryption is configured.
+        """
+        ws, session = self._ws, self._session
+        if ws is None:
+            raise ConnectionError("not connected")
+        if self.no_encrypt or not self.psk:
+            data = json.dumps(msg)
+        elif session is None:
+            raise ConnectionError("encrypted session not established")
         else:
-            await self._ws.send(json.dumps(msg))
+            data = session.encrypt_json(msg)
+        await ws.send(data)
         # Ring event — omit from regular log flow (VERBOSE, propagate=False).
         log_event(
             log,

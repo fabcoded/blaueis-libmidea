@@ -281,6 +281,9 @@ class ClientConnection:
         # matches the wire behaviour clients saw before §4.1 existed.
         self.include_kinds: set[str] = {"rx"}
         self.annotate_fields: set[str] = set()
+        # Set once an undecodable message got the connection closed; the
+        # handler stops reading so the rejection is logged exactly once.
+        self.rejected = False
 
     async def send(self, msg: dict):
         try:
@@ -399,19 +402,18 @@ class GatewayServer:
         """Process a message from a WebSocket client."""
         try:
             msg = client.decrypt(raw_msg)
-        except InvalidTag:
-            # Key mismatch (e.g. client configured with a wrong/stale PSK
-            # that somehow passed the handshake era) — close, don't keep a
-            # half-authenticated peer in the slot pool.
-            log.warning(
-                "Auth failure: undecryptable message from slot %s; closing",
-                client.sid,
-            )
-            with contextlib.suppress(Exception):
-                await client.ws.close(code=1008, reason="auth failure")
-            return
-        except (ReplayError, json.JSONDecodeError) as e:
-            log.warning("Client message error: %s", e)
+            if not isinstance(msg, dict):
+                raise ValueError(f"expected a JSON object, got {type(msg).__name__}")
+        except (InvalidTag, ReplayError, KeyError, TypeError, ValueError) as e:
+            # Anything that is not a well-formed message under this
+            # connection's session: wrong key (InvalidTag), an envelope
+            # missing its fields (KeyError — e.g. a plaintext message sent
+            # into an encrypted session), bad base64/JSON (ValueError),
+            # a replayed counter. The peer is out of step with us, so
+            # close with 1008 instead of dropping the message and keeping
+            # a peer we cannot talk to in the slot pool. ValueError covers
+            # json.JSONDecodeError and binascii.Error.
+            await self._reject_client(client, e)
             return
 
         msg_type = msg.get("type")
@@ -518,6 +520,21 @@ class GatewayServer:
             result = await self._run_update()
             await client.send({"type": "update_result", "ref": ref, **result})
 
+    async def _reject_client(self, client: ClientConnection, exc: Exception) -> None:
+        """Close a client whose message could not be decoded (1008)."""
+        client.rejected = True
+        reason = "auth failure" if isinstance(exc, InvalidTag) else "malformed message"
+        log.warning(
+            "Closing %s (slot %s): %s (%s: %s)",
+            client.ws.remote_address,
+            client.sid,
+            reason,
+            type(exc).__name__,
+            exc,
+        )
+        with contextlib.suppress(Exception):
+            await client.ws.close(code=1008, reason=reason)
+
     async def _ws_handler(self, websocket):
         """Handle a WebSocket connection. Multiple clients supported."""
         import websockets
@@ -605,6 +622,8 @@ class GatewayServer:
         try:
             async for message in websocket:
                 await self._handle_client_message(client, message)
+                if client.rejected:
+                    break
         except websockets.exceptions.ConnectionClosed:
             pass
         finally:

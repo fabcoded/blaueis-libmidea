@@ -61,6 +61,14 @@ on-path attacker a denial lever). A failed `connect()` always closes
 the socket before raising, so rejected attempts never occupy gateway
 slots.
 
+Nothing but the crypto `hello` goes out before key confirmation.
+`HvacClient` publishes the socket and its session together only once
+`connect()` has finished, and `Device` swaps in the new client only
+then, so a send that races a (re)connect raises `ConnectionError`
+instead of reaching the gateway as plaintext inside the encrypted
+session. With a PSK configured, `HvacClient` never falls back to
+plaintext.
+
 ### 2.2 `subscribe` — per-socket filter (§4.1)
 
 ```json
@@ -258,16 +266,26 @@ See §2.6.
 | (no code, `msg:"remote updates disabled in config"`) | `allow_remote_update: false` | Update manually via SSH |
 | (no code, `msg:"unknown values: ..."`) | Bad `subscribe` args | Correct `include`/`annotate` values |
 
-Encryption failures (bad PSK, replay) cause connection drop during handshake — no wire error; check gateway journal.
+Handshake failures (bad `hello`, version mismatch) close the connection during the handshake with no wire error; check the gateway journal.
+
+### 4.1 Close codes
+
+| Code | Reason | When |
+|---|---|---|
+| 1008 | `auth failure` | A post-handshake message does not authenticate under the connection's session key (wrong PSK). |
+| 1008 | `malformed message` | A post-handshake message cannot be decoded: not JSON, not a JSON object, an envelope missing `c`/`ct`/`tag` (for example plaintext sent into an encrypted session), bad base64, or a replayed counter. With `--no-encrypt`, a message that is not a JSON object. |
+| 1013 | `try later` | Too many connections are still in the handshake (`preauth_max_connections`). |
+
+On a 1008 close the gateway logs one WARNING with the peer address and the error, and stops reading from that connection. Clients treat it like any other drop and reconnect.
 
 ---
 
 ## 5. Encryption wrapping
 
-When enabled, every frame (except the initial `hello` from the client) is:
+When enabled, every message after the `hello`/`hello_ok` exchange (except the plaintext `slot_pool_full` refusal, §3.3) is:
 
 ```
-{"iv":"<hex>","tag":"<hex>","ciphertext":"<hex>"}
+{"c":<counter>,"ct":"<base64>","tag":"<base64>"}
 ```
 
-…with the inner JSON encrypted under an AES-256-GCM key derived from the shared PSK + both-sides nonces (`blaueis.core.crypto`). Replay is rejected by sequence number. Handled transparently by `HvacClient` / `GatewayServer`.
+…with the inner JSON encrypted under the sending direction's AES-256-GCM key, derived from the shared PSK and both sides' random values (`blaueis.core.crypto`). `c` is the per-direction message counter and part of the nonce; a counter that does not increase is rejected as a replay (§4.1). Handled transparently by `HvacClient` / `GatewayServer`.

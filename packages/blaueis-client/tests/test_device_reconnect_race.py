@@ -114,3 +114,36 @@ async def test_reconnect_after_drop_reports_connected_once(gateway):
 
     assert events == ["disconnected", "disconnected", "connected"]
     await _stop(d)
+
+
+async def test_client_is_published_only_after_its_handshake(gateway, monkeypatch):
+    """While the new connection's handshake is in flight, pollers and
+    writers must still see the old client (and skip), not the new one."""
+    events: list[str] = []
+    d = _device(events)
+    await d._connect()
+    old = d.client
+    await old.close()  # link lost
+
+    gate = asyncio.Event()
+    connecting: list[HvacClient] = []
+
+    async def slow_connect(self: HvacClient) -> None:
+        connecting.append(self)
+        await gate.wait()
+        await gateway.connect(self)
+
+    monkeypatch.setattr(HvacClient, "connect", slow_connect)
+    task = asyncio.create_task(d._connect())
+    while not connecting:
+        await asyncio.sleep(0)
+
+    assert d.client is old
+    assert d.connected is False
+    await d._send_poll_queries()  # skipped: no live connection published
+    assert gateway.sockets[0].sent == []
+
+    gate.set()
+    await task
+    assert d.client is connecting[0]
+    await _stop(d)

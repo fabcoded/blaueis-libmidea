@@ -590,9 +590,15 @@ class Device:
         after the first C0 has been ingested (entities have real values
         instead of None at the moment of availability).
         """
-        self._client = HvacClient(self.host, self.port, psk=self._psk_bytes, no_encrypt=self._no_encrypt)
-        await self._client.connect()
-        self._client.add_listener(self._on_gateway_message)
+        # Publish the client only once its session handshake is complete.
+        # While ``connect()`` is in flight, the poll loop and writers keep
+        # seeing the old (closed) client and skip — a send on the new
+        # socket before key confirmation would reach the gateway as a
+        # plaintext message in the middle of its encrypted session.
+        client = HvacClient(self.host, self.port, psk=self._psk_bytes, no_encrypt=self._no_encrypt)
+        await client.connect()
+        client.add_listener(self._on_gateway_message)
+        self._client = client
         self._link_gen += 1
 
     async def _reconnect(self):

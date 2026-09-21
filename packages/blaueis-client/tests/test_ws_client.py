@@ -5,6 +5,7 @@ No real network — MockWebSocket feeds canned responses.
 Usage (standalone):  python -m pytest packages/blaueis-client/tests/test_ws_client.py -v
 """
 
+import asyncio
 import json
 from unittest.mock import AsyncMock, patch
 
@@ -316,3 +317,66 @@ async def test_connect_slot_pool_full_is_transient_not_auth():
     assert "slot_pool_full" in str(ei.value)
     assert ws.closed is True
     assert c._ws is None
+
+
+# ── sends before the session is established ─────────────────────────────
+
+
+class SlowConfirmWS(HandshakingWS):
+    """HandshakingWS whose slot-hello (key confirmation) waits for a gate."""
+
+    def __init__(self, server_psk: bytes, first_msg):
+        super().__init__(server_psk, first_msg)
+        self.gate = asyncio.Event()
+        self.waiting = asyncio.Event()
+
+    async def recv(self) -> str:
+        if self._stage == 1:
+            self.waiting.set()
+            await self.gate.wait()
+        return await super().recv()
+
+
+@pytest.mark.asyncio
+async def test_send_during_handshake_is_refused_not_sent_in_plaintext():
+    """A send racing connect() must not reach the new socket before key
+    confirmation — the gateway would read it as a plaintext message
+    inside its encrypted session."""
+    psk = generate_psk()
+    ws = SlowConfirmWS(psk, _slot_hello)
+    c = HvacClient("localhost", 8765, psk=psk)
+    with patch("websockets.connect", AsyncMock(return_value=ws)):
+        connecting = asyncio.create_task(c.connect())
+        await ws.waiting.wait()  # hello sent, key confirmation pending
+
+        with pytest.raises(ConnectionError):
+            await c.send_frame("AA BB")
+        assert len(ws.sent) == 1  # only the plaintext crypto hello
+
+        ws.gate.set()
+        await connecting
+
+    await c.send_frame("AA BB")
+    assert len(ws.sent) == 2
+    assert ws.server_session.decrypt_json(ws.sent[1])["type"] == "frame"
+
+
+@pytest.mark.asyncio
+async def test_send_with_psk_but_no_session_is_refused():
+    """Encryption configured but no session: refuse rather than fall back
+    to plaintext."""
+    c = HvacClient("localhost", 8765, psk=generate_psk())
+    ws = MockWebSocket()
+    c._ws = ws
+    with pytest.raises(ConnectionError):
+        await c.send_ping()
+    assert ws.sent == []
+
+
+@pytest.mark.asyncio
+async def test_send_after_close_is_refused():
+    c = HvacClient("localhost", 8765, no_encrypt=True)
+    c._ws = MockWebSocket()
+    await c.close()
+    with pytest.raises(ConnectionError):
+        await c.send_ping()
