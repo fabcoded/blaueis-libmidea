@@ -91,8 +91,9 @@ sudo raspi-config
 # Interface Options → Serial Port: login shell over serial No, serial port hardware Yes
 ```
 
-- **Pi Zero W, Zero 2 W, 3, 4** — Bluetooth sits on the primary UART by
-  default; the header pins get the mini UART instead. Move Bluetooth off:
+- **Pi Zero W, Zero 2 W, 3, 4** — Bluetooth holds the PL011 UART
+  (`ttyAMA0`) by default; the header pins get the mini UART. Move Bluetooth
+  off:
 
   ```sh
   echo "dtoverlay=disable-bt" | sudo tee -a /boot/firmware/config.txt
@@ -102,9 +103,11 @@ sudo raspi-config
   After reboot, `/dev/serial0` must resolve to `ttyAMA0`, not `ttyS0`.
 
   Alternative that keeps Bluetooth: `dtoverlay=miniuart-bt` plus a fixed
-  core clock (`core_freq=250`) in the same file. This leaves the gateway on
-  the mini UART, which loses characters more readily at higher baud rates;
-  9600 baud on it is untested here, so prefer `disable-bt`.
+  core clock (`core_freq=250` or `force_turbo=1`) in the same file, and leave
+  `hciuart` enabled. This moves Bluetooth onto the mini UART and still gives
+  the header pins the PL011, so `/dev/serial0` must again resolve to
+  `ttyAMA0`. Bluetooth on the mini UART may be less reliable, and this path
+  is untested here, so prefer `disable-bt`.
 
 - **Pi 5** — `/dev/serial0` is the 3-pin debug header, not header pins
   8/10. Enable the header UART instead:
