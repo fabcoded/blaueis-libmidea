@@ -19,6 +19,9 @@ SyslogIdentifier=blaueis-gw-%i
 
 Restart=on-failure
 RestartSec=10
+# Shutdown waits for client handlers; one inside a remote update can be in
+# git fetch + pip install + restore pip install (60 s each) — longer than the 90 s default.
+TimeoutStopSec=150
 # → max 5 crashes in 5 minutes, then systemd marks the unit as "failed".
 #   The user sees it in 'systemctl status' and must fix + restart manually.
 #   Inside the gateway, UART retries have their own delays:

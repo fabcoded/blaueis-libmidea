@@ -38,6 +38,10 @@ from cryptography.exceptions import InvalidTag
 
 log = logging.getLogger("hvac_gateway")
 
+# Upper bound for waiting on client handlers during shutdown. Must stay below
+# TimeoutStopSec in systemd/blaueis-gateway@.service (150 s).
+SHUTDOWN_WAIT_CLOSED_TIMEOUT = 120.0
+
 # Marker of a journal line that was itself written by an earlier recap echo
 # (formatter output for `log.info("  | %s", line)`: level, then the echo prefix).
 # Journal lines are never logged back into the journal; any line that still
@@ -940,7 +944,21 @@ class GatewayServer:
             return_exceptions=True,
         )
         ws_server.close()
-        await ws_server.wait_closed()
+        # A handler inside a remote update can hold wait_closed() for the
+        # whole git fetch + pip install (+ restore) — the work runs in a
+        # thread and cannot be cancelled. Bound the wait below systemd's
+        # TimeoutStopSec and say what is still running, instead of being
+        # SIGKILLed mid-pip with no trace.
+        try:
+            await asyncio.wait_for(ws_server.wait_closed(), SHUTDOWN_WAIT_CLOSED_TIMEOUT)
+        except TimeoutError:
+            log.warning(
+                "Shutdown: %d handler(s) still running after %.0fs (slots %s), %d background task(s) pending",
+                len(self._clients),
+                SHUTDOWN_WAIT_CLOSED_TIMEOUT,
+                sorted(c.sid for c in self._clients if c.sid is not None),
+                len(self._bg_tasks),
+            )
 
         bg = list(self._bg_tasks)
         for task in bg:

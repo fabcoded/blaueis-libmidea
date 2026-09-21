@@ -203,3 +203,33 @@ async def test_real_process_sigterm_leaves_a_clean_journal(tmp_path) -> None:
     for bad in ("Traceback", "RuntimeWarning", "Task was destroyed", "Event loop is closed", "never awaited"):
         assert bad not in journal, journal
     assert "Gateway stopped (1 client(s) closed)" in journal
+
+
+async def test_shutdown_bounds_wait_closed_and_logs_what_is_pending(server, monkeypatch, caplog) -> None:
+    """A handler stuck in a remote update holds wait_closed() for as long as
+    pip runs. The wait is bounded and the log names what is still running."""
+    import blaueis.gateway.server as server_mod
+
+    monkeypatch.setattr(server_mod, "SHUTDOWN_WAIT_CLOSED_TIMEOUT", 0.05)
+
+    class StuckClientWs:
+        async def close(self, code: int, reason: str) -> None:
+            pass  # the handler does not return: it is inside the update
+
+    class StuckServer:
+        def close(self) -> None:
+            pass
+
+        async def wait_closed(self) -> None:
+            await asyncio.Event().wait()
+
+    server._clients.add(server_mod.ClientConnection(StuckClientWs(), no_encrypt=True, sid=2))
+
+    with caplog.at_level(logging.INFO):
+        await asyncio.wait_for(server._shutdown(StuckServer(), []), timeout=5)
+
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "1 handler(s) still running" in warnings[0]
+    assert "[2]" in warnings[0]
+    assert any(r.getMessage().startswith("Gateway stopped") for r in caplog.records)

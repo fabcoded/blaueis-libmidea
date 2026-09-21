@@ -213,6 +213,17 @@ warns when it is missing. A gateway that runs fine until the first
 reboot and then never comes back is this — a manual `systemctl start`
 works without the target and hides the gap until power is lost.
 
+**Stop timeout:** the unit sets `TimeoutStopSec=150` (systemd's default is
+90 s). On SIGTERM the gateway waits for its client handlers, and a handler
+inside a remote update (§5.1.1) can be in `git fetch` + `pip install` +
+restore `pip install` for longer than 90 s — systemd would then SIGKILL the
+process in the middle of pip. The gateway bounds that wait itself at 120 s and
+logs how many handlers are still running. **Existing installs do not get the
+new unit automatically** — the remote update does not touch
+`/etc/systemd/system/`; the installer copies it again when re-run (§5.1.3,
+`sudo bash /opt/blaueis-gw/scripts/install.sh`), and the change takes effect
+after that `daemon-reload`.
+
 **Crash protection:** the unit sets `StartLimitBurst=5` over 300 s. If the gateway crashes 5 times in 5 minutes, systemd marks it `failed` and stops auto-restarting — prevents spamming the AC with discovery handshakes during a crash loop. Resolve manually: `journalctl -t blaueis-gw-<instance> -n 200` → fix → `systemctl restart`.
 
 ---
