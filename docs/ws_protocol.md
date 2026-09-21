@@ -45,7 +45,7 @@ before declaring the session up — a PSK mismatch therefore fails the
 connect with a handshake error instead of surfacing later as a decrypt
 failure. The `hello` carries `version: 2`; v1 peers are refused with a
 version-mismatch handshake error per the
-[versioning policy](versioning.md). The encrypted-envelope format is
+[versioning policy](versioning.md) §2. The encrypted-envelope format is
 unchanged from v1.
 
 Client-side failure classification: a failed key confirmation raises
@@ -112,8 +112,9 @@ Reply: `{"type":"pong"}`. No `ref`.
 ```
 Reply:
 ```json
-{"type":"version","version":"abc1234","device_name":"Midea AC","instance":"atelier"}
+{"type":"version","version":"v0.1.0","device_name":"Midea AC","instance":"atelier"}
 ```
+`version` is the gateway's build string — `git describe --tags --always --dirty` of `/opt/blaueis-gw`, read once when the gateway process starts: the tag name at a release checkout (`v0.1.0`), `v0.1.0-5-g1a2b3c4` past a tag, a bare commit hash without tags, `-dirty` appended for local changes, `unknown` if `git` fails. It is not the protocol version (that is `version` in the crypto `hello`, §2.1) and nothing compares it. `blaueis-client`'s `Device` sends this request once per `start()` and keeps the answer in `gateway_info`; see [`versioning.md`](versioning.md) §2.
 
 ### 2.6 `logs` — last N journal lines
 
@@ -215,10 +216,11 @@ Broadcast to all clients every `stats_interval` seconds (default 60).
 ```json
 {"type":"pi_status","uptime_s":12345,"cpu_percent":3.4,"ram_total_mb":3800,
  "ram_used_mb":820,"temp_c":46.2,"protocol_state":"running",
- "appliance":"0xAC","model":40961,"clients":2,"version":"abc1234",
+ "appliance":"0xAC","model":40961,"clients":2,"version":"v0.1.0",
  "device_name":"Midea AC","instance":"atelier",
  "disk_total_mb":...,"disk_free_mb":...,"disk_used_mb":...}
 ```
+`version` is the gateway build string of §2.5.
 
 ### 3.6 `journal` — periodic journal broadcast
 
