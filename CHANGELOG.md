@@ -39,8 +39,8 @@ First release. Released under the MIT License; requires Python 3.11 or newer.
   [`docs/versioning.md`](docs/versioning.md).
 - **Flight recorder.** The gateway keeps the last ~5 MB of frames, state
   changes and errors in memory and writes nothing to the journal unless asked.
-  A client pulls the ring with `debug_dump` and can merge it with its own
-  ring (`blaueis-core` provides the `DebugRing` handler) into one diagnostics
+  A client pulls the ring with `debug_dump`, so a consumer can merge it
+  with its own `DebugRing` (provided by `blaueis-core`) into one diagnostics
   bundle. See [`docs/flight_recorder.md`](docs/flight_recorder.md).
 - **Glossary-driven codec.** The field glossary
   (`blaueis/core/data/glossary.yaml`) describes every field the library reads

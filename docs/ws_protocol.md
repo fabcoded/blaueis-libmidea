@@ -43,8 +43,8 @@ stretched with scrypt, and the client performs key confirmation by
 decrypting the gateway's first encrypted message (the §3.1 slot `hello`)
 before declaring the session up — a PSK mismatch therefore fails the
 connect with a handshake error instead of surfacing later as a decrypt
-failure. The `hello` carries `version: 2`; v1 peers are refused with a
-version-mismatch handshake error per the
+failure. The `hello` carries `version: 2`; the gateway refuses v1 peers
+by closing the handshake silently (below), per the
 [versioning policy](versioning.md) §2. The encrypted-envelope format is
 unchanged from v1.
 
