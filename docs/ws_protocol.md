@@ -5,7 +5,7 @@
 > by `blaueis.core.crypto`; the wrapping is transparent to the schemas below.
 > `ref` is a caller-chosen monotonic id; the gateway echoes it on replies.
 
-Cross-refs: `blaueis-gateway/src/blaueis/gateway/server.py` (`_handle_client_message`) · `blaueis-client/src/blaueis/client/ws_client.py` · `docs/flight_recorder.md` (§4.1 / §4.4 / §4.6).
+Cross-refs: `blaueis-gateway/src/blaueis/gateway/server.py` (`_handle_client_message`) · `blaueis-client/src/blaueis/client/ws_client.py` · `docs/flight_recorder.md` (§4.1 / §4.4 / §4.6 there; below, a §-reference into it names the file, a bare § is in this file).
 
 ---
 
@@ -69,7 +69,7 @@ instead of reaching the gateway as plaintext inside the encrypted
 session. With a PSK configured, `HvacClient` never falls back to
 plaintext.
 
-### 2.2 `subscribe` — per-socket filter (§4.1)
+### 2.2 `subscribe` — per-socket filter (`flight_recorder.md` §4.1)
 
 ```json
 {"type":"subscribe","ref":1,
@@ -82,7 +82,7 @@ plaintext.
 | `include` | list\<str\> | `["rx"]` | Event kinds delivered as `frame`. Valid: `rx`, `tx`, `ignored`. |
 | `annotate` | list\<str\> | `[]` | Provenance fields attached to each `frame` delivery. Valid: `origin`, `req_id`, `msg_id`, `tx_seq`, `reply_to`. |
 
-Validated server-side. Unknown values → `type:"error"`, state unchanged. Never filters by provenance (§1.1 stateless invariant).
+Validated server-side. Unknown values → `type:"error"`, state unchanged. Never filters by provenance (`flight_recorder.md` §1.1 stateless invariant).
 
 ### 2.3 `frame` — send a Midea frame to the AC
 
@@ -94,7 +94,7 @@ Validated server-side. Unknown values → `type:"error"`, state unchanged. Never
 |---|---|---|
 | `hex` | yes | Full frame bytes in hex (spaces OK). Validated via `validate_frame` before queueing. |
 | `ref` | recommended | Monotonic per-client. Used as `req_id` in the ring and echoed on `ack`. |
-| `sid` | optional | Advisory — the gateway's `hello`-assigned slot. §4.7 tech debt: not verified in v1. |
+| `sid` | optional | Advisory — the gateway's `hello`-assigned slot. `flight_recorder.md` §4.7 tech debt: not verified in v1. |
 
 Gateway replies with `ack` (queued) or `error` (invalid hex / queue full).
 
@@ -126,7 +126,7 @@ Returns the last `n` (capped at 100) journal entries for the service unit, witho
 {"type":"logs","ref":3,"lines":["...","..."]}
 ```
 
-### 2.7 `debug_dump` — pull the flight-recorder ring (§4.4)
+### 2.7 `debug_dump` — pull the flight-recorder ring (`flight_recorder.md` §4.4)
 
 ```json
 {"type":"debug_dump","ref":42}
@@ -165,7 +165,7 @@ Requires `allow_remote_update: true` in gateway config (default). Disabled → `
 
 ## 3. Gateway → client
 
-### 3.1 `hello` — slot assignment (§4.6)
+### 3.1 `hello` — slot assignment (`flight_recorder.md` §4.6)
 
 Sent unsolicited as the first message after crypto handshake completes.
 
@@ -289,4 +289,4 @@ When enabled, every message after the `hello`/`hello_ok` exchange (except the pl
 {"c":<counter>,"ct":"<base64>","tag":"<base64>"}
 ```
 
-…with the inner JSON encrypted under the sending direction's AES-256-GCM key, derived from the shared PSK and both sides' random values (`blaueis.core.crypto`). `c` is the per-direction message counter and part of the nonce; a counter that does not increase is rejected as a replay (§4.1). Handled transparently by `HvacClient` / `GatewayServer`.
+…with the inner JSON encrypted under the sending direction's AES-256-GCM key, derived from the shared PSK and both sides' random values (`blaueis.core.crypto`). `c` is the per-direction message counter and part of the nonce; a counter that does not increase is rejected as a replay (§4.1 Close codes). Handled transparently by `HvacClient` / `GatewayServer`.
