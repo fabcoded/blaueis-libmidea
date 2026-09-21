@@ -26,6 +26,11 @@ for the gateway daemon is a Raspberry Pi on the Wi-Fi dongle UART bus at
 bash -c "$(curl -sL https://raw.githubusercontent.com/fabcoded/blaueis-libmidea/main/scripts/install.sh)"
 ```
 
+The installer pins the gateway to the latest published GitHub release. No
+release exists yet, so today it warns and installs `main` (development code);
+`--ref <tag|branch>` picks a version explicitly — see
+[docs/operations.md](docs/operations.md) §2.
+
 **Hardware, in short:** the AC's Wi-Fi dongle port (**CN3**) is a 5 V TTL
 UART, 9600 8N1, on 4 pins; connect it to the Pi's primary UART (header pins
 8/10) through a bidirectional 5 V↔3.3 V level shifter; power the Pi from its
@@ -38,7 +43,7 @@ See [docs/operations.md](docs/operations.md) §1 for the canonical reference.
 | `blaueis-gw status` | State of all instances |
 | `blaueis-gw logs <name> -f` | Follow an instance's log |
 | `blaueis-gw configure` | Add another AC or edit an instance |
-| `sudo blaueis-gw update` | Check for an update; `--apply` installs it, `--rollback` reverts it |
+| `sudo blaueis-gw update` | Check for a newer release; `--apply` installs it, `--ref <tag>` picks a version, `--rollback` reverts it |
 | `sudo blaueis-gw uninstall` | Remove the gateway |
 
 See [docs/operations.md](docs/operations.md) for config + systemd details.

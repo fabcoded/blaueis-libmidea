@@ -31,6 +31,7 @@ from blaueis.core.crypto import (
 )
 from blaueis.core.debug_ring import DebugRing, log_event
 from blaueis.core.frame import FrameError, extract_msg_id, validate_frame
+from blaueis.gateway import release
 from blaueis.gateway.slot_pool import SlotPool, SlotPoolExhausted
 from blaueis.gateway.uart_protocol import VERBOSE, UartProtocol
 from cryptography.exceptions import InvalidTag
@@ -616,25 +617,47 @@ class GatewayServer:
                 log.info("Last client (slot %d) disconnected", sid)
 
     async def _run_update(self) -> dict:
-        """Pull latest code and reinstall packages. Returns result dict."""
+        """Check out the latest GitHub release and reinstall packages. Returns result dict.
+
+        Same rule as ``blaueis-gw update --apply``: target is the latest
+        published release tag; with no release yet it falls back to ``main``
+        (reported as a ``resolve`` step warning). The previous ref is recorded
+        in the state file so ``blaueis-gw update --rollback`` can return to it.
+        """
         import subprocess
 
         old_version = GW_VERSION
         steps = []
 
         try:
-            # Pull latest
-            r = await asyncio.to_thread(
-                subprocess.run,
-                ["git", "pull", "--ff-only"],
-                cwd=INSTALL_DIR,
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            steps.append(("git_pull", r.returncode == 0, r.stdout.strip() or r.stderr.strip()))
-            if r.returncode != 0:
+            try:
+                target, warning = await asyncio.to_thread(release.resolve_target)
+            except release.ReleaseLookupError as e:
+                steps.append(("resolve", False, str(e)))
                 return {"ok": False, "old_version": old_version, "steps": steps}
+            steps.append(("resolve", True, warning or target))
+            if warning:
+                log.warning("Remote update: %s", warning)
+
+            old_sha = await asyncio.to_thread(release.head_sha, INSTALL_DIR)
+            old_ref = await asyncio.to_thread(release.current_ref_name, INSTALL_DIR)
+            try:
+                new_sha = await asyncio.to_thread(release.fetch_ref, INSTALL_DIR, target)
+                if new_sha != old_sha:
+                    await asyncio.to_thread(release.checkout, INSTALL_DIR, new_sha)
+            except (RuntimeError, ValueError, subprocess.TimeoutExpired) as e:
+                steps.append(("git_checkout", False, str(e)))
+                return {"ok": False, "old_version": old_version, "steps": steps}
+            if new_sha == old_sha:
+                steps.append(("git_checkout", True, f"already at {target}"))
+            else:
+                steps.append(("git_checkout", True, f"{old_ref} -> {target}"))
+                try:
+                    await asyncio.to_thread(release.write_state, INSTALL_DIR, target, new_sha, old_ref, old_sha)
+                except OSError as e:
+                    # Non-fatal: the update stands, only --rollback loses its target.
+                    log.warning("Could not write update state file: %s", e)
+                    steps.append(("state_file", False, str(e)))
 
             # Reinstall packages
             pip = os.path.join(INSTALL_DIR, "venv", "bin", "pip")

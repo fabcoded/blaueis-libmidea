@@ -54,7 +54,9 @@ cmd_help() {
     echo "  blaueis-gw logs atelier -n 200 # last 200 lines"
     echo "  blaueis-gw logs -f             # follow all instances"
     echo "  blaueis-gw configure --instance atelier"
-    echo "  sudo blaueis-gw update --apply"
+    echo "  sudo blaueis-gw update --apply          # latest release"
+    echo "  sudo blaueis-gw update --ref v0.1.0rc1  # a specific tag or branch"
+    echo "  sudo blaueis-gw update --rollback       # back to the previous ref"
     echo "  sudo blaueis-gw uninstall --purge"
 }
 

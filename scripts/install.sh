@@ -11,11 +11,19 @@
 # With existing config:
 #   bash install.sh --config /path/to/existing.yaml
 #
+# Version: the checkout is pinned to the latest published GitHub release
+# (Releases API — the same source of truth HACS uses). With no release
+# published yet it falls back to `main` with a warning. Developers pick a
+# tag or branch explicitly:
+#   bash install.sh --ref v0.1.0rc1      # or --ref main
+#
 set -e
 
 INSTALL_DIR="/opt/blaueis-gw"
 CONFIG_DIR="/etc/blaueis-gw"
 REPO_URL="https://github.com/fabcoded/blaueis-libmidea.git"
+RELEASE_API="https://api.github.com/repos/fabcoded/blaueis-libmidea/releases/latest"
+FALLBACK_REF="main"
 MIN_PYTHON="3.11"
 
 # ── Colors ──────────────────────────────────────────
@@ -73,10 +81,13 @@ fi
 # ── Parse args ──────────────────────────────────────
 EXISTING_CONFIG=""
 SERVICE_USER=""
+TARGET_REF=""
 while [[ $# -gt 0 ]]; do
     case $1 in
         --config) EXISTING_CONFIG="$2"; shift 2 ;;
         --user) SERVICE_USER="$2"; shift 2 ;;
+        --ref) TARGET_REF="$2"; shift 2 ;;
+        --ref=*) TARGET_REF="${1#--ref=}"; shift ;;
         *) warn "Unknown option: $1"; shift ;;
     esac
 done
@@ -115,6 +126,55 @@ if ! command -v git &>/dev/null; then
     fail "git not found. Install: sudo apt install git"
 fi
 ok "git: $(git --version | head -1)"
+
+# Version to install — resolved before anything is created
+# Tag / branch names only — no leading dash (git option injection), no spaces.
+valid_ref() {
+    [[ "$1" =~ ^[A-Za-z0-9._][A-Za-z0-9._/-]*$ ]] && [[ "$1" != *..* ]]
+}
+# Prints the latest release tag. Exit 0 = found, 3 = no release published
+# (HTTP 404), 1 = lookup failed (offline, rate limit, bad reply).
+latest_release() {
+    "$PYTHON" - "$RELEASE_API" <<'PY'
+import json, re, sys, urllib.error, urllib.request
+req = urllib.request.Request(sys.argv[1], headers={"Accept": "application/vnd.github+json", "User-Agent": "blaueis-gateway"})
+try:
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        tag = json.load(resp).get("tag_name", "")
+except urllib.error.HTTPError as e:
+    sys.exit(3 if e.code == 404 else 1)
+except Exception as e:
+    print(e, file=sys.stderr)
+    sys.exit(1)
+if not re.fullmatch(r"[A-Za-z0-9._][A-Za-z0-9._/-]*", tag or ""):
+    sys.exit(1)
+print(tag)
+PY
+}
+if [ -z "$TARGET_REF" ]; then
+    if TARGET_REF=$(latest_release); then
+        ok "Version: $TARGET_REF (latest release)"
+    else
+        rc=$?
+        if [ "$rc" -eq 3 ]; then
+            warn "No GitHub release published yet — installing '$FALLBACK_REF' (development code)"
+            TARGET_REF="$FALLBACK_REF"
+        else
+            fail "Could not determine the latest release (GitHub API unreachable or rate-limited).
+    Retry later, or pick a version: bash install.sh --ref <tag>"
+        fi
+    fi
+else
+    ok "Version: $TARGET_REF (--ref)"
+fi
+valid_ref "$TARGET_REF" || fail "Invalid ref: $TARGET_REF"
+if git ls-remote --exit-code --tags "$REPO_URL" "refs/tags/$TARGET_REF" &>/dev/null; then
+    REF_IS_TAG=true
+elif git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/$TARGET_REF" &>/dev/null; then
+    REF_IS_TAG=false
+else
+    fail "'$TARGET_REF' is neither a tag nor a branch of $REPO_URL (or the network is down)"
+fi
 
 # Serial port check
 SERIAL_PORTS=()
@@ -186,15 +246,53 @@ else
     RUN_AS=""
 fi
 
+# ── Mark repo as safe for all users (vcs-versioning needs git) ──
+# pip editable installs trigger setuptools_scm / vcs-versioning which
+# calls git to determine the package version. If the installing user
+# differs from the repo owner, git refuses with "dubious ownership" —
+# the clone/update step below needs it too. Set before the directory exists.
+git config --global --add safe.directory "$INSTALL_DIR"
+$RUN_AS git config --global --add safe.directory "$INSTALL_DIR" 2>/dev/null || true
+
 # ── Clone or update repo ────────────────────────────
+# Same pinning rule and state file as `blaueis-gw update`
+# (packages/blaueis-gateway/scripts/blaueis-update).
+STATE_FILE="$INSTALL_DIR/.update-state"
+git_as_owner() {
+    $RUN_AS git "$@" 2>/dev/null || git "$@"
+}
+write_state() {
+    printf 'current_ref=%s\ncurrent_sha=%s\nprevious_ref=%s\nprevious_sha=%s\n' "$1" "$2" "$3" "$4" \
+        | $SUDO tee "$STATE_FILE" >/dev/null \
+        || warn "Could not write $STATE_FILE — 'blaueis-gw update --rollback' will not know the previous version"
+}
 echo ""
 if [ -d "$INSTALL_DIR/.git" ]; then
     info "Existing installation found at $INSTALL_DIR"
     cd "$INSTALL_DIR"
-    $RUN_AS git pull --ff-only -q 2>/dev/null \
-        || git pull --ff-only -q 2>/dev/null \
-        || { git fetch origin main --depth 50 -q; git reset --hard origin/main -q; }
-    ok "Repository updated"
+    OLD_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
+    OLD_REF=$(sed -n "s/^current_ref=//p" "$STATE_FILE" 2>/dev/null | head -1)
+    if [ -z "$OLD_REF" ] || [ "$(sed -n "s/^current_sha=//p" "$STATE_FILE" 2>/dev/null | head -1)" != "$OLD_SHA" ]; then
+        OLD_REF=$(git describe --tags --exact-match HEAD 2>/dev/null \
+            || git symbolic-ref --short -q HEAD 2>/dev/null \
+            || git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    fi
+    if [ "$REF_IS_TAG" = true ]; then
+        git_as_owner fetch -q --depth 1 --force origin "refs/tags/$TARGET_REF:refs/tags/$TARGET_REF" \
+            || fail "Could not fetch $TARGET_REF"
+        NEW_SHA=$(git rev-parse --verify -q "refs/tags/$TARGET_REF^{commit}")
+    else
+        git_as_owner fetch -q --depth 50 origin "$TARGET_REF" || fail "Could not fetch $TARGET_REF"
+        NEW_SHA=$(git rev-parse --verify -q "FETCH_HEAD^{commit}")
+    fi
+    if [ "$NEW_SHA" != "$OLD_SHA" ]; then
+        git_as_owner -c advice.detachedHead=false checkout -q --force --detach "$NEW_SHA" \
+            || fail "Could not check out $TARGET_REF"
+        write_state "$TARGET_REF" "$NEW_SHA" "$OLD_REF" "$OLD_SHA"
+        ok "Repository moved $OLD_REF → $TARGET_REF"
+    else
+        ok "Repository already at $TARGET_REF"
+    fi
 else
     info "Cloning blaueis-libmidea to $INSTALL_DIR..."
     # Clean up if the directory exists but isn't a git repo
@@ -207,19 +305,19 @@ else
     fi
     $SUDO mkdir -p "$INSTALL_DIR"
     $SUDO chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
-    $RUN_AS git clone --depth 50 "$REPO_URL" "$INSTALL_DIR" 2>/dev/null \
-        || git clone --depth 50 "$REPO_URL" "$INSTALL_DIR"
-    $SUDO chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+    # A tag needs only its own commit; a branch keeps some history so
+    # `git describe` can still name the nearest tag.
+    CLONE_DEPTH=50
+    [ "$REF_IS_TAG" = true ] && CLONE_DEPTH=1
+    $RUN_AS git -c advice.detachedHead=false clone -q --depth "$CLONE_DEPTH" --branch "$TARGET_REF" \
+        "$REPO_URL" "$INSTALL_DIR" 2>/dev/null \
+        || git -c advice.detachedHead=false clone -q --depth "$CLONE_DEPTH" --branch "$TARGET_REF" \
+            "$REPO_URL" "$INSTALL_DIR"
     cd "$INSTALL_DIR"
-    ok "Cloned to $INSTALL_DIR (owner: $SERVICE_USER)"
+    write_state "$TARGET_REF" "$(git rev-parse HEAD)" "" ""
+    $SUDO chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+    ok "Cloned $TARGET_REF to $INSTALL_DIR (owner: $SERVICE_USER)"
 fi
-
-# ── Mark repo as safe for all users (vcs-versioning needs git) ──
-# pip editable installs trigger setuptools_scm / vcs-versioning which
-# calls git to determine the package version. If the installing user
-# differs from the repo owner, git refuses with "dubious ownership".
-git config --global --add safe.directory "$INSTALL_DIR"
-$RUN_AS git config --global --add safe.directory "$INSTALL_DIR" 2>/dev/null || true
 
 # ── Create virtualenv + install ─────────────────────
 info "Setting up Python environment..."

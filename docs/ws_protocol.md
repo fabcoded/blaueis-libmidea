@@ -137,13 +137,13 @@ Reply:
 
 If the ring is disabled in gateway config: `{"type":"error","ref":42,"msg":"debug ring disabled in gateway config"}`.
 
-### 2.8 `update` — remote git-pull + reinstall
+### 2.8 `update` — check out the latest release + reinstall
 
 ```json
 {"type":"update","ref":4}
 ```
 
-Triggers `_run_update()`: `git pull --ff-only` in `/opt/blaueis-gw`, then `pip install -e ...` for `blaueis-core` + `blaueis-gateway`. On success exits non-zero so systemd restarts the service.
+Triggers `_run_update()` in `/opt/blaueis-gw`: resolves the latest published GitHub release (falls back to `main` when no release exists; refuses when the Releases API is unreachable), fetches and checks out that tag, records the previous ref in `.update-state` (for `blaueis-gw update --rollback`), then `pip install -e ...` for `blaueis-core` + `blaueis-gateway`. When the version changed it exits non-zero so systemd restarts the service. `ref` is the usual request id, not a git ref — the target is not selectable over WebSocket. `steps` entries are `[name, ok, detail]` for `resolve`, `git_checkout`, optionally `state_file`, and `pip_install`. Details: `operations.md` §5.
 
 Reply flow:
 ```json

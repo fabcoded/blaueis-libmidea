@@ -124,10 +124,39 @@ The installer (`scripts/install.sh`):
 
 - Requires root (asks for `sudo`).
 - Creates system user `blaueis-gw`, directories `/opt/blaueis-gw`, `/etc/blaueis-gw`.
-- `git clone`s this repo's `main` branch into `/opt/blaueis-gw`, creates a venv, `pip install -e` for `blaueis-core` + `blaueis-gateway`.
-- Installs `blaueis-gateway@.service` into systemd.
+- `git clone`s this repo into `/opt/blaueis-gw` **pinned to the latest GitHub
+  release** (see *Which version gets installed* below), creates a venv,
+  `pip install -e` for `blaueis-core` + `blaueis-gateway`.
+- Installs `blaueis-gateway@.service` and `blaueis-gateway.target` into systemd.
 - Adds the service user to the `dialout` group (for `/dev/serial0`).
-- Runs the setup wizard, then enables and starts the configured instance.
+- Runs the setup wizard (or imports `--config <file>`), then enables
+  `blaueis-gateway.target` and every enabled instance and starts them.
+
+Options: `--config <file>` (import an existing instance file), `--user <name>`
+(service user), `--ref <tag|branch>` (install a specific version).
+
+**Which version gets installed.** The installer asks the GitHub Releases API
+for the latest published release — the same source of truth HACS uses for
+the integration — and clones that tag (`git clone --depth 1 --branch <tag>`).
+Pre-releases and drafts are not "latest"; install one with `--ref`:
+
+```sh
+sudo bash install.sh --ref v0.1.0rc1   # a tag
+sudo bash install.sh --ref main        # a branch (development code)
+```
+
+- **No release published yet** (the API answers 404): the installer warns and
+  falls back to `main`. This is what happens today, until the first release
+  exists.
+- **The API cannot be reached** (offline, rate limit — 60 unauthenticated
+  requests per hour per IP): the installer stops before creating anything and
+  asks for `--ref`. It never guesses.
+
+The installed version is `git describe` of the checkout (`blaueis-gw --version`).
+The ref the checkout is on is recorded in `/opt/blaueis-gw/.update-state`,
+which `blaueis-gw update --rollback` reads (§5). Re-running the installer on
+an existing install moves the checkout to the resolved ref and records the
+previous one the same way.
 
 Minimum Python: **3.11**.
 
@@ -245,35 +274,59 @@ Permissions: `chown blaueis-gw:blaueis-gw` + `chmod 640` — the service user ne
 
 ## 5. Updating
 
+All update paths follow the installer's rule: the target is the **latest
+published GitHub release**; with no release published yet they fall back to
+`main` with a warning (today's state, until the first release); if the
+Releases API cannot be reached they change nothing and report the error.
+Each applied update records the ref it left in `/opt/blaueis-gw/.update-state`
+(`current_ref`, `current_sha`, `previous_ref`, `previous_sha`), which is what
+`--rollback` returns to. The installed version is always `git describe` of
+the checkout.
+
 Standard path — run this on the Pi:
 
 ```sh
-sudo blaueis-gw update             # reports whether a newer commit is available
-sudo blaueis-gw update --apply     # stop services → update → start → health check
-sudo blaueis-gw update --rollback  # revert to the previous install
+sudo blaueis-gw update                      # check: current vs latest release, no changes
+sudo blaueis-gw update --apply              # stop instances → check out → pip → start → health check
+sudo blaueis-gw update --ref v0.1.0rc1      # apply a specific tag or branch (rc tests, --ref main for dev)
+sudo blaueis-gw update --rollback           # return to previous_ref from the state file
 ```
+
+- `--ref` implies `--apply`. A later plain `--apply` goes back to the latest
+  release; there is no sticky channel.
+- `--rollback` swaps current and previous, so a second rollback goes forward
+  again. It refuses when no previous ref is recorded (installs made before the
+  state file existed, until their first update) — use `--ref <tag>` instead.
+- The target is fetched before any instance is stopped, so a network or
+  unknown-ref failure leaves the gateway running untouched. If the checkout or
+  `pip install` fails after the stop, the instances are started again anyway
+  and the command exits non-zero.
+- Every run re-enables `blaueis-gateway.target` if it is not enabled.
 
 ### 5.1 Developer paths
 
-For deploying code that isn't on the tracked branch yet — uncommitted
-work, or a remote commit you want to push out without a full
-`blaueis-gw update`.
+For triggering an update without an SSH session, and for deploying code that
+isn't in a release yet — uncommitted work, or a branch under test.
 
 #### 5.1.1 Remote update (WebSocket client)
 
-Deploys committed code that has been pushed to the remote.
+Triggers the same update from a WebSocket client, no SSH needed.
 
 ```python
 from blaueis.client.ws_client import HvacClient
 c = HvacClient("<gateway-host>", 8765, psk=b"...")
 await c.connect()
 await c._send({"type": "update", "ref": 1})
-# gateway git pulls, reinstalls, exits 1; systemd restarts it
+# gateway checks out the latest release, reinstalls, exits 1; systemd restarts it
 ```
 
-Blocked by `allow_remote_update: false`. Requires the remote commit to exist — the gateway does `git pull --ff-only`.
+Blocked by `allow_remote_update: false`. Always targets the latest release (or
+`main` when none exists — reported as a warning in the `resolve` step of
+`update_result`); a specific ref needs the local path (§5, `--ref`). Only the
+instance that received the command restarts; restart other instances on the
+same Pi by hand. Reply format: `ws_protocol.md` §2.8.
 
-#### 5.1.2 Local update (SSH, for WIP code)
+#### 5.1.2 Uncommitted code (SSH, for WIP)
 
 SSH access to the Pi uses whatever key your install provisioned (PuTTY
 `.ppk` keys convert to OpenSSH with `puttygen <key>.ppk -O
@@ -293,15 +346,18 @@ ssh -i <ssh-key> hvac@<gateway-host> '
 ```
 
 Do NOT edit files directly under `/opt/blaueis-gw/` as root — the update
-path (`git pull`) assumes a clean checkout.
+paths do a forced checkout and assume a clean tree; local edits to tracked
+files are discarded by the next update.
 
 #### 5.1.3 Manual full reinstall
 
+Re-run the installer (§2) — it moves the existing checkout to the resolved
+ref, reinstalls the packages and the systemd units, and keeps
+`/etc/blaueis-gw/`:
+
 ```sh
-ssh -i <ssh-key> hvac@<gateway-host>
-cd /opt/blaueis-gw && sudo git pull
-sudo -u blaueis-gw /opt/blaueis-gw/venv/bin/pip install -e packages/blaueis-core -e packages/blaueis-gateway
-sudo systemctl restart blaueis-gateway@<instance>
+sudo bash /opt/blaueis-gw/scripts/install.sh              # latest release
+sudo bash /opt/blaueis-gw/scripts/install.sh --ref main   # or a specific ref
 ```
 
 ---

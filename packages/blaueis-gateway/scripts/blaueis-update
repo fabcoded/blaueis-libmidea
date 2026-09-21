@@ -2,9 +2,16 @@
 # Blaueis Gateway — update checker and applier
 #
 # Usage:
-#   blaueis-gw update              # check for updates (no changes)
-#   blaueis-gw update --apply      # stop services → update → start → health check
-#   blaueis-gw update --rollback   # revert to previous version
+#   blaueis-gw update                # check for updates (no changes)
+#   blaueis-gw update --apply        # stop services → update → start → health check
+#   blaueis-gw update --ref <ref>    # apply a specific tag or branch (developers, rc tests)
+#   blaueis-gw update --rollback     # return to the ref recorded before the last update
+#
+# Target: the latest published GitHub release (the Releases API — the same
+# source of truth HACS uses). With no release published yet it falls back to
+# `main` with a warning. Every applied update records the ref it left in
+# /opt/blaueis-gw/.update-state; --rollback returns to it (a second rollback
+# goes forward again).
 #
 # Must be run with sudo (needs to stop/start systemd services and
 # write to /opt/blaueis-gw which is owned by the blaueis service user).
@@ -12,11 +19,42 @@ set -e
 
 INSTALL_DIR="/opt/blaueis-gw"
 CONFIG_DIR="/etc/blaueis-gw"
+STATE_FILE="$INSTALL_DIR/.update-state"
+RELEASE_API="https://api.github.com/repos/fabcoded/blaueis-libmidea/releases/latest"
+FALLBACK_REF="main"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 ok()   { echo -e "  ${GREEN}✓${NC} $1"; }
 fail() { echo -e "  ${RED}✗${NC} $1"; }
 warn() { echo -e "  ${YELLOW}!${NC} $1"; }
+
+usage() {
+    echo "Usage: blaueis-gw update [--apply | --ref <tag|branch> | --rollback]"
+}
+
+# ── Parse args ──────────────────────────────────────
+MODE="check"
+TARGET_REF=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --apply)    [ "$MODE" = "rollback" ] || MODE="apply" ;;
+        --rollback) MODE="rollback" ;;
+        --ref)
+            [ -n "${2:-}" ] || { usage; exit 1; }
+            TARGET_REF="$2"; shift
+            [ "$MODE" = "rollback" ] || MODE="apply" ;;
+        --ref=*)
+            TARGET_REF="${1#--ref=}"
+            [ "$MODE" = "rollback" ] || MODE="apply" ;;
+        -h|--help)  usage; exit 0 ;;
+        *)          echo "Unknown option: $1"; usage; exit 1 ;;
+    esac
+    shift
+done
+if [ "$MODE" = "rollback" ] && [ -n "$TARGET_REF" ]; then
+    echo "--rollback and --ref cannot be combined"
+    exit 1
+fi
 
 cd "$INSTALL_DIR"
 
@@ -25,6 +63,7 @@ git config --global --add safe.directory "$INSTALL_DIR" 2>/dev/null || true
 
 # Determine who owns the install (run git/pip as this user)
 OWNER=$(stat -c '%U' "$INSTALL_DIR")
+OWNER_GROUP=$(stat -c '%G' "$INSTALL_DIR")
 if [ "$EUID" -eq 0 ]; then
     SUDO=""
     RUN_AS="sudo -u $OWNER"
@@ -32,62 +71,161 @@ elif command -v sudo &>/dev/null; then
     SUDO="sudo"
     RUN_AS="sudo -u $OWNER"
 else
-    echo "Run with sudo: sudo blaueis-gw update $*"
+    echo "Run with sudo: sudo blaueis-gw update"
     exit 1
 fi
 
-# ── Version display helper ─────────────────────────
+# ── Helpers ─────────────────────────────────────────
 # Use tag if available, otherwise short commit hash
 _version() {
     local ref="${1:-HEAD}"
     git describe --tags --always "$ref" 2>/dev/null || git rev-parse --short "$ref" 2>/dev/null || echo "unknown"
 }
 
-# ── Get version info ────────────────────────────────
-CURRENT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
-CURRENT=$(_version HEAD)
-echo -e "${BLUE}Current:${NC} $CURRENT"
+# git as the install owner; falls back to the invoking user like the installer.
+_git() {
+    $RUN_AS git "$@" 2>/dev/null || git "$@"
+}
 
-$RUN_AS git fetch origin main --depth 50 -q 2>/dev/null \
-    || git fetch origin main --depth 50 -q 2>/dev/null || true
-REMOTE_SHA=$(git rev-parse origin/main 2>/dev/null || echo "")
-LATEST=$(_version origin/main)
-echo -e "${BLUE}Latest:${NC}  $LATEST"
+# Tag / branch names only — no leading dash (git option injection), no spaces.
+_valid_ref() {
+    [[ "$1" =~ ^[A-Za-z0-9._][A-Za-z0-9._/-]*$ ]] && [[ "$1" != *..* ]]
+}
+
+_state() {
+    [ -f "$STATE_FILE" ] && sed -n "s/^$1=//p" "$STATE_FILE" | head -1
+    return 0
+}
+
+# Prints the latest release tag. Exit 0 = found, 3 = no release published
+# (HTTP 404), 1 = lookup failed (offline, rate limit, bad reply).
+_latest_release() {
+    python3 - "$RELEASE_API" <<'PY'
+import json, re, sys, urllib.error, urllib.request
+req = urllib.request.Request(sys.argv[1], headers={"Accept": "application/vnd.github+json", "User-Agent": "blaueis-gateway"})
+try:
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        tag = json.load(resp).get("tag_name", "")
+except urllib.error.HTTPError as e:
+    sys.exit(3 if e.code == 404 else 1)
+except Exception as e:
+    print(e, file=sys.stderr)
+    sys.exit(1)
+if not re.fullmatch(r"[A-Za-z0-9._][A-Za-z0-9._/-]*", tag or ""):
+    sys.exit(1)
+print(tag)
+PY
+}
+
+# Name of what HEAD is on: the state file's ref if it still matches, else
+# the exact tag, else the branch, else the short SHA.
+_current_ref() {
+    local sha
+    sha=$(git rev-parse HEAD 2>/dev/null || echo "")
+    if [ -n "$sha" ] && [ "$(_state current_sha)" = "$sha" ] && [ -n "$(_state current_ref)" ]; then
+        _state current_ref
+    else
+        git describe --tags --exact-match HEAD 2>/dev/null \
+            || git symbolic-ref --short -q HEAD 2>/dev/null \
+            || git rev-parse --short HEAD 2>/dev/null \
+            || echo "unknown"
+    fi
+}
+
+# Fetch a tag or branch from origin; prints the commit it names.
+_fetch_ref() {
+    local ref="$1"
+    if _git ls-remote --exit-code --tags origin "refs/tags/$ref" >/dev/null; then
+        _git fetch -q --depth 1 --force origin "refs/tags/$ref:refs/tags/$ref" || return 1
+        git rev-parse --verify -q "refs/tags/$ref^{commit}"
+    else
+        _git fetch -q --depth 50 origin "$ref" || return 1
+        git rev-parse --verify -q "FETCH_HEAD^{commit}"
+    fi
+}
+
+_write_state() {
+    # Non-fatal: the update stands, only --rollback loses its target.
+    if ! printf 'current_ref=%s\ncurrent_sha=%s\nprevious_ref=%s\nprevious_sha=%s\n' "$1" "$2" "$3" "$4" \
+            | $RUN_AS tee "$STATE_FILE.tmp" >/dev/null \
+        || ! $RUN_AS mv -f "$STATE_FILE.tmp" "$STATE_FILE"; then
+        warn "Could not write $STATE_FILE — --rollback will not know the previous version"
+    fi
+}
+
+# ── Resolve target ──────────────────────────────────
+CURRENT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
+CURRENT_REF=$(_current_ref)
+echo -e "${BLUE}Current:${NC} $(_version HEAD) ($CURRENT_REF)"
+
+if [ "$MODE" = "rollback" ]; then
+    TARGET_REF=$(_state previous_ref)
+    TARGET_SHA=$(_state previous_sha)
+    if [ -z "$TARGET_SHA" ]; then
+        fail "No previous version recorded in $STATE_FILE"
+        echo "      Pick one explicitly: sudo blaueis-gw update --ref <tag>"
+        exit 1
+    fi
+    if ! git cat-file -e "$TARGET_SHA^{commit}" 2>/dev/null; then
+        # Shallow clone: the old commit may be gone locally — fetch it back by name.
+        if _valid_ref "$TARGET_REF"; then _fetch_ref "$TARGET_REF" >/dev/null || true; fi
+        if ! git cat-file -e "$TARGET_SHA^{commit}" 2>/dev/null; then
+            fail "Previous version $TARGET_REF (${TARGET_SHA:0:12}) is no longer available"
+            echo "      Pick one explicitly: sudo blaueis-gw update --ref <tag>"
+            exit 1
+        fi
+    fi
+    echo -e "${BLUE}Rollback:${NC} $(_version "$TARGET_SHA") ($TARGET_REF)"
+else
+    if [ -z "$TARGET_REF" ]; then
+        if TARGET_REF=$(_latest_release); then
+            :
+        else
+            rc=$?
+            if [ "$rc" -eq 3 ]; then
+                warn "No GitHub release published yet — falling back to '$FALLBACK_REF'"
+                TARGET_REF="$FALLBACK_REF"
+            else
+                fail "Could not determine the latest release (GitHub API unreachable or rate-limited)"
+                echo "      Nothing changed. Retry later, or pick one: sudo blaueis-gw update --ref <tag>"
+                exit 1
+            fi
+        fi
+    fi
+    if ! _valid_ref "$TARGET_REF"; then
+        fail "Invalid ref: $TARGET_REF"
+        exit 1
+    fi
+    if ! TARGET_SHA=$(_fetch_ref "$TARGET_REF") || [ -z "$TARGET_SHA" ]; then
+        fail "Could not fetch '$TARGET_REF' from origin — no such tag or branch, or no network"
+        exit 1
+    fi
+    echo -e "${BLUE}Target:${NC}  $(_version "$TARGET_SHA") ($TARGET_REF)"
+fi
 echo ""
 
 # ── Check mode ──────────────────────────────────────
-if [ "$CURRENT_SHA" = "$REMOTE_SHA" ] && [ "$1" != "--rollback" ]; then
+if [ "$CURRENT_SHA" = "$TARGET_SHA" ] && [ "$MODE" != "rollback" ]; then
     echo -e "${GREEN}Up to date.${NC}"
     exit 0
 fi
 
-if [ "$1" != "--apply" ] && [ "$1" != "--rollback" ]; then
-    echo -e "${YELLOW}Update available: $CURRENT → $LATEST${NC}"
+if [ "$MODE" = "check" ]; then
+    echo -e "${YELLOW}Update available: $CURRENT_REF → $TARGET_REF${NC}"
     echo ""
-    echo "  To apply:   sudo blaueis-gw update --apply"
-    echo "  To rollback: sudo blaueis-gw update --rollback"
+    echo "  To apply:    sudo blaueis-gw update --apply"
+    if [ -n "$(_state previous_sha)" ]; then
+        echo "  To rollback: sudo blaueis-gw update --rollback   (→ $(_state previous_ref))"
+    fi
     exit 0
 fi
 
-# ── Rollback ────────────────────────────────────────
-ROLLBACK_REF=""
-if [ "$1" = "--rollback" ]; then
-    # Save current HEAD so we can roll back to it
-    ROLLBACK_REF="HEAD~1"
-    if ! git rev-parse "$ROLLBACK_REF" &>/dev/null; then
-        fail "No previous version to rollback to"
-        exit 1
-    fi
-    echo "Rolling back: $CURRENT → $(_version $ROLLBACK_REF)"
-fi
-
 # ── Phase 1: Stop all running instances ─────────────
-echo ""
 echo "Stopping gateway instances..."
 RUNNING_INSTANCES=()
 for svc in $(systemctl list-units --type=service --no-legend 'blaueis-gateway@*' 2>/dev/null | awk '{print $1}'); do
     if systemctl is-active --quiet "$svc"; then
-        $SUDO systemctl stop "$svc"
+        $SUDO systemctl stop "$svc" || warn "Could not stop $svc"
         ok "Stopped $svc"
         RUNNING_INSTANCES+=("$svc")
     fi
@@ -97,19 +235,27 @@ if [ ${#RUNNING_INSTANCES[@]} -eq 0 ]; then
 fi
 
 # ── Phase 2: Update code (as the file owner) ───────
+# A failure here must not leave the gateway stopped: record it, carry on to
+# Phase 3 so the instances come back (on whatever code is checked out), and
+# exit non-zero at the end.
 echo ""
 echo "Updating code..."
-if [ -n "$ROLLBACK_REF" ]; then
-    $RUN_AS git reset --hard "$ROLLBACK_REF" -q 2>/dev/null \
-        || git reset --hard "$ROLLBACK_REF" -q
+UPDATE_FAILED=false
+if _git -c advice.detachedHead=false checkout -q --force --detach "$TARGET_SHA"; then
+    _write_state "$TARGET_REF" "$TARGET_SHA" "$CURRENT_REF" "$CURRENT_SHA"
+    # Anything git ran as root (the fallback path) goes back to the owner.
+    $SUDO chown -R "$OWNER:$OWNER_GROUP" "$INSTALL_DIR/.git" 2>/dev/null || true
+    if $RUN_AS "$INSTALL_DIR/venv/bin/pip" install -q -e packages/blaueis-core -e packages/blaueis-gateway; then
+        ok "Code updated to $(_version HEAD) ($TARGET_REF)"
+    else
+        fail "pip install failed — checkout is at $TARGET_REF but packages may be stale"
+        UPDATE_FAILED=true
+    fi
 else
-    $RUN_AS git pull --ff-only -q 2>/dev/null \
-        || git pull --ff-only -q 2>/dev/null \
-        || { git fetch origin main --depth 50 -q; git reset --hard origin/main -q; }
+    fail "git checkout of $TARGET_REF failed — code unchanged at $CURRENT_REF"
+    UPDATE_FAILED=true
 fi
-$RUN_AS "$INSTALL_DIR/venv/bin/pip" install -q -e packages/blaueis-core -e packages/blaueis-gateway
 NEW_BUILD=$(_version HEAD)
-ok "Code updated to $NEW_BUILD"
 
 # ── Phase 3: Start enabled instances ────────────────
 echo ""
@@ -118,9 +264,11 @@ echo "Starting enabled instances..."
 # back from a reboot with no gateway. Enabling the target is idempotent, so
 # every update repairs that silently.
 if ! systemctl is-enabled --quiet blaueis-gateway.target 2>/dev/null; then
-    $SUDO systemctl enable blaueis-gateway.target \
-        || warn "Could not enable blaueis-gateway.target — the gateway will not start at boot"
-    ok "Enabled blaueis-gateway.target (start at boot)"
+    if $SUDO systemctl enable blaueis-gateway.target; then
+        ok "Enabled blaueis-gateway.target (start at boot)"
+    else
+        warn "Could not enable blaueis-gateway.target — the gateway will not start at boot"
+    fi
 fi
 STARTED=()
 for cfg in "$CONFIG_DIR/instances/"*.yaml; do
@@ -140,17 +288,18 @@ print(d.get('enabled', True))
         continue
     fi
 
-    $SUDO systemctl start "blaueis-gateway@${name}" 2>/dev/null
+    # The health check below reports a failed start.
+    $SUDO systemctl start "blaueis-gateway@${name}" 2>/dev/null || true
     STARTED+=("$name")
 done
 
 # ── Phase 4: Health check (wait 3s, then verify) ───
+all_healthy=true
 if [ ${#STARTED[@]} -gt 0 ]; then
     echo ""
     echo "Health check (waiting 3s)..."
     sleep 3
 
-    all_healthy=true
     for name in "${STARTED[@]}"; do
         svc="blaueis-gateway@${name}.service"
         if systemctl is-active --quiet "$svc"; then
@@ -162,17 +311,20 @@ if [ ${#STARTED[@]} -gt 0 ]; then
             all_healthy=false
         fi
     done
+fi
 
-    echo ""
-    if [ "$all_healthy" = true ]; then
-        echo -e "${GREEN}Update complete: $NEW_BUILD${NC}"
-    else
-        echo -e "${RED}Some instances failed to start.${NC}"
-        echo "  Review the logs, then either fix the issue or rollback:"
-        echo "  sudo blaueis-gw update --rollback"
-        exit 1
-    fi
+echo ""
+if [ "$UPDATE_FAILED" = true ]; then
+    echo -e "${RED}Update failed — running $NEW_BUILD.${NC}"
+    echo "  Retry, or return to the previous version: sudo blaueis-gw update --rollback"
+    exit 1
+elif [ "$all_healthy" = false ]; then
+    echo -e "${RED}Some instances failed to start.${NC}"
+    echo "  Review the logs, then either fix the issue or rollback:"
+    echo "  sudo blaueis-gw update --rollback"
+    exit 1
+elif [ ${#STARTED[@]} -gt 0 ]; then
+    echo -e "${GREEN}Update complete: $NEW_BUILD${NC}"
 else
-    echo ""
     echo -e "${GREEN}Update complete: $NEW_BUILD (no instances to start)${NC}"
 fi
