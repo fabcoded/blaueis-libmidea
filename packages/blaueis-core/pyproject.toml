@@ -1,12 +1,26 @@
 [build-system]
-requires = ["setuptools>=68.0", "setuptools-scm"]
+requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "blaueis-core"
 version = "0.1.0"
 description = "Midea HVAC serial protocol library — codec, glossary, state, query, command"
+readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "Fabian Schwamborn"}]
+keywords = ["midea", "hvac", "air-conditioner", "uart", "home-automation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Home Automation",
+]
 dependencies = [
     "pyyaml>=6.0",
     "jsonschema>=4.0",
@@ -15,6 +29,12 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "ruff>=0.4"]
+
+[project.urls]
+Homepage = "https://github.com/fabcoded/blaueis-libmidea"
+Repository = "https://github.com/fabcoded/blaueis-libmidea"
+Documentation = "https://github.com/fabcoded/blaueis-libmidea/tree/main/docs"
+Issues = "https://github.com/fabcoded/blaueis-libmidea/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
