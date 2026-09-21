@@ -38,10 +38,13 @@ from cryptography.exceptions import InvalidTag
 
 log = logging.getLogger("hvac_gateway")
 
-# Marker of a journal line that was itself written by an earlier recap echo.
+# Marker of a journal line that was itself written by an earlier recap echo
+# (formatter output for `log.info("  | %s", line)`: level, then the echo prefix).
 # Journal lines are never logged back into the journal; any line that still
 # carries the marker (written before the echo was removed) is dropped on read.
-_JOURNAL_ECHO_MARKER = "  | "
+# Anchored to the level so exception-group tracebacks, which indent with
+# "  | " too, are kept.
+_JOURNAL_ECHO_MARKER = " INFO   | "
 
 
 INSTALL_DIR = "/opt/blaueis-gw"
@@ -667,7 +670,7 @@ class GatewayServer:
                         cwd=INSTALL_DIR,
                         capture_output=True,
                         text=True,
-                        timeout=60,
+                        timeout=300,
                     )
                 except subprocess.TimeoutExpired:
                     return subprocess.CompletedProcess([pip], 1, "", "pip install timed out")

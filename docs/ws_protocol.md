@@ -113,7 +113,7 @@ Reply:
 {"type":"logs","ref":3,"n":50}
 ```
 
-Returns the last `n` (capped at 100) journal entries for the service unit:
+Returns the last `n` (capped at 100) journal entries for the service unit, without the lines an earlier version of the periodic recap echoed back into the journal, so it may return fewer:
 ```json
 {"type":"logs","ref":3,"lines":["...","..."]}
 ```
@@ -143,7 +143,7 @@ If the ring is disabled in gateway config: `{"type":"error","ref":42,"msg":"debu
 {"type":"update","ref":4}
 ```
 
-Triggers `_run_update()` in `/opt/blaueis-gw`: resolves the latest published GitHub release (falls back to `main` when no release exists; refuses when the Releases API is unreachable), fetches and checks out that tag, records the previous ref in `.update-state` (for `blaueis-gw update --rollback`), then `pip install -e ...` for `blaueis-core` + `blaueis-gateway`. When the version changed it exits non-zero so systemd restarts the service. `ref` is the usual request id, not a git ref — the target is not selectable over WebSocket. `steps` entries are `[name, ok, detail]` for `resolve`, `git_checkout`, `pip_install`, and optionally `state_file` and `restore`. If `pip install` fails, the checkout is moved back to the previous commit and its packages reinstalled (`restore` step), `.update-state` is not written, the service is not restarted, and the reply is `ok: false` with an `error` naming the reason. Details: `operations.md` §5.
+Triggers `_run_update()` in `/opt/blaueis-gw`: resolves the latest published GitHub release (falls back to `main` when no release exists; refuses when the Releases API is unreachable), fetches and checks out that tag, then runs `pip install -e ...` for `blaueis-core` + `blaueis-gateway` (300 s limit) and, once that succeeds, records the previous ref in `.update-state` (for `blaueis-gw update --rollback`). When the version changed it exits non-zero so systemd restarts the service. `ref` is the usual request id, not a git ref — the target is not selectable over WebSocket. `steps` entries are `[name, ok, detail]` for `resolve`, `git_checkout`, `pip_install`, and optionally `state_file` and `restore`. If `pip install` fails, the checkout is moved back to the previous commit and its packages reinstalled (`restore` step), `.update-state` is not written, the service is not restarted, and the reply is `ok: false` with an `error` naming the reason. Details: `operations.md` §5.
 
 Reply flow:
 ```json
@@ -214,7 +214,7 @@ Broadcast to all clients every `stats_interval` seconds (default 60).
 
 ### 3.6 `journal` — periodic journal broadcast
 
-Every 60s the gateway reads the last 10 journal entries and broadcasts them as:
+Every 60s the gateway reads the last 10 journal entries and broadcasts them as (earlier recap echo lines are left out, so there may be fewer):
 ```json
 {"type":"journal","lines":["2026-04-14 ...","..."]}
 ```

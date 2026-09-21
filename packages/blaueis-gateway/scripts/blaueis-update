@@ -334,7 +334,8 @@ if [ ${#STARTED[@]} -gt 0 ]; then
         else
             fail "$name — FAILED"
             echo "      Check: journalctl -u $svc --no-pager -n 20"
-            echo "      Rollback: sudo blaueis-gw update --rollback"
+            # After a restored failed update --rollback would skip past the running version.
+            [ "$UPDATE_FAILED" = true ] || echo "      Rollback: sudo blaueis-gw update --rollback"
             all_healthy=false
         fi
     done

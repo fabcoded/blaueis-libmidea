@@ -61,8 +61,10 @@ its three registrations if that happens.
    admit `0.1.0rc1` even with pre-releases allowed, so
    `pip install blaueis-gateway==0.1.0rc1` could not resolve its core
    dependency. `~=0.1.0rc1` admits the rc, `0.1.0` and every later `0.1.x`
-   but not `0.2`, so it stays for the final release; adjust it when the minor
-   version changes.
+   but not `0.2`. Because the specifier names a pre-release, it also lets pip
+   pick later pre-releases (`0.1.1rc1`), so the final-release bump returns the
+   pin to `~=0.1.0` in client and gateway; adjust it when the minor version
+   changes.
 2. Merge to `main`, then tag and push:
    `git tag -a v0.1.0rc1 -m "v0.1.0rc1" && git push origin v0.1.0rc1`.
 3. Watch the workflow. When TestPyPI is green, optionally check an install:
@@ -87,6 +89,7 @@ Across the three repositories (map: fabcoded/blaueis-ha-midea#16):
    → blaueis-ha-midea `v0.1.0rc1` → HACS custom-repository rehearsal → the
    rehearsal proofs of fabcoded/blaueis-ha-midea#28. A throwaway `v0.1.0rc2`
    exercises `blaueis-gw update --rollback`.
-2. **final** — `v0.1.0` in the same order: this repo, then blaueis-ha-midea,
-   then blaueis-hvacshark's annotated tag last. The README install one-liner
-   switches to the release-asset URL only then.
+2. **final** — `v0.1.0` in the same order: this repo (its version bump also
+   returns the `blaueis-core` pin in client and gateway to `~=0.1.0`), then
+   blaueis-ha-midea, then blaueis-hvacshark's annotated tag last. The README
+   install one-liner switches to the release-asset URL only then.

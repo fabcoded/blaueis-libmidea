@@ -12,8 +12,16 @@ from blaueis.gateway.server import ClientConnection, GatewayServer
 
 REAL_LINE = "2026-09-21T10:00:00+0000 pi blaueis-gw-atelier[1]: connected"
 RECAP_LINE = "2026-09-21T10:01:00+0000 pi blaueis-gw-atelier[1]: recap state=RUNNING clients=1"
-ECHO_LINE = "2026-09-21T10:01:00+0000 pi blaueis-gw-atelier[1]:   | " + RECAP_LINE
-NESTED_ECHO_LINE = "2026-09-21T10:02:00+0000 pi blaueis-gw-atelier[1]:   | " + ECHO_LINE
+ECHO_LINE = (
+    "2026-09-21T10:01:00+0000 pi blaueis-gw-atelier[1]: 2026-09-21 10:01:00,000 hvac_gateway INFO   | " + RECAP_LINE
+)
+NESTED_ECHO_LINE = (
+    "2026-09-21T10:02:00+0000 pi blaueis-gw-atelier[1]: 2026-09-21 10:02:00,000 hvac_gateway INFO   | " + ECHO_LINE
+)
+# Python 3.11+ exception-group traceback line: indents with "  | " but is no echo.
+GROUP_TRACEBACK_LINE = (
+    "2026-09-21T10:03:00+0000 pi blaueis-gw-atelier[1]:   | ExceptionGroup: unhandled errors (1 sub-exception)"
+)
 
 
 @pytest.fixture
@@ -52,6 +60,13 @@ async def test_read_journal_drops_echo_lines(server, monkeypatch) -> None:
     monkeypatch.setattr(subprocess, "run", lambda *a, **kw: SimpleNamespace(stdout=stdout, returncode=0))
 
     assert await server._read_journal(n=10) == [REAL_LINE, RECAP_LINE]
+
+
+async def test_read_journal_keeps_exception_group_traceback_lines(server, monkeypatch) -> None:
+    stdout = "\n".join([REAL_LINE, GROUP_TRACEBACK_LINE, ECHO_LINE]) + "\n"
+    monkeypatch.setattr(subprocess, "run", lambda *a, **kw: SimpleNamespace(stdout=stdout, returncode=0))
+
+    assert await server._read_journal(n=10) == [REAL_LINE, GROUP_TRACEBACK_LINE]
 
 
 # ── _recap_once ───────────────────────────────────────────────────────────
