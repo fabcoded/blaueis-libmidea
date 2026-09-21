@@ -46,8 +46,14 @@ ruff check && ruff format --check
 python3 -m pytest
 ```
 
-Lint and tests must stay green on every PR (both are CI gates). Approximate
-test counts today: core 277, gateway 45, client 203, tools 60.
+Lint and tests must stay green on every PR (both are CI gates). Tests run on
+Python 3.11 (the floor, and the Pi's Bookworm system Python) and 3.12.
+Approximate test counts today: core 277, gateway 45, client 203, tools 60.
+
+CI also builds the three published packages and runs `twine check --strict`
+on them, so packaging breakage shows up on the PR, not at release time.
+Locally, per package: `python -m build packages/<pkg> && twine check --strict dist/*`.
+Release steps: [docs/releasing.md](docs/releasing.md).
 
 ## What good PRs look like
 

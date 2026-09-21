@@ -26,12 +26,17 @@ jobs:
   # sys.exit() on import so pytest can't collect them, but they assert
   # real protocol behaviour. The runner derives the list from conftest.
   excluded-scripts:
+    name: excluded-scripts (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - name: Install blaueis-core
         # pytest: validate_complex_fields.py imports it at module level.
         run: |
@@ -40,13 +45,20 @@ jobs:
       - name: Run excluded script-style tests
         run: python scripts/run_excluded_tests.py
 
+  # 3.11 is the floor (requires-python, and the Pi's Bookworm system Python);
+  # 3.12 matches the other jobs.
   pytest:
+    name: pytest (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - name: Install workspace packages
         run: |
           python -m pip install --upgrade pip
@@ -62,3 +74,25 @@ jobs:
         run: |
           python -m pytest -o addopts="--import-mode=importlib" \
             --ignore=packages/blaueis-client/tests/test_device_live.py
+
+  # The three published packages must build and pass `twine check` on every
+  # PR, so packaging cannot rot between releases. Same build command as
+  # publish.yml; --strict also fails on a missing or unrenderable README.
+  build:
+    name: build ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [blaueis-core, blaueis-client, blaueis-gateway]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install build + twine
+        run: python -m pip install --upgrade build twine
+      - name: Build sdist and wheel
+        run: python -m build --outdir dist/ "packages/${{ matrix.package }}"
+      - name: twine check
+        run: twine check --strict dist/*
