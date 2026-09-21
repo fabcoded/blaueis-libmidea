@@ -148,6 +148,13 @@ caps loaded once, never cleared. Supervisor restarts dead loops without
 touching state. Per flight_recorder.md §1.1 — every received frame is
 processed regardless of correlation.
 
+**Connection callbacks:** `on_disconnected` fires once per lost link
+(and on `stop()`); `on_connected` fires once per established link, after
+the post-connect status round-trip (first C0 ingested, or
+`INITIAL_STATUS_TIMEOUT` elapsed). A post-connect round-trip whose link
+drops before it finishes is cancelled and never fires `on_connected`, so
+the last callback always matches the current link state.
+
 **Polling.** The poll loop calls `_compute_required_queries()` each
 cycle and dispatches one frame per query key. The set is derived
 from the live `_status["fields"]` — for every field whose

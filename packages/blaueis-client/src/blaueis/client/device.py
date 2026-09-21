@@ -216,6 +216,12 @@ class Device:
         # have a real value, eliminating the boot/reconnect false-False window.
         self._initial_status_event: asyncio.Event | None = None
         self._post_connect_task: asyncio.Task | None = None
+        # Link generation: bumped on every successful connect and on every
+        # loss/stop. ``_post_connect_init`` captures it on entry and only
+        # fires ``on_connected`` if it is unchanged — a handshake belonging
+        # to a link that has since dropped must never report "connected"
+        # after the drop's ``on_disconnected``.
+        self._link_gen = 0
 
         # ── Task management ────────────────────────────────
         self._running = False
@@ -547,6 +553,7 @@ class Device:
     async def stop(self):
         """Stop supervisor and all loops, disconnect."""
         self._running = False
+        self._link_gen += 1
 
         for task in [
             self._supervisor_task,
@@ -586,9 +593,17 @@ class Device:
         self._client = HvacClient(self.host, self.port, psk=self._psk_bytes, no_encrypt=self._no_encrypt)
         await self._client.connect()
         self._client.add_listener(self._on_gateway_message)
+        self._link_gen += 1
 
     async def _reconnect(self):
         """Reconnect WebSocket with backoff. Does NOT re-query B5 or wipe status."""
+        # The link is gone: invalidate any post-connect handshake still
+        # running for it, so it cannot fire on_connected after the
+        # on_disconnected below.
+        self._link_gen += 1
+        if self._post_connect_task and not self._post_connect_task.done():
+            self._post_connect_task.cancel()
+        self._post_connect_task = None
         if self.on_disconnected:
             self.on_disconnected()
 
@@ -861,7 +876,12 @@ class Device:
         re-entered yet) and spawned as a task from ``_reconnect()`` (where
         the listen loop is suspended in this same call stack and would
         deadlock the C0 ingest path if we awaited inline).
+
+        If the link this handshake started on is lost (or the device is
+        stopped) before it finishes, ``on_connected`` is not fired — the
+        next successful reconnect runs its own handshake.
         """
+        link_gen = self._link_gen
         try:
             ok = await self._query_initial_status()
             if ok:
@@ -870,6 +890,9 @@ class Device:
             raise
         except Exception:
             log.exception("Initial status query crashed")
+        if link_gen != self._link_gen:
+            log.debug("Link lost during post-connect handshake; not reporting connected")
+            return
         if self.on_connected:
             try:
                 self.on_connected()
