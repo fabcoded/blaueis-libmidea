@@ -38,6 +38,11 @@ from cryptography.exceptions import InvalidTag
 
 log = logging.getLogger("hvac_gateway")
 
+# Marker of a journal line that was itself written by an earlier recap echo.
+# Journal lines are never logged back into the journal; any line that still
+# carries the marker (written before the echo was removed) is dropped on read.
+_JOURNAL_ECHO_MARKER = "  | "
+
 
 INSTALL_DIR = "/opt/blaueis-gw"
 
@@ -763,46 +768,49 @@ class GatewayServer:
                 timeout=5,
             )
             if result.stdout.strip():
-                return result.stdout.strip().splitlines()
+                return [line for line in result.stdout.strip().splitlines() if _JOURNAL_ECHO_MARKER not in line]
         except Exception:
             pass
         return []
 
     async def _debug_recap(self):
         """Every 60s, log a recap and broadcast journal lines to clients."""
-        import time as _time
-
         while True:
             await asyncio.sleep(60)
+            await self._recap_once()
 
-            proto = self.protocol
-            silence_age = _time.monotonic() - proto.silence_timer if proto.silence_timer else 0
+    async def _recap_once(self):
+        """One recap iteration: log the recap line, broadcast the journal tail.
 
-            log.info(
-                "recap state=%s clients=%d tx_queue=%d/%d last_frame=%.0fs ago",
-                proto.state,
-                len(self._clients),
-                proto._tx_queue.qsize(),
-                proto._tx_queue.maxsize,
-                silence_age,
+        Journal lines go to WS clients only — writing them back into the
+        journal would make the next read return them again, nested one level
+        deeper each minute.
+        """
+        proto = self.protocol
+        silence_age = time.monotonic() - proto.silence_timer if proto.silence_timer else 0
+
+        log.info(
+            "recap state=%s clients=%d tx_queue=%d/%d last_frame=%.0fs ago",
+            proto.state,
+            len(self._clients),
+            proto._tx_queue.qsize(),
+            proto._tx_queue.maxsize,
+            silence_age,
+        )
+
+        lines = await self._read_journal(n=10)
+        if self._clients and lines:
+            await self._broadcast(
+                {
+                    "type": "journal",
+                    "lines": lines,
+                    "state": proto.state,
+                    "clients": len(self._clients),
+                    "tx_queue": proto._tx_queue.qsize(),
+                    "tx_queue_max": proto._tx_queue.maxsize,
+                    "last_frame_age": round(silence_age),
+                }
             )
-
-            lines = await self._read_journal(n=10)
-            for line in lines:
-                log.info("  | %s", line)
-
-            if self._clients and lines:
-                await self._broadcast(
-                    {
-                        "type": "journal",
-                        "lines": lines,
-                        "state": proto.state,
-                        "clients": len(self._clients),
-                        "tx_queue": proto._tx_queue.qsize(),
-                        "tx_queue_max": proto._tx_queue.maxsize,
-                        "last_frame_age": round(silence_age),
-                    }
-                )
 
     async def _uart_loop(self):
         """Open UART and run the protocol state machine."""
