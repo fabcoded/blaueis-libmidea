@@ -9,7 +9,8 @@
 ## 1. Hardware and UART
 
 The AC's Wi-Fi dongle port wired to the Pi's primary UART through a level
-shifter. **This section is canonical** for these facts — `QUICKSTART.md`
+shifter. Any Raspberry Pi with the 40-pin header will do (Pi 5 needs the
+extra step in §1.5). **This section is canonical** for these facts — `QUICKSTART.md`
 §1–2 in blaueis-ha-midea carries the same facts at stranger depth; if the
 two ever disagree, this file wins and the quickstart is corrected in the
 same release.
@@ -38,11 +39,16 @@ with the unit powered and nothing connected to CN3, measure DC volts
 between pins 1 and 4 — expect ~5 V. The board next to CN3 carries mains;
 touch only the CN3 pins.
 
-> **Gap.** No verified CN3 photo/pinout for a specific unit, mating
-> connector part, or tested level-shifter part number yet. A BSS138-type
+> **Gap.** Not yet verified on our own unit: a CN3 photo and pin count, the
+> mating connector part, which of pins 2/3 is the AC's TX, the port's real
+> current capability, and a tested level-shifter part number. A BSS138-type
 > bidirectional module with two or more channels should work.
 
 ### 1.2 The Pi side — primary UART
+
+`/dev/serial0` is the symlink Raspberry Pi OS keeps to the primary UART, on
+header pins 8 and 10 on every model except the Pi 5 (§1.5). It is the
+gateway's default `uart_port` (§4.1).
 
 | Header pin | Signal |
 |---|---|
@@ -95,6 +101,11 @@ sudo raspi-config
 
   After reboot, `/dev/serial0` must resolve to `ttyAMA0`, not `ttyS0`.
 
+  Alternative that keeps Bluetooth: `dtoverlay=miniuart-bt` plus a fixed
+  core clock (`core_freq=250`) in the same file. This leaves the gateway on
+  the mini UART, which loses characters more readily at higher baud rates;
+  9600 baud on it is untested here, so prefer `disable-bt`.
+
 - **Pi 5** — `/dev/serial0` is the 3-pin debug header, not header pins
   8/10. Enable the header UART instead:
 
@@ -102,7 +113,10 @@ sudo raspi-config
   echo "dtoverlay=uart0-pi5" | sudo tee -a /boot/firmware/config.txt
   ```
 
-  and select `/dev/ttyAMA0` in the installer wizard (§2).
+  and set `uart_port: /dev/ttyAMA0` (the installer wizard asks for the
+  port, §2; key reference §4.1). Bluetooth has its own UART on the Pi 5, so
+  `disable-bt` is not needed. **Untested** — derived from the Raspberry Pi
+  documentation, not run on a Pi 5.
 
 - **Other 40-pin-header models** — no extra step.
 

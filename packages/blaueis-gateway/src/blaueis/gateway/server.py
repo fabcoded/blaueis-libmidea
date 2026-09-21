@@ -91,8 +91,8 @@ _PROCESS_START_EPOCH: float = time.time()
 def load_config(global_path: str = None, instance_path: str = None, legacy_path: str = None) -> dict:
     """Load gateway configuration from YAML (new) or INI (legacy) files.
 
-    New format: global_path (/etc/blaueis/gateway.yaml) + instance_path
-    (/etc/blaueis/instances/<name>.yaml).
+    New format: global_path (/etc/blaueis-gw/gateway.yaml) + instance_path
+    (/etc/blaueis-gw/instances/<name>.yaml).
 
     Legacy format: single INI file (gateway.conf) — for backwards compat
     during migration.
@@ -883,9 +883,9 @@ class GatewayServer:
             except FileNotFoundError:
                 log.error(
                     "UART port %s not found. Check:\n"
-                    "  • Is the serial port path correct in /etc/blaueis/instances/<name>.yaml?\n"
+                    "  • Is the serial port path correct in /etc/blaueis-gw/instances/<name>.yaml?\n"
                     "  • Is the USB adapter plugged in?\n"
-                    "  • For GPIO UART: is 'dtoverlay=disable-bt' in /boot/config.txt?\n"
+                    "  • For GPIO UART: is 'dtoverlay=disable-bt' in /boot/firmware/config.txt?\n"
                     "  • Run: ls -la %s",
                     port,
                     port,
@@ -1010,8 +1010,8 @@ async def serve_until_signal(server: GatewayServer) -> None:
 def main():
     parser = argparse.ArgumentParser(description="Blaueis Midea Gateway")
     # New YAML config (systemd passes these)
-    parser.add_argument("--global", dest="global_config", help="Path to /etc/blaueis/gateway.yaml")
-    parser.add_argument("--instance", dest="instance_config", help="Path to /etc/blaueis/instances/<name>.yaml")
+    parser.add_argument("--global", dest="global_config", help="Path to /etc/blaueis-gw/gateway.yaml")
+    parser.add_argument("--instance", dest="instance_config", help="Path to /etc/blaueis-gw/instances/<name>.yaml")
     # Legacy INI config (backwards compat with old gateway.conf)
     parser.add_argument("--config", help="Legacy: path to gateway.conf (INI format)")
     parser.add_argument("--no-encrypt", action="store_true", help="Disable encryption (development)")
