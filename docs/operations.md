@@ -6,9 +6,109 @@
 
 ---
 
-## 1. Install
+## 1. Hardware and UART
 
-One-line on a Raspberry Pi (Bookworm / Bullseye):
+The AC's Wi-Fi dongle port wired to the Pi's primary UART through a level
+shifter. **This section is canonical** for these facts — `QUICKSTART.md`
+§1–2 in blaueis-ha-midea carries the same facts at stranger depth; if the
+two ever disagree, this file wins and the quickstart is corrected in the
+same release.
+
+### 1.1 The AC side — CN3
+
+Midea indoor units expose a connector for the Wi-Fi dongle, commonly
+labelled **CN3** on the indoor unit's board. Electrically it is a **5 V TTL
+UART, 9600 8N1**, on four pins — not USB, even where the socket is
+USB-A-shaped.
+
+| CN3 pin | Signal |
+|---|---|
+| 1 | 5 V |
+| 2 | data — the AC's TX *or* RX |
+| 3 | data — the other one |
+| 4 | GND |
+
+Which of pins 2/3 carries the AC's TX line varies by unit: wire one way,
+and swap the two data lines if the gateway never receives (§7,
+"Gateway starts but never reaches RUNNING"). Identify pins before wiring:
+with the unit powered and nothing connected to CN3, measure DC volts
+between pins 1 and 4 — expect ~5 V. The board next to CN3 carries mains;
+touch only the CN3 pins.
+
+> **Gap.** No verified CN3 photo/pinout for a specific unit, mating
+> connector part, or tested level-shifter part number yet. A BSS138-type
+> bidirectional module with two or more channels should work.
+
+### 1.2 The Pi side — primary UART
+
+| Header pin | Signal |
+|---|---|
+| 8 | GPIO14 — **TX** (Pi → AC) |
+| 10 | GPIO15 — **RX** (AC → Pi) |
+| 6 | GND |
+| 1 | 3.3 V — level shifter LV reference |
+| 2 | 5 V — level shifter HV reference |
+
+### 1.3 Wiring through the level shifter
+
+| From | Via | To |
+|---|---|---|
+| Pi pin 2 (5 V) | — | shifter **HV reference** |
+| Pi pin 1 (3.3 V) | — | shifter **LV reference** |
+| AC pin 4 (GND) | — | shifter GND **and** Pi pin 6 (GND) |
+| AC pin 2 | shifter channel A | Pi pin 10 (RX) |
+| AC pin 3 | shifter channel B | Pi pin 8 (TX) |
+| AC pin 1 (5 V) | — | **not connected** |
+
+### 1.4 Power rule
+
+The AC's dongle port is rated 5 V / 300 mA; a Pi draws roughly 100–800 mA
+depending on model. **Power the Pi from its own 5.1 V supply, share GND
+only, and leave CN3 pin 1 unconnected.** Power sequence: wire everything
+with both sides off, then power the Pi first, then the AC. If the Pi will
+stay off for a long time while the AC stays on, disconnect the data lines
+or switch the AC off at the mains.
+
+### 1.5 UART exclusivity and per-model setup
+
+The gateway needs the Pi's primary UART **exclusively** — no login
+console, no Bluetooth on it, no other serial daemon.
+
+```sh
+sudo raspi-config
+# Interface Options → Serial Port: login shell over serial No, serial port hardware Yes
+```
+
+- **Pi Zero W, Zero 2 W, 3, 4** — Bluetooth sits on the primary UART by
+  default; the header pins get the mini UART instead. Move Bluetooth off:
+
+  ```sh
+  echo "dtoverlay=disable-bt" | sudo tee -a /boot/firmware/config.txt
+  sudo systemctl disable hciuart
+  ```
+
+  After reboot, `/dev/serial0` must resolve to `ttyAMA0`, not `ttyS0`.
+
+- **Pi 5** — `/dev/serial0` is the 3-pin debug header, not header pins
+  8/10. Enable the header UART instead:
+
+  ```sh
+  echo "dtoverlay=uart0-pi5" | sudo tee -a /boot/firmware/config.txt
+  ```
+
+  and select `/dev/ttyAMA0` in the installer wizard (§2).
+
+- **Other 40-pin-header models** — no extra step.
+
+Minimum OS: Raspberry Pi OS **Bookworm** (Python 3.11+; Bullseye ships
+3.9 and will not run the gateway). Reboot after any of the above before
+continuing to install.
+
+---
+
+## 2. Install
+
+One-line on a Raspberry Pi (Bookworm or newer — see §1.5):
 
 ```sh
 bash -c "$(curl -sL https://raw.githubusercontent.com/fabcoded/blaueis-libmidea/main/scripts/install.sh)"
@@ -18,16 +118,16 @@ The installer (`scripts/install.sh`):
 
 - Requires root (asks for `sudo`).
 - Creates system user `blaueis-gw`, directories `/opt/blaueis-gw`, `/etc/blaueis-gw`.
-- `git clone`s this repo into `/opt/blaueis-gw`, creates a venv, `pip install -e` for `blaueis-core` + `blaueis-gateway`.
+- `git clone`s this repo's `main` branch into `/opt/blaueis-gw`, creates a venv, `pip install -e` for `blaueis-core` + `blaueis-gateway`.
 - Installs `blaueis-gateway@.service` into systemd.
 - Adds the service user to the `dialout` group (for `/dev/serial0`).
-- Does **not** start a service — you must place a config and enable an instance.
+- Runs the setup wizard, then enables and starts the configured instance.
 
 Minimum Python: **3.11**.
 
 ---
 
-## 2. systemd layout
+## 3. systemd layout
 
 ```
 /etc/systemd/system/
@@ -81,11 +181,11 @@ works without the target and hides the gap until power is lost.
 
 ---
 
-## 3. Configuration reference
+## 4. Configuration reference
 
 Two YAML files merged at startup; instance overrides global. Values apply to `UartProtocol` / `GatewayServer`.
 
-### 3.1 Core keys (`gateway.yaml` or instance file)
+### 4.1 Core keys (`gateway.yaml` or instance file)
 
 | Key | Type | Default | Purpose |
 |---|---|---|---|
@@ -103,7 +203,7 @@ Two YAML files merged at startup; instance overrides global. Values apply to `Ua
 | `device_name` | str | `Midea AC` | Human name surfaced in `pi_status` / `version`. |
 | `allow_remote_update` | bool | `true` | Gate on `{"type":"update"}` WS command. |
 
-### 3.2 Flight-recorder keys (`flight_recorder.md` §7)
+### 4.2 Flight-recorder keys (`flight_recorder.md` §7)
 
 | Key | Type | Default | Purpose |
 |---|---|---|---|
@@ -111,7 +211,7 @@ Two YAML files merged at startup; instance overrides global. Values apply to `Ua
 | `debug_ring_size_mb` | int | `5` | Ring cap in MB (byte-sized eviction, not record count). |
 | `slot_pool_size` | int | `8` | Max concurrent WS clients. Exhaustion → `slot_pool_full` error; no evict-oldest. |
 
-### 3.3 Mirror keys (legacy — superseded by `subscribe`/§4.1)
+### 4.3 Mirror keys (legacy — superseded by `subscribe`/§5.1.1)
 
 | Key | Default | Note |
 |---|---|---|
@@ -120,7 +220,7 @@ Two YAML files merged at startup; instance overrides global. Values apply to `Ua
 
 Both ignored when a client uses `subscribe` with `"include":["tx",...]` — the per-subscriber filter takes precedence.
 
-### 3.4 Example instance file
+### 4.4 Example instance file
 
 ```yaml
 # /etc/blaueis-gw/instances/<instance>.yaml
@@ -137,11 +237,25 @@ Permissions: `chown blaueis-gw:blaueis-gw` + `chmod 640` — the service user ne
 
 ---
 
-## 4. Updating
+## 5. Updating
 
-### 4.1 Remote update (WS client, preferred)
+Standard path — run this on the Pi:
 
-Deploys committed code that is pushed to the remote.
+```sh
+sudo blaueis-gw update             # reports whether a newer commit is available
+sudo blaueis-gw update --apply     # stop services → update → start → health check
+sudo blaueis-gw update --rollback  # revert to the previous install
+```
+
+### 5.1 Developer paths
+
+For deploying code that isn't on the tracked branch yet — uncommitted
+work, or a remote commit you want to push out without a full
+`blaueis-gw update`.
+
+#### 5.1.1 Remote update (WebSocket client)
+
+Deploys committed code that has been pushed to the remote.
 
 ```python
 from blaueis.client.ws_client import HvacClient
@@ -151,9 +265,9 @@ await c._send({"type": "update", "ref": 1})
 # gateway git pulls, reinstalls, exits 1; systemd restarts it
 ```
 
-Blocked by `allow_remote_update: false`. Requires remote commit to exist — the gateway does `git pull --ff-only`.
+Blocked by `allow_remote_update: false`. Requires the remote commit to exist — the gateway does `git pull --ff-only`.
 
-### 4.2 Local update (SSH, for WIP code)
+#### 5.1.2 Local update (SSH, for WIP code)
 
 SSH access to the Pi uses whatever key your install provisioned (PuTTY
 `.ppk` keys convert to OpenSSH with `puttygen <key>.ppk -O
@@ -175,7 +289,7 @@ ssh -i <ssh-key> hvac@<gateway-host> '
 Do NOT edit files directly under `/opt/blaueis-gw/` as root — the update
 path (`git pull`) assumes a clean checkout.
 
-### 4.3 Manual full reinstall
+#### 5.1.3 Manual full reinstall
 
 ```sh
 ssh -i <ssh-key> hvac@<gateway-host>
@@ -186,9 +300,9 @@ sudo systemctl restart blaueis-gateway@<instance>
 
 ---
 
-## 5. Logs & debugging
+## 6. Logs & debugging
 
-### 5.1 Journal
+### 6.1 Journal
 
 ```sh
 sudo journalctl -t blaueis-gw-<instance> -f          # live
@@ -196,9 +310,9 @@ sudo journalctl -t blaueis-gw-<instance> -n 200      # last 200 lines
 sudo journalctl -t blaueis-gw-<instance> --since "10 minutes ago"
 ```
 
-Default `log_level: INFO` keeps the journal clean. Packet-level detail lives in the flight recorder (§5.3), not in the journal.
+Default `log_level: INFO` keeps the journal clean. Packet-level detail lives in the flight recorder (§6.3), not in the journal.
 
-### 5.2 Inline VERBOSE
+### 6.2 Inline VERBOSE
 
 For short-lived deep-dive:
 
@@ -216,7 +330,7 @@ sudo -u blaueis-gw /opt/blaueis-gw/venv/bin/python -m blaueis.gateway.server \
   --instance /etc/blaueis-gw/instances/atelier.yaml --verbose
 ```
 
-### 5.3 Flight recorder (preferred)
+### 6.3 Flight recorder (preferred)
 
 Raise log_level only if you can't get what you need from the ring. See `flight_recorder.md` §4.4.
 
@@ -230,7 +344,7 @@ External consumers (e.g. a Home Assistant integration, a CLI client) can pull th
 
 ---
 
-## 6. Troubleshooting checklist
+## 7. Troubleshooting checklist
 
 Symptoms → where to look, in order.
 
@@ -260,7 +374,7 @@ Symptoms → where to look, in order.
 
 ### Commands don't reach the AC
 
-1. `queue_frame` returning False → `max_queue` full (rare — see §3.1).
+1. `queue_frame` returning False → `max_queue` full (rare — see §4.1).
 2. Ring dump: `uart_tx` with matching `req_id`? If no, queue drain stuck.
 3. `uart_tx` present but no `reply_to` follows → AC ignored the command. Check frame validity with `blaueis.core.frame.parse_frame`.
 
@@ -278,7 +392,7 @@ Symptoms → where to look, in order.
 
 ---
 
-## 7. Uninstall
+## 8. Uninstall
 
 ```sh
 sudo systemctl stop blaueis-gateway@\*

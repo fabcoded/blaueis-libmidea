@@ -87,7 +87,7 @@ AES-256-GCM** over the already-open WS, negotiated in the first round-trip
 development.
 
 **Config:** YAML at `/etc/blaueis-gw/gateway.yaml` (global) +
-`/etc/blaueis-gw/instances/<name>.yaml` (per-AC). See `docs/operations.md` §3
+`/etc/blaueis-gw/instances/<name>.yaml` (per-AC). See `docs/operations.md` §4
 for keys.
 
 **systemd unit:** `blaueis-gateway@.service` — instanced by YAML filename.

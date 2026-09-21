@@ -18,11 +18,28 @@ for the gateway daemon is a Raspberry Pi on the Wi-Fi dongle UART bus at
 
 ## Quick start
 
-**On a Raspberry Pi** (install the gateway daemon):
+**Home Assistant users:** follow the [quickstart in blaueis-ha-midea](https://github.com/fabcoded/blaueis-ha-midea/blob/main/QUICKSTART.md) — it covers wiring, this installer, and the HA-side integration end to end.
+
+**Install the gateway on a Raspberry Pi:**
 
 ```sh
 bash -c "$(curl -sL https://raw.githubusercontent.com/fabcoded/blaueis-libmidea/main/scripts/install.sh)"
 ```
+
+**Hardware, in short:** the AC's Wi-Fi dongle port (**CN3**) is a 5 V TTL
+UART, 9600 8N1, on 4 pins; connect it to the Pi's primary UART (header pins
+8/10) through a bidirectional 5 V↔3.3 V level shifter; power the Pi from its
+own 5.1 V supply and leave CN3's 5 V pin unconnected; the Pi's UART must be
+freed from the serial console first, and from Bluetooth too on Zero/3/4.
+See [docs/operations.md](docs/operations.md) §1 for the canonical reference.
+
+| Command | Purpose |
+|---|---|
+| `blaueis-gw status` | State of all instances |
+| `blaueis-gw logs <name> -f` | Follow an instance's log |
+| `blaueis-gw configure` | Add another AC or edit an instance |
+| `sudo blaueis-gw update` | Check for an update; `--apply` installs it, `--rollback` reverts it |
+| `sudo blaueis-gw uninstall` | Remove the gateway |
 
 See [docs/operations.md](docs/operations.md) for config + systemd details.
 
