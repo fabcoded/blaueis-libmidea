@@ -72,6 +72,7 @@ cd packages/blaueis-client  && python3 -m pytest      # 147
 - [docs/architecture.md](docs/architecture.md) — package map, dependencies, logger names.
 - [docs/ws_protocol.md](docs/ws_protocol.md) — WebSocket wire reference (every frame type).
 - [docs/operations.md](docs/operations.md) — install, systemd, config, update, debug, troubleshoot.
+- [docs/releasing.md](docs/releasing.md) — release pipeline (PyPI trusted publishing, draft GitHub release) and the maintainer's release steps.
 - [docs/flight_recorder.md](docs/flight_recorder.md) — rolling in-memory debug buffer (design + rationale).
 - [docs/status_db.md](docs/status_db.md) — status dictionary schema and merge logic.
 - [docs/feature_gating.md](docs/feature_gating.md) — the offer gate: capability / mode / interlock axes, the `gate:` block schema, the evaluator, and bit-position anchors.
