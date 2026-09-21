@@ -11,6 +11,7 @@ import os
 import platform
 import tempfile
 import time
+import types
 from pathlib import Path
 
 
@@ -246,14 +247,18 @@ def test_pi_stats_no_crash_on_any_platform():
     assert isinstance(stats["platform"], str)
 
 
-def test_pi_stats_process_uptime_increases():
-    """process_uptime_s must monotonically increase across calls (or
-    at worst stay equal due to int truncation), proving it's tied to a
-    fixed start time rather than recomputed from scratch."""
+def test_pi_stats_process_uptime_increases(monkeypatch):
+    """process_uptime_s is derived from the fixed process start epoch, so it
+    grows with the clock. The clock is patched — a real sleep made this test
+    depend on time.time() never stepping back (NTP, WSL) between the calls."""
+    start = get_pi_stats.__globals__["_PROCESS_START_EPOCH"]
+    readings = iter([start + 10.2, start + 11.3])
+    fake_time = types.SimpleNamespace(time=lambda: next(readings))
+    monkeypatch.setitem(get_pi_stats.__globals__, "time", fake_time)
     s1 = get_pi_stats()
-    time.sleep(1.05)
     s2 = get_pi_stats()
-    assert s2["process_uptime_s"] >= s1["process_uptime_s"] + 1
+    assert s1["process_uptime_s"] == 10
+    assert s2["process_uptime_s"] == 11
 
 
 def test_pi_stats_process_started_at_is_stable():

@@ -57,7 +57,12 @@ its three registrations if that happens.
 
 1. Bump `version` by hand in `packages/blaueis-{core,client,gateway}/pyproject.toml`
    to the same value (e.g. `0.1.0rc1`). The client and gateway pin
-   `blaueis-core~=0.1.0`; adjust the pin when the minor version changes.
+   `blaueis-core~=0.1.0rc1`. That form is deliberate: `~=0.1.0` would not
+   admit `0.1.0rc1` even with pre-releases allowed, so
+   `pip install blaueis-gateway==0.1.0rc1` could not resolve its core
+   dependency. `~=0.1.0rc1` admits the rc, `0.1.0` and every later `0.1.x`
+   but not `0.2`, so it stays for the final release; adjust it when the minor
+   version changes.
 2. Merge to `main`, then tag and push:
    `git tag -a v0.1.0rc1 -m "v0.1.0rc1" && git push origin v0.1.0rc1`.
 3. Watch the workflow. When TestPyPI is green, optionally check an install:

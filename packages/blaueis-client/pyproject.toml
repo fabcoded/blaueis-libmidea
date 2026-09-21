@@ -22,7 +22,7 @@ classifiers = [
     "Topic :: Home Automation",
 ]
 dependencies = [
-    "blaueis-core~=0.1.0",
+    "blaueis-core~=0.1.0rc1",
     "websockets>=12.0",
 ]
 
