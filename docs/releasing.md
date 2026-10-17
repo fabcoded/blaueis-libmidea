@@ -10,8 +10,8 @@ tag:
    file version equals the tag (without `v`) and that the wheel carries its
    `LICENSE`.
 2. **TestPyPI** — uploads all three (`skip-existing`, so a re-run is a no-op).
-3. **PyPI** — waits for approval on the `pypi` environment, then uploads all
-   three. Trusted publishing (OIDC): no API tokens, no secrets.
+3. **PyPI** — waits for approval on each package's `pypi-<package>` environment
+   (three approvals), then uploads all three. Trusted publishing (OIDC): no API tokens, no secrets.
 4. **draft release** — creates a *draft* GitHub release for the tag with
    `scripts/install.sh` attached. Tags with a pre-release suffix (`v0.1.0rc1`)
    are marked as pre-releases.
@@ -30,7 +30,8 @@ no gateway moves — even though the packages are already on PyPI.
 ### Six trusted-publisher registrations
 
 Pending publishers, created under the account sidebar → *Publishing* (the
-projects do not exist yet). Three on each index, all with the same identity:
+projects do not exist yet). Three on each index. PyPI accepts only one pending publisher per owner/repo/
+workflow/environment combination, so the environment name carries the package:
 
 | Field | Value |
 |---|---|
@@ -38,7 +39,7 @@ projects do not exist yet). Three on each index, all with the same identity:
 | Owner | `fabcoded` |
 | Repository name | `blaueis-libmidea` |
 | Workflow name | `publish.yml` |
-| Environment name | `pypi` on https://pypi.org/manage/account/publishing/ · `testpypi` on https://test.pypi.org/manage/account/publishing/ |
+| Environment name | `pypi-<project>` on https://pypi.org/manage/account/publishing/ · `testpypi-<project>` on https://test.pypi.org/manage/account/publishing/ (e.g. `pypi-blaueis-core`) |
 
 A pending publisher does not reserve the name — publish soon after
 registering. TestPyPI occasionally deletes projects and accounts; re-create
@@ -48,10 +49,10 @@ its three registrations if that happens.
 
 *Settings → Environments*:
 
-- **`pypi`** — *Required reviewers*: the maintainer. *Deployment branches and
+- **`pypi-blaueis-core`, `pypi-blaueis-client`, `pypi-blaueis-gateway`** — *Required reviewers*: the maintainer. *Deployment branches and
   tags*: tags matching `v*`. Create it by hand before the first tag; an
   auto-created environment has no protection rules.
-- **`testpypi`** — no reviewers.
+- **`testpypi-blaueis-core`, `testpypi-blaueis-client`, `testpypi-blaueis-gateway`** — no reviewers.
 
 ## Cutting a release
 
@@ -76,7 +77,7 @@ its three registrations if that happens.
 4. Watch the workflow. When TestPyPI is green, optionally check an install:
    `pip install --index-url https://test.pypi.org/simple/ --no-deps blaueis-core==0.1.0rc1`
    (`--no-deps`: TestPyPI lacks most third-party dependencies).
-5. Approve the `pypi` deployment. The three uploads run in parallel.
+5. Approve the three `pypi-*` deployments. The uploads run in parallel.
 6. Review the draft release and publish it. `install.sh` is attached. The
    notes are GitHub's generated notes for every tag — the workflow does not
    read `CHANGELOG.md` — so for a final release replace them with the

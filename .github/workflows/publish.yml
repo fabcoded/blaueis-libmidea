@@ -58,7 +58,7 @@ jobs:
       matrix:
         package: [blaueis-core, blaueis-client, blaueis-gateway]
     environment:
-      name: testpypi
+      name: testpypi-${{ matrix.package }}
       url: https://test.pypi.org/p/${{ matrix.package }}
     permissions:
       id-token: write       # mandatory for trusted publishing; job level, not workflow level
@@ -81,7 +81,7 @@ jobs:
       matrix:
         package: [blaueis-core, blaueis-client, blaueis-gateway]
     environment:
-      name: pypi            # required reviewers + tag rule v* configured in repo settings
+      name: pypi-${{ matrix.package }}   # required reviewers + tag rule v* per environment
       url: https://pypi.org/p/${{ matrix.package }}
     permissions:
       id-token: write
