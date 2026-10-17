@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "blaueis-client"
-version = "0.1.0"
+version = "0.1.0rc1"
 description = "Blaueis HVAC gateway — WebSocket client library and CLI"
 readme = "README.md"
 requires-python = ">=3.11"
