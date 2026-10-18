@@ -626,3 +626,8 @@ class StatusDB:
                 self.on_state_change(fname, new_val, old_val)
             except Exception:
                 log.exception("on_state_change callback error for %s", fname)
+
+
+__all__ = [
+    "StatusDB",
+]

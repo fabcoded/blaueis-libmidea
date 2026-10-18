@@ -154,3 +154,9 @@ def evaluate_offered(
     #    enforces the forced-off siblings. Nothing to evaluate here (G1). ──
 
     return GateVerdict(offered=not blocked, blocked_by=blocked)
+
+
+__all__ = [
+    "GateVerdict",
+    "evaluate_offered",
+]

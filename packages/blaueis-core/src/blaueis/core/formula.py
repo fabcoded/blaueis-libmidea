@@ -101,3 +101,9 @@ def _eval_node(node: ast.AST, inputs: Mapping[str, float]) -> float:
         return _UNARY_OPS[op_type](_eval_node(node.operand, inputs))
 
     raise FormulaError(f"AST node {type(node).__name__} not allowed")
+
+
+__all__ = [
+    "FormulaError",
+    "evaluate",
+]

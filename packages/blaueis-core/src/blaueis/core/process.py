@@ -428,3 +428,11 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+__all__ = [
+    "finalize_capabilities",
+    "process_b5",
+    "process_data_frame",
+    "process_raw_frame",
+]

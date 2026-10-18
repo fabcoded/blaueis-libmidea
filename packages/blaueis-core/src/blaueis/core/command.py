@@ -612,3 +612,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+__all__ = [
+    "build_b0_command_body",
+    "build_command_body",
+]

@@ -198,3 +198,8 @@ def build_scan_queries(glossary: dict, proto: int = 0) -> list[tuple[str, bytes]
         )
 
     return queries
+
+
+__all__ = [
+    "build_scan_queries",
+]

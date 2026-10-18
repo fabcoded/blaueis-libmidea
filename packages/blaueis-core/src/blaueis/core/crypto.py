@@ -244,3 +244,12 @@ def load_psk(config_path: str) -> bytes:
     if not psk_hex:
         raise ValueError(f"No PSK found in {config_path}")
     return bytes.fromhex(psk_hex.strip())
+
+
+__all__ = [
+    "AuthenticationError",
+    "HandshakeError",
+    "complete_handshake_client",
+    "create_hello",
+    "psk_to_bytes",
+]

@@ -202,3 +202,10 @@ def apply_quirks_files(
         report["source"] = str(path)
         reports.append(report)
     return reports
+
+
+__all__ = [
+    "apply_device_quirks",
+    "apply_quirks_files",
+    "load_device_quirks",
+]
