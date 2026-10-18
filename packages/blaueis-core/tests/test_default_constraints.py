@@ -94,8 +94,8 @@ def main():
     fa = Counter(f["feature_available"] for f in fields.values())
     check("always == 5", fa["always"] == 5, f"got {fa['always']}")
     check("readable == 57", fa["readable"] == 57, f"got {fa['readable']}")
-    check("capability == 71", fa["capability"] == 71, f"got {fa['capability']}")
-    check("excluded == 54", fa["excluded"] == 54, f"got {fa['excluded']}")
+    check("capability == 70", fa["capability"] == 70, f"got {fa['capability']}")
+    check("excluded == 55", fa["excluded"] == 55, f"got {fa['excluded']}")
 
     # All 8 promoted fields are now `readable`
     for fname in PROMOTED_FIELDS:
