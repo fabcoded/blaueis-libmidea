@@ -50,6 +50,12 @@ First release. Released under the MIT License; requires Python 3.11 or newer.
   not support, or that do not apply in the current mode, are not offered. See
   [`docs/feature_gating.md`](docs/feature_gating.md) and
   [`docs/status_db.md`](docs/status_db.md).
+  Fields that were written but never adopted by the test unit, and
+  `self_clean`, whose off command the unit ignores, ship hidden; each one's
+  glossary entry says why ([`docs/exclusion_reasons.md`](docs/exclusion_reasons.md)).
+  `load_glossary_schema()` returns the JSON Schema the glossary and glossary
+  overrides are validated against, and every module a consumer imports
+  declares its public names in `__all__`.
 - **Client library for Home Assistant and other consumers.** `HvacClient`
   speaks the gateway's protocol; `Device` adds a supervised connection with
   automatic reconnect, capability discovery once per session, a status

@@ -58,7 +58,7 @@ def main():
     )
 
     # feature_available distribution — snapshot of the current glossary (sums to
-    # 198): always 5, readable 57, capability 71, excluded 54, readable-opt 11.
+    # 198): always 5, readable 57, capability 70, excluded 55, readable-opt 11.
     # The extensive exclusion work (vane fields, group-unknown bytes,
     # decode-unverified/never-observed, etc.) moved many fields
     # readable -> excluded/capability over time; every excluded field carries a
@@ -66,8 +66,8 @@ def main():
     fa_counts = Counter(f["feature_available"] for f in fields.values())
     check("always == 5", fa_counts["always"] == 5, f"got {fa_counts.get('always', 0)}")
     check("readable == 57", fa_counts["readable"] == 57, f"got {fa_counts.get('readable', 0)}")
-    check("capability == 71", fa_counts["capability"] == 71, f"got {fa_counts.get('capability', 0)}")
-    check("excluded == 54", fa_counts["excluded"] == 54, f"got {fa_counts.get('excluded', 0)}")
+    check("capability == 70", fa_counts["capability"] == 70, f"got {fa_counts.get('capability', 0)}")
+    check("excluded == 55", fa_counts["excluded"] == 55, f"got {fa_counts.get('excluded', 0)}")
 
     # Required keys on every field. The new shape is flat: sources +
     # default_priority back the per-frame storage; the rest are
@@ -172,6 +172,7 @@ def main():
         "protocol_bit1",
         "rate_select",
         "resume",
+        "self_clean",
         "total_worked_time",
         "turbo_mode",
         "vane_lr_angle",

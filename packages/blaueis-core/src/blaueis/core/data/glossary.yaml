@@ -3675,13 +3675,15 @@ fields:
       - Session 11
     self_clean:
       description: Self-cleaning mode. Unit runs a cleaning cycle to remove moisture/bacteria from the evaporator.
-      signoff: tbd
       field_class: stateful_bool
       _migration:
         _reclassified_from: complex_function
         _inferred_reason: bool toggle at the wire level; the cleaning cycle may have observable phases internally but only
           a single on/off bit is exchanged on the serial protocol. May be revisited if phase-level state becomes observable.
-      feature_available: capability
+      feature_available: excluded
+      excluded_reasons:
+      - unsafe_write
+      note: 'Turning it on starts a cleaning cycle (verified on the test unit, 2026-10-18); turning it off was not honoured in two attempts, and the cycle ended only when the unit was switched back to an operating mode. A switch that cannot be switched off is hidden; revisit once an off route that works is known.'
       data_type: bool
       device_context: indoor_unit
       alt_names:

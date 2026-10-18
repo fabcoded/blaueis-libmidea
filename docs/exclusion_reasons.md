@@ -19,7 +19,7 @@ A field with `feature_available: excluded` carries a non-empty
 | `unnecessary_automation` | Decode trustworthy; hidden because Home Assistant's mechanism supersedes the AC-side feature. | UX / integration design decision — define how HA-side and AC-side worlds reconcile (e.g. "HA wins; AC-side surface auto-cleared on every set"). |
 | `protocol_inert` | Wire-encoding bookkeeping; no field-level user semantic (reserved bit, fixed constant). | Protocol observation showing the bit carries variable, user-meaningful state on some firmware or hardware variant — i.e. the premise of the reason no longer holds. |
 | `never_tested_write` | Encoder exists in code; no end-to-end round-trip evidence (write → wire → read-back). | Round-trip capture: send command, AC accepts, field reads back as commanded. |
-| `unsafe_write` | Encoder works; writing has known unintended side effects. | Field-specific safety analysis. Reserved — not currently in use. |
+| `unsafe_write` | Encoder works; writing has known unintended side effects. | Field-specific safety analysis showing the side effect is gone or controllable. In use for `self_clean`: on starts a cleaning cycle that the off write does not stop. |
 
 Field-specific recovery prose lives in the existing `note:` field on
 each glossary entry; the table above is the *generic* recovery
