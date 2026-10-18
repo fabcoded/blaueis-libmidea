@@ -64,7 +64,8 @@ First release. Released under the MIT License; requires Python 3.11 or newer.
   `AuthenticationError` and stops the reconnect loop, calling `on_auth_failed`;
   transient handshake failures keep retrying.
 - **Packages on PyPI.** `blaueis-core`, `blaueis-client` and `blaueis-gateway`
-  are published to PyPI from tagged releases. `blaueis-tools` (glossary lint
+  are published to PyPI from tagged releases. The client and the gateway require
+  exactly the `blaueis-core` version they were released with. `blaueis-tools` (glossary lint
   and collision check, field inventory, capture and probe utilities) stays in
   the repository.
 
