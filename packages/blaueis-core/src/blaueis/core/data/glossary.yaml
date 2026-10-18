@@ -1406,9 +1406,11 @@ fields:
       - own captures Sessions 4-8
     catch_cold:
       description: 'Anti-cold / cold prevention: prevents blowing cold air during heat-up.'
-      signoff: tbd
       field_class: stateful_bool
-      feature_available: always
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
+      note: 'Write not adopted by the test unit (2026-10-18, heat mode, two attempts): the status reply kept 0, although heat is the mode this function applies to.'
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -1495,7 +1497,6 @@ fields:
         never_tested_write caveat shows in the banner.
     cleanup:
       description: Clean up / purifier mode active.
-      signoff: tbd
       field_class: stateful_bool
       _migration:
         _previous_feature_available: always
@@ -1713,9 +1714,11 @@ fields:
       - own research
     dry_clean:
       description: 'Dry clean / X-Fan: runs fan after cooling to dry the evaporator and prevent mold.'
-      signoff: tbd
       field_class: stateful_bool
-      feature_available: always
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
+      note: 'Write not adopted by the test unit (2026-10-18, heat mode, two attempts): the status reply kept 0. Other clients only allow it in cool or dry mode; retest there before exposing it.'
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -1873,9 +1876,11 @@ fields:
       - midea-local
     energy_save:
       description: Energy save mode. Different from ECO mode and power_save.
-      signoff: tbd
       field_class: stateful_bool
-      feature_available: always
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
+      note: 'Write not adopted by the test unit (2026-10-18, heat mode, two attempts): the status reply kept 0. Other clients do not send this bit; on some firmware the same status bit reports independent PTC state.'
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -2644,14 +2649,16 @@ fields:
       confidence: hypothesis
     low_frequency_fan:
       description: Low frequency / quiet fan mode. Reduces fan noise.
-      signoff: tbd
       field_class: stateful_bool
       _migration:
         _previous_feature_available: always
         _inferred_reason: '§10 default-deny audit: hypothesis confidence, decode-only evidence (false in S7/S11 ground truth),
           no active state-change capture, no independent source confirmation. Demoted until round-trip verified.'
         _source: §10 audit 2026-04-10
-      feature_available: readable
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
+      note: 'Write not adopted by the test unit (2026-10-18, heat mode, two attempts): the status reply kept 0. Other clients do not send this bit.'
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -3292,9 +3299,11 @@ fields:
       - Session 11 (all frames show 0x7F = timer OFF)
     power_save:
       description: Power save mode. Different from ECO mode and energy_save.
-      signoff: tbd
       field_class: stateful_bool
-      feature_available: always
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
+      note: 'Write not adopted by the test unit (2026-10-18, heat mode, two attempts): the status reply kept 0. Not yet tried in cool mode.'
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -3530,9 +3539,11 @@ fields:
       - Session 1 B5 query
     resume:
       description: 'Power resume: restore previous operating state on power recovery after outage.'
-      signoff: tbd
       field_class: stateful_bool
-      feature_available: always
+      feature_available: excluded
+      excluded_reasons:
+      - never_observed
+      note: 'Write not adopted by the test unit (2026-10-18, heat mode, two attempts): the status reply kept 0. Other clients do not send this bit.'
       data_type: bool
       device_context: indoor_unit
       alt_names:
@@ -4369,7 +4380,6 @@ fields:
     temperature_unit:
       description: 'Display temperature unit: Celsius or Fahrenheit. Changes display only — all protocol values remain in
         °C.'
-      signoff: tbd
       field_class: stateful_bool
       feature_available: readable
       data_type: bool

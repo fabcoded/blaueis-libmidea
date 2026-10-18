@@ -58,16 +58,16 @@ def main():
     )
 
     # feature_available distribution — snapshot of the current glossary (sums to
-    # 198): always 10, readable 58, capability 71, excluded 48, readable-opt 11.
+    # 198): always 5, readable 57, capability 71, excluded 54, readable-opt 11.
     # The extensive exclusion work (vane fields, group-unknown bytes,
     # decode-unverified/never-observed, etc.) moved many fields
     # readable -> excluded/capability over time; every excluded field carries a
     # schema-enforced excluded_reasons entry.
     fa_counts = Counter(f["feature_available"] for f in fields.values())
-    check("always == 10", fa_counts["always"] == 10, f"got {fa_counts.get('always', 0)}")
-    check("readable == 58", fa_counts["readable"] == 58, f"got {fa_counts.get('readable', 0)}")
+    check("always == 5", fa_counts["always"] == 5, f"got {fa_counts.get('always', 0)}")
+    check("readable == 57", fa_counts["readable"] == 57, f"got {fa_counts.get('readable', 0)}")
     check("capability == 71", fa_counts["capability"] == 71, f"got {fa_counts.get('capability', 0)}")
-    check("excluded == 48", fa_counts["excluded"] == 48, f"got {fa_counts.get('excluded', 0)}")
+    check("excluded == 54", fa_counts["excluded"] == 54, f"got {fa_counts.get('excluded', 0)}")
 
     # Required keys on every field. The new shape is flat: sources +
     # default_priority back the per-frame storage; the rest are
@@ -133,12 +133,14 @@ def main():
     never_fields = [n for n, f in fields.items() if f["feature_available"] == "excluded"]
     expected_never = {
         "alarm_sleep",
+        "catch_cold",
         "child_sleep",
         "cosy_sleep",
         "cosy_sleep_switch",
-        "pre_cool_hot",
         "current_session_time",
         "current_work_time",
+        "dry_clean",
+        "energy_save",
         "fan_speed_timer_bit",
         "group12_unknown_byte4",
         "group12_unknown_byte6",
@@ -154,6 +156,7 @@ def main():
         "indoor_humidity",
         "ipm_module_temp",
         "local_body_sense",
+        "low_frequency_fan",
         "mode_query_value",
         "night_light",
         "outdoor_return_air_temp",
@@ -164,8 +167,11 @@ def main():
         "power_on_time",
         "power_on_time_value",
         "power_on_timer",
+        "power_save",
+        "pre_cool_hot",
         "protocol_bit1",
         "rate_select",
+        "resume",
         "total_worked_time",
         "turbo_mode",
         "vane_lr_angle",

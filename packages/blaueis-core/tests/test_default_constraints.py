@@ -92,10 +92,10 @@ def main():
     status = build_status("test", glossary)
     fields = status["fields"]
     fa = Counter(f["feature_available"] for f in fields.values())
-    check("always == 10", fa["always"] == 10, f"got {fa['always']}")
-    check("readable == 58", fa["readable"] == 58, f"got {fa['readable']}")
+    check("always == 5", fa["always"] == 5, f"got {fa['always']}")
+    check("readable == 57", fa["readable"] == 57, f"got {fa['readable']}")
     check("capability == 71", fa["capability"] == 71, f"got {fa['capability']}")
-    check("excluded == 48", fa["excluded"] == 48, f"got {fa['excluded']}")
+    check("excluded == 54", fa["excluded"] == 54, f"got {fa['excluded']}")
 
     # All 8 promoted fields are now `readable`
     for fname in PROMOTED_FIELDS:
