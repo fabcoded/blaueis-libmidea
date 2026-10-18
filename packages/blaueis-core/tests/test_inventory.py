@@ -344,9 +344,9 @@ def test_synthesize_yaml_parses_as_valid_override(glossary):
     merged, _affected, _warnings = apply_override(glossary, parsed)
 
     # Load schema from the same path the synthesizer uses.
-    from blaueis.core.inventory import _load_glossary_schema
+    from blaueis.core.codec import load_glossary_schema
 
-    schema = _load_glossary_schema()
+    schema = load_glossary_schema()
     validator = Draft202012Validator(schema)
 
     base_sigs = {(tuple(e.absolute_path), e.message) for e in validator.iter_errors(glossary)}

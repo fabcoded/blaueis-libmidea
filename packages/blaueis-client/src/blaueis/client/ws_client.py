@@ -337,3 +337,8 @@ class HvacClient:
     def add_listener(self, callback):
         """Add a raw message listener (receives all messages)."""
         self._listeners.append(callback)
+
+
+__all__ = [
+    "HvacClient",
+]

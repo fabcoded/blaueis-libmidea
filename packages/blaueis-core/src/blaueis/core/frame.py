@@ -507,3 +507,17 @@ def build_version_response(appliance: int = 0xAC, proto: int = 0, sub: int = 0) 
     body = bytearray(20)
     body[: len(version)] = version
     return build_frame(bytes(body), msg_type=0x13, appliance=appliance, proto=proto, sub=sub)
+
+
+__all__ = [
+    "build_b1_property_query",
+    "build_cap_query_extended",
+    "build_cap_query_simple",
+    "build_display_toggle_frame",
+    "build_frame",
+    "build_group_query",
+    "build_status_query",
+    "crc8",
+    "frame_checksum",
+    "parse_frame",
+]

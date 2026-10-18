@@ -4,6 +4,7 @@ Glossary-driven decode/encode functions used by all toolkit scripts.
 Extracted from decode_frames.py and parse_b5_state.py.
 """
 
+import json
 from pathlib import Path
 
 import yaml
@@ -14,6 +15,7 @@ SPEC_DIR = Path(__file__).resolve().parent / "data"
 GLOSSARY_PATH = SPEC_DIR / "glossary.yaml"
 
 _glossary_cache: dict | None = None
+_schema_cache: dict | None = None
 
 
 # ── Glossary loader ───────────────────────────────────────────────────────
@@ -26,6 +28,16 @@ def load_glossary() -> dict:
         with open(GLOSSARY_PATH, encoding="utf-8") as f:
             _glossary_cache = yaml.safe_load(f)
     return _glossary_cache
+
+
+def load_glossary_schema() -> dict:
+    """Load and cache ``glossary_schema.json``, the JSON Schema the glossary
+    and glossary overrides are validated against."""
+    global _schema_cache
+    if _schema_cache is None:
+        with open(SPEC_DIR / "glossary_schema.json", encoding="utf-8") as f:
+            _schema_cache = json.load(f)
+    return _schema_cache
 
 
 def invalidate_glossary_cache() -> None:
@@ -1232,3 +1244,21 @@ def detect_dead_frames(glossary: dict, frame_counts: dict, bus: str) -> set[str]
         if not any(rsp in frame_counts for rsp in triggers):
             dead.add(fid)
     return dead
+
+
+__all__ = [
+    "build_cap_index",
+    "build_field_map",
+    "build_frame_from_spec",
+    "decode_data_cap",
+    "decode_enum_cap",
+    "decode_frame_fields",
+    "encode_field",
+    "identify_frame",
+    "infer_generation",
+    "invalidate_glossary_cache",
+    "load_glossary",
+    "load_glossary_schema",
+    "parse_b5_tlv",
+    "walk_fields",
+]

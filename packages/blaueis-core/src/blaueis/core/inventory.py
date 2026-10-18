@@ -50,7 +50,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from blaueis.core.codec import decode_frame_fields, walk_fields
+from blaueis.core.codec import decode_frame_fields, load_glossary_schema, walk_fields
 from blaueis.core.glossary_override import apply_override
 
 log = logging.getLogger(__name__)
@@ -478,7 +478,7 @@ def synthesize_override_snippet(
     import yaml
     from jsonschema import Draft202012Validator
 
-    schema = _load_glossary_schema()
+    schema = load_glossary_schema()
     fa = field_def.get("feature_available")
     if fa in ("always", "readable"):
         return None
@@ -607,16 +607,6 @@ def _matched_cap_fa(cap_def: dict, matched_name: str) -> str | None:
     values = cap_def.get("values") or {}
     entry = values.get(matched_name) or {}
     return entry.get("feature_available")
-
-
-_SCHEMA_CACHE: dict | None = None
-
-
-def _load_glossary_schema() -> dict:
-    """Load ``glossary_schema.json`` next to the glossary YAML. Cached."""
-    global _SCHEMA_CACHE
-    if _SCHEMA_CACHE is not None:
-        return _SCHEMA_CACHE
     schema_path = Path(__file__).resolve().parent / "data" / "glossary_schema.json"
     with open(schema_path, encoding="utf-8") as f:
         _SCHEMA_CACHE = json.load(f)

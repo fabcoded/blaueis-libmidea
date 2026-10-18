@@ -1278,3 +1278,8 @@ class Device:
     def read_all_available(self) -> dict[str, object]:
         """Read all available fields. Returns {name: value}."""
         return {fname: self.read(fname) for fname in self.available_fields}
+
+
+__all__ = [
+    "Device",
+]
