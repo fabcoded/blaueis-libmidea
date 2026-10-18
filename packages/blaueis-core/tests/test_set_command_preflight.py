@@ -128,7 +128,7 @@ def test_boot_status_blocks_change():
     status = build_status(device="test", glossary=glossary)
     # boot status: every field has last_updated=None
 
-    result = build_command_body(status, {"power": True}, glossary)
+    result = build_command_body(status, {"sleep_mode": True}, glossary)
     check(
         "body is None (preflight blocked)",
         result["body"] is None,
@@ -144,11 +144,11 @@ def test_boot_status_blocks_change():
         all(e["severity"] == "error" for e in result["preflight"]),
         "mixed severities",
     )
-    # power is in body[1] sharing with buzzer/protocol_bit1/resume
+    # sleep_mode is in body[10] sharing with temperature_unit (among others)
     error_fields = {e["field"] for e in result["preflight"]}
     check(
-        "resume is flagged as never_read sibling of power",
-        "resume" in error_fields,
+        "temperature_unit is flagged as never_read sibling of sleep_mode",
+        "temperature_unit" in error_fields,
         f"errors on {error_fields}",
     )
 
@@ -161,7 +161,7 @@ def test_force_bypass():
     glossary = load_glossary()
     status = build_status(device="test", glossary=glossary)
 
-    result = build_command_body(status, {"power": True}, glossary, skip_preflight=True)
+    result = build_command_body(status, {"sleep_mode": True}, glossary, skip_preflight=True)
     check(
         "body returned despite stale state",
         result["body"] is not None,
@@ -232,10 +232,10 @@ def test_shared_byte_stale():
     now = datetime.now(UTC)
 
     _populate_all_cmd_0x40_fields(status, glossary, age_seconds=1.0, now=now)
-    # Make resume stale (60s > 30s default)
-    _populate_field(status, "resume", False, age_seconds=60.0, now=now)
+    # Make temperature_unit stale (60s > 30s default)
+    _populate_field(status, "temperature_unit", False, age_seconds=60.0, now=now)
 
-    result = build_command_body(status, {"power": True}, glossary, now=now)
+    result = build_command_body(status, {"sleep_mode": True}, glossary, now=now)
     check(
         "stale sibling blocks: body is None",
         result["body"] is None,
@@ -243,14 +243,14 @@ def test_shared_byte_stale():
     )
     stale_errors = [e for e in result["preflight"] if e["reason"] == "stale"]
     check(
-        "validation includes stale entry for resume",
-        any(e["field"] == "resume" for e in stale_errors),
+        "validation includes stale entry for temperature_unit",
+        any(e["field"] == "temperature_unit" for e in stale_errors),
         f"errors: {result['preflight']}",
     )
     if stale_errors:
-        ages = [e["age_seconds"] for e in stale_errors if e["field"] == "resume"]
+        ages = [e["age_seconds"] for e in stale_errors if e["field"] == "temperature_unit"]
         check(
-            "resume age ~60s",
+            "temperature_unit age ~60s",
             ages and 55 < ages[0] < 65,
             f"age={ages}",
         )
@@ -266,17 +266,17 @@ def test_never_read_distinct():
     now = datetime.now(UTC)
 
     _populate_all_cmd_0x40_fields(status, glossary, age_seconds=1.0, now=now)
-    # Reset resume to never_read by clearing its sources slot. The
+    # Reset temperature_unit to never_read by clearing its sources slot. The
     # preflight reads via read_field — an empty sources dict resolves to
     # None, which the preflight reports as never_read.
-    status["fields"]["resume"]["sources"] = {}
+    status["fields"]["temperature_unit"]["sources"] = {}
 
-    result = build_command_body(status, {"power": True}, glossary, now=now)
-    nr = [e for e in result["preflight"] if e["field"] == "resume"]
+    result = build_command_body(status, {"sleep_mode": True}, glossary, now=now)
+    nr = [e for e in result["preflight"] if e["field"] == "temperature_unit"]
     check(
-        "resume flagged",
+        "temperature_unit flagged",
         len(nr) == 1,
-        f"got {len(nr)} entries for resume",
+        f"got {len(nr)} entries for temperature_unit",
     )
     if nr:
         check(
@@ -419,7 +419,7 @@ def test_validation_schema():
     status = build_status(device="test", glossary=glossary)
     now = datetime.now(UTC)
 
-    result = build_command_body(status, {"power": True}, glossary, now=now)
+    result = build_command_body(status, {"sleep_mode": True}, glossary, now=now)
     check("at least one validation error to inspect", len(result["preflight"]) > 0, "")
     if result["preflight"]:
         err = result["preflight"][0]
@@ -430,13 +430,13 @@ def test_validation_schema():
             f"missing: {required - err.keys()}",
         )
         check(
-            "shared_with == power",
-            err["shared_with"] == "power",
+            "shared_with == sleep_mode",
+            err["shared_with"] == "sleep_mode",
             f"got {err['shared_with']}",
         )
         check(
-            "position == body[1]",
-            err["position"] == "body[1]",
+            "position == body[10]",
+            err["position"] == "body[10]",
             f"got {err['position']}",
         )
 
@@ -451,13 +451,13 @@ def test_now_parameter():
     fixed_now = datetime(2026, 4, 10, 12, 0, 0, tzinfo=UTC)
 
     _populate_all_cmd_0x40_fields(status, glossary, age_seconds=1.0, now=fixed_now)
-    # Mark resume 45s old relative to fixed_now
-    _populate_field(status, "resume", False, age_seconds=45.0, now=fixed_now)
+    # Mark temperature_unit 45s old relative to fixed_now
+    _populate_field(status, "temperature_unit", False, age_seconds=45.0, now=fixed_now)
 
-    result = build_command_body(status, {"power": True}, glossary, now=fixed_now)
-    stale = [e for e in result["preflight"] if e["field"] == "resume" and e["reason"] == "stale"]
+    result = build_command_body(status, {"sleep_mode": True}, glossary, now=fixed_now)
+    stale = [e for e in result["preflight"] if e["field"] == "temperature_unit" and e["reason"] == "stale"]
     check(
-        "resume age == 45.0 ± 0.01",
+        "temperature_unit age == 45.0 ± 0.01",
         stale and abs(stale[0]["age_seconds"] - 45.0) < 0.01,
         f"got {stale[0]['age_seconds'] if stale else None}",
     )
@@ -598,13 +598,13 @@ def test_integration_refresh_after_stale():
 
     # Try to send a change 120s later — must fail
     fixed_now = datetime.now(UTC) + timedelta(seconds=120)
-    r1 = build_command_body(status, {"power": False}, glossary, now=fixed_now)
+    r1 = build_command_body(status, {"sleep_mode": False}, glossary, now=fixed_now)
     check("stale at t+120s: preflight blocks", r1["body"] is None, "")
 
     # Re-process the same C0 frame at the new "now" — process_frame uses
     # datetime.now(UTC) internally so this writes a fresh timestamp.
     process_raw_frame(status, body, glossary)
-    r2 = build_command_body(status, {"power": False}, glossary)
+    r2 = build_command_body(status, {"sleep_mode": False}, glossary)
     check(
         "after re-process: preflight passes",
         r2["body"] is not None,
@@ -622,14 +622,14 @@ def test_threshold_parameter():
     now = datetime.now(UTC)
 
     _populate_all_cmd_0x40_fields(status, glossary, age_seconds=1.0, now=now)
-    _populate_field(status, "resume", False, age_seconds=60.0, now=now)
+    _populate_field(status, "temperature_unit", False, age_seconds=60.0, now=now)
 
-    # Tight threshold (10s): 60s resume should fail
-    r1 = build_command_body(status, {"power": True}, glossary, preflight_threshold_seconds=10.0, now=now)
+    # Tight threshold (10s): 60s temperature_unit should fail
+    r1 = build_command_body(status, {"sleep_mode": True}, glossary, preflight_threshold_seconds=10.0, now=now)
     check("threshold=10s: stale 60s blocks", r1["body"] is None, "")
 
-    # Loose threshold (120s): 60s resume should pass
-    r2 = build_command_body(status, {"power": True}, glossary, preflight_threshold_seconds=120.0, now=now)
+    # Loose threshold (120s): 60s temperature_unit should pass
+    r2 = build_command_body(status, {"sleep_mode": True}, glossary, preflight_threshold_seconds=120.0, now=now)
     check("threshold=120s: stale 60s passes", r2["body"] is not None, "")
 
 
