@@ -57,15 +57,15 @@ its three registrations if that happens.
 ## Cutting a release
 
 1. Bump `version` by hand in `packages/blaueis-{core,client,gateway}/pyproject.toml`
-   to the same value (e.g. `0.1.0rc1`). The client and gateway pin
-   `blaueis-core~=0.1.0rc1`. That form is deliberate: `~=0.1.0` would not
-   admit `0.1.0rc1` even with pre-releases allowed, so
-   `pip install blaueis-gateway==0.1.0rc1` could not resolve its core
-   dependency. `~=0.1.0rc1` admits the rc, `0.1.0` and every later `0.1.x`
-   but not `0.2`. Because the specifier names a pre-release, it also lets pip
-   pick later pre-releases (`0.1.1rc1`), so the final-release bump returns the
-   pin to `~=0.1.0` in client and gateway; adjust it when the minor version
-   changes.
+   to the same value (e.g. `0.1.0rc2`), and set the client's and gateway's
+   dependency to exactly that core version (`blaueis-core==0.1.0rc2`). The
+   three packages are only released together, and an exact pin is what keeps
+   them together on a consumer: Home Assistant installs each requirement on
+   its own with `pip install --upgrade`, so a range such as `~=0.1.0rc1` let
+   a client install pull a newer core than the one the integration pinned
+   (2026-10-18, a Home Assistant container rebuild after `0.1.0rc2` was
+   published). `tests/test_lockstep.py` fails while the versions or the pin
+   disagree.
 2. Move the entries under `## [Unreleased]` in `CHANGELOG.md` into a new
    `## [X.Y.Z]` section (add the release date; leave `## [Unreleased]` empty
    above it). Pre-release tags (`rc`, `a`, `b`) need no changelog section.
