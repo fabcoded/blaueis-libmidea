@@ -217,7 +217,9 @@ encodings:
     range:
     - 0.0
     - 50.0
-    note: 0x41 optCommand=0x01 body[5]. Same formula as temp_offset50_half.
+    note: 0x41 optCommand=0x01 body[5]. Same formula as temp_offset50_half. The
+      half step reaches the control loop (live step test 2026-10-26), although the
+      C0 indoor_temperature readback under Follow Me is a whole degree.
   temp_fahrenheit:
     formula: °F = °C × 9/5 + 32
     unit: °F
@@ -7111,10 +7113,19 @@ fields:
       xye_note: 'C0/C3 byte[11]: (val - 40) / 2.0 °C (offset 40, not 50). Follow-Me dependent — reports controller sensor
         when FM active.'
       mainboard_note: 'D0 byte[16]: direct integer °C (no formula, ~1°C quantization).'
+      note: 'With Follow Me active, the readback is a whole degree but the control
+        loop uses the half-degree value. Step test 2026-10-26 (Follow Me source
+        stepped 22.0 / 21.5 / 21.0 / 20.0 / 22.0 / 23.0 °C): a 21.5 °C source moved
+        the control error by 0.5 K while this field read 22.0 °C, and every sample
+        of this field under Follow Me from 2026-10-22 to 2026-10-26 (4266 one-minute
+        samples) was a whole degree. Readback rounds, control does not — do not
+        infer the value the AC regulates on from this field while Follow Me is
+        active; the source sent in 0x41 body[5] (temp_follow_me) is the value used.'
       confidence: confirmed
       sources:
       - Session 6 service menu
       - all implementations
+      - live step test 2026-10-26 (Follow Me readback rounding)
     ipm_module_temp:
       description: IPM (Insulated Power Module) temperature. Raw value — encoding disputed.
       field_class: sensor
