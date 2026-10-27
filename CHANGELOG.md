@@ -8,6 +8,13 @@ allowed in any 0.x release ([`docs/versioning.md`](docs/versioning.md)).
 
 ## [Unreleased]
 
+### Changed
+
+- **Glossary: Follow Me readback rounding.** `indoor_temperature` and the
+  `temp_follow_me` encoding now note that, with Follow Me active, the C0
+  readback is a whole degree while the unit regulates on the half-degree
+  value sent in 0x41.
+
 ## [0.1.0]
 
 First release. Released under the MIT License; requires Python 3.11 or newer.
